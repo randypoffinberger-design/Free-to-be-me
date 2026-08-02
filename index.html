@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#7b61a8" />
+  <meta name="description" content="Free to Be Me — an autism caregiver village focused on strengths, growth, and support." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Free to Be Me</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn" aria-label="Open menu">☰</button>
+      <div class="brand-mini"><span class="brand-mark">🌈</span><span>Free to Be Me</span></div>
+      <button id="installBtn" class="icon-btn hidden" aria-label="Install app">⬇</button>
+    </header>
+
+    <aside id="drawer" class="drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <strong>Free to Be Me</strong>
+        <button id="closeDrawer" class="icon-btn" aria-label="Close menu">✕</button>
+      </div>
+      <nav id="drawerNav"></nav>
+      <div class="drawer-version">Version <span id="drawerVersion"></span></div>
+    </aside>
+    <div id="scrim" class="scrim hidden"></div>
+
+    <main id="view" class="view" tabindex="-1"></main>
+
+    <nav class="bottom-nav" aria-label="Primary">
+      <button data-route="home" class="nav-item active"><span>🏠</span><small>Home</small></button>
+      <button data-route="child" class="nav-item"><span>🌱</span><small>My Child</small></button>
+      <button data-route="resources" class="nav-item"><span>📚</span><small>Resources</small></button>
+      <button data-route="explore" class="nav-item"><span>🗺️</span><small>Explore</small></button>
+      <button data-route="caregiver" class="nav-item"><span>💛</span><small>Caregiver</small></button>
+    </nav>
+  </div>
+
+  <dialog id="modal">
+    <form method="dialog" class="modal-card">
+      <button class="modal-close" value="cancel" aria-label="Close">✕</button>
+      <div id="modalBody"></div>
+    </form>
+  </dialog>
+
+  <input id="restoreInput" type="file" accept=".ftbmbackup,.json,application/json" hidden />
+  <script src="app.js" defer></script>
+</body>
+</html>
