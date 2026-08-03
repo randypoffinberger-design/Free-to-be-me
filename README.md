@@ -1,4 +1,4 @@
-# More than Measured v0.2.3
+# More than Measured v0.3.0
 
 Initial local-first PWA foundation.
 
@@ -96,3 +96,17 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Kept ASD Friendly Fun connected to Explore
 - Preserved the existing two-row hotspot alignment and all family data
 - Updated the app and offline cache versions
+
+## v0.3.0 changes
+- Expanded Vocabulary into the Speech & Language tracker
+- Added clear Edit and Delete controls to every word or phrase
+- Added per-entry Speak, Identify, and ASL checkboxes that can be changed directly on each card
+- Made every entry a compact expandable card; the closed view shows only the word or phrase and its date
+- Added top-level totals for all entries, Speak, Identify, and ASL that update for the selected child
+- Added assignable categories including Animals, Toys, Body Parts, Food & Drink, People, Actions, Places, Clothing, Vehicles, Social Words, and more
+- Added custom category creation, renaming, and deletion with safe reassignment to Uncategorized
+- Added category filtering and expanded search across words, notes, and category names
+- Added category and ability choices to single-entry forms and bulk imports
+- Safely upgrades existing vocabulary to Speak checked, Identify unchecked, ASL unchecked, and Uncategorized
+- Creates a safety checkpoint before deleting a category or running a bulk import
+- Preserved backup compatibility and updated the app/offline cache version
