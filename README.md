@@ -1,4 +1,4 @@
-# More than Measured v0.3.0
+# More than Measured v0.3.1
 
 Initial local-first PWA foundation.
 
@@ -110,3 +110,14 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Safely upgrades existing vocabulary to Speak checked, Identify unchecked, ASL unchecked, and Uncategorized
 - Creates a safety checkpoint before deleting a category or running a bulk import
 - Preserved backup compatibility and updated the app/offline cache version
+
+## v0.3.1 changes
+- Added independent learned dates for Speak, Identify, and ASL
+- Added Speak, Identify, and ASL result checkboxes, enabled by default
+- Made year, month, and exact-date filters use only the abilities currently selected
+- Added undated additional-language translations to each entry
+- Expanded search to language names and translated words or phrases
+- Added inline ability-date editing inside expanded word cards
+- Made bulk imports apply each parsed date to every selected imported ability
+- Safely migrates older first-said dates to Speak dates without inventing unknown Identify or ASL history
+- Preserved the original database and backup compatibility and updated the offline cache version
