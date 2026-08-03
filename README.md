@@ -1,4 +1,4 @@
-# More than Measured v0.3.1
+# More than Measured v0.3.2
 
 Initial local-first PWA foundation.
 
@@ -121,3 +121,14 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Made bulk imports apply each parsed date to every selected imported ability
 - Safely migrates older first-said dates to Speak dates without inventing unknown Identify or ASL history
 - Preserved the original database and backup compatibility and updated the offline cache version
+
+## v0.3.2 changes
+- Added Category as a sorting option
+- Category sorting displays bold alphabetical category headings
+- Entries within each category sort by newest first-said date, then alphabetically
+- Added optional secondary and tertiary categories to individual entries and bulk imports
+- Words assigned to several categories appear beneath every associated heading without increasing totals
+- Category filters now match primary, secondary, or tertiary assignments
+- Expanded category search and category chips to include every assignment
+- Updated category rename and deletion to safely handle every assignment
+- Preserved existing single-category entries, backups, and offline compatibility

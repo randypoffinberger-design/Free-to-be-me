@@ -20,6 +20,7 @@ dialog{border:0;border-radius:24px;padding:0;max-width:min(92vw,560px);width:100
 .filter-abilities{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;border:1px solid #d9cfe6;border-radius:14px;padding:12px}.filter-abilities legend{font-weight:700;padding:0 5px}.filter-abilities label{display:flex;align-items:center;gap:6px;font-weight:700}.filter-abilities input{width:19px;height:19px;accent-color:var(--primary)}
 .ability-checks{display:grid}.ability-row{display:grid;grid-template-columns:minmax(110px,1fr) minmax(145px,1fr);gap:8px;align-items:center;background:#f7f3fb;border:1px solid var(--line);border-radius:10px;padding:7px 9px}.ability-checks .ability-row label{border:0;padding:0;background:transparent}.ability-row input[type=date]{width:100%;min-width:0;border:1px solid #d9cfe6;border-radius:9px;padding:7px;background:white;color:var(--ink)}.dated-abilities{display:grid}.language-list{display:grid;gap:4px;margin-top:12px;padding:10px 12px;border-radius:12px;background:#fff8e5;color:var(--muted)}.language-list strong{color:var(--ink)}
 @media(max-width:520px){.filter-abilities{grid-column:auto}.ability-row{grid-template-columns:1fr}}
+.category-group{display:grid;gap:10px}.category-group h2{margin:14px 4px 0;font-size:1.2rem;font-weight:850;color:var(--ink);padding-bottom:6px;border-bottom:2px solid var(--line)}
 
 .quote-button{display:block;width:100%;text-align:left;color:var(--ink);cursor:pointer}
 .quote-button span{display:block;margin-top:8px;font-size:.78rem;font-style:normal;color:var(--muted);font-weight:700}
