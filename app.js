@@ -1,13 +1,13 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.7',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.2.0',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
 const uid=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const nowISO=()=>new Date().toISOString();
 const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-const fmtDate=v=>v?new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric'}).format(new Date(v)):'';
+const fmtDate=v=>v?new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric'}).format(new Date(/^\d{4}-\d{2}-\d{2}$/.test(v)?`${v}T12:00:00`:v)):'';
 
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const d=req.result;for(const n of STORE_NAMES)if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
 const tx=(s,m='readonly')=>db.transaction(s,m).objectStore(s);
@@ -21,7 +21,7 @@ async function setSetting(k,v){return put('settings',{id:k,value:v,updatedAt:now
 const quotes=['You are not behind. You are learning your child, one loving step at a time.','Progress can be quiet. Celebrate the moments only your family knows how hard-won they are.','Your child does not need comparison. They need connection, patience, and room to shine.','A small step today can become a treasured memory tomorrow.','You are building safety, trust, and possibility every time you show up.'];
 const weeklyQuote=()=>quotes[Math.floor(Date.now()/604800000)%quotes.length];
 
-const routes={home:renderHome,child:renderChild,resources:renderResources,explore:renderExplore,caregiver:renderCaregiver,backup:renderBackup,about:renderAbout,settings:renderSettings};
+const routes={home:renderHome,child:renderChild,vocabulary:renderVocabulary,resources:renderResources,explore:renderExplore,caregiver:renderCaregiver,backup:renderBackup,about:renderAbout,settings:renderSettings};
 function navigate(r){const route=routes[r]?r:'home';document.body.classList.toggle('home-route',route==='home');routes[route]();history.replaceState(null,'',`#${route}`);closeDrawer();view.focus();}
 const card=(i,t,d,r)=>`<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
 function bindRouteButtons(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));}
@@ -30,7 +30,7 @@ async function renderHome(){
   view.innerHTML=`<section class="illustrated-home" aria-label="Free to Be Me home navigation">
     <img src="assets/home/homepage.jpeg" alt="Free to Be Me — celebrating every child’s unique journey" width="864" height="1536">
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
-    <button class="home-hotspot communication" data-feature="Communication Support" aria-label="Open Communication Support"><span>Communication Support</span></button>
+    <button class="home-hotspot communication" data-go="vocabulary" aria-label="Open Communication Support and Vocabulary"><span>Communication Support</span></button>
     <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
     <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
     <button class="home-hotspot learning" data-feature="Learning Tools" aria-label="Open Learning Tools"><span>Learning Tools</span></button>
@@ -59,6 +59,73 @@ function underConstruction(feature){
   $('#closeConstruction').onclick=()=>modal.close();
 }
 
+const isoToday=()=>new Date().toISOString().slice(0,10);
+const wordKey=v=>String(v||'').trim().toLocaleLowerCase();
+function parseDateText(value){
+  const s=String(value||'').trim().replace(/^[,;|\-–—\s]+|[,;|\-–—\s]+$/g,'');
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m)return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2}|\d{4})$/);
+  if(m){let y=Number(m[3]);if(y<100)y+=y<50?2000:1900;const d=new Date(y,Number(m[1])-1,Number(m[2]));if(d.getFullYear()===y&&d.getMonth()===Number(m[1])-1&&d.getDate()===Number(m[2]))return `${y}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;}
+  const t=Date.parse(s);return Number.isNaN(t)?null:new Date(t).toISOString().slice(0,10);
+}
+function parseBulkVocabulary(text,fallbackDate){
+  const entries=[],skipped=[];let currentDate=fallbackDate;
+  const datePattern=/(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.]\d{1,2}[\/.](?:\d{2}|\d{4})|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,)?\s+\d{2,4})/i;
+  for(const original of String(text||'').split(/\r?\n/)){
+    let line=original.trim().replace(/^(?:[-•*☐☑✓]+|\d+[.)])\s*/, '');
+    if(!line)continue;
+    const onlyDate=parseDateText(line);
+    if(onlyDate&&datePattern.test(line)){currentDate=onlyDate;continue;}
+    const match=line.match(datePattern);let date=currentDate,word=line;
+    if(match){date=parseDateText(match[0])||currentDate;word=line.replace(match[0],'');}
+    word=word.replace(/^[\s,:;|\-–—]+|[\s,:;|\-–—]+$/g,'').trim();
+    if(!word||!date){skipped.push(original);continue;}
+    entries.push({word,date});
+  }
+  return{entries,skipped};
+}
+async function renderVocabulary(){
+  const profiles=await getAll('profiles'),words=await getAll('words');
+  if(!profiles.length){view.innerHTML=`<div class="empty card"><div class="big">🗣️</div><h2>Create a child profile first</h2><p>Vocabulary entries are connected to a child so every word remains part of the correct story.</p><button id="vocabCreateProfile" class="btn">Create profile</button></div>`;$('#vocabCreateProfile').onclick=openProfileForm;return;}
+  const years=[...new Set(words.map(x=>String(x.date||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  view.innerHTML=`<section class="hero"><h1>🗣️ Vocabulary</h1><p>Save each word or phrase with the date it was first said.</p></section>
+  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="bulkWords" class="btn secondary">Bulk import from Notes</button></div>
+  <div class="vocab-controls card">
+    <div class="field"><label>Child</label><select id="vocabProfile"><option value="all">All children</option>${profiles.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Search</label><input id="vocabSearch" type="search" placeholder="Find a word or phrase"></div>
+    <div class="field"><label>Sort</label><select id="vocabSort"><option value="alpha">Alphabetical</option><option value="newest">Date said — newest</option><option value="oldest">Date said — oldest</option></select></div>
+    <div class="field"><label>Year</label><select id="vocabYear"><option value="">All years</option>${years.map(y=>`<option>${y}</option>`).join('')}</select></div>
+    <div class="field"><label>Month</label><select id="vocabMonth"><option value="">All months</option>${Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${new Intl.DateTimeFormat(undefined,{month:'long',timeZone:'UTC'}).format(new Date(Date.UTC(2020,i,1)))}</option>`).join('')}</select></div>
+    <div class="field"><label>Exact date</label><input id="vocabDate" type="date"></div>
+    <button id="clearVocabFilters" class="btn secondary" type="button">Clear filters</button>
+  </div>
+  <div id="vocabSummary" class="section-title"></div><div id="vocabList" class="word-list"></div>`;
+  const names=Object.fromEntries(profiles.map(p=>[p.id,p.name]));
+  const refresh=()=>{
+    const profile=$('#vocabProfile').value,q=wordKey($('#vocabSearch').value),year=$('#vocabYear').value,month=$('#vocabMonth').value,exact=$('#vocabDate').value,sort=$('#vocabSort').value;
+    let shown=words.filter(x=>(profile==='all'||x.profileId===profile)&&(!q||wordKey(x.word).includes(q))&&(!exact||x.date===exact)&&(!exact&&!year||String(x.date||'').startsWith(year))&&(!exact&&!month||String(x.date||'').slice(5,7)===month));
+    shown.sort(sort==='alpha'?(a,b)=>a.word.localeCompare(b.word,undefined,{sensitivity:'base'}):sort==='oldest'?(a,b)=>String(a.date).localeCompare(String(b.date))||a.word.localeCompare(b.word):(a,b)=>String(b.date).localeCompare(String(a.date))||a.word.localeCompare(b.word));
+    $('#vocabSummary').textContent=`${shown.length} of ${words.length} ${words.length===1?'entry':'entries'}`;
+    $('#vocabList').innerHTML=shown.length?shown.map(x=>`<article class="word-card card"><div><h3>${esc(x.word)}</h3><p>${esc(names[x.profileId]||'Child')} • First said ${fmtDate(x.date)}</p>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div><div class="word-actions"><button class="icon-btn edit-word" data-id="${x.id}" aria-label="Edit ${esc(x.word)}">✏️</button><button class="icon-btn delete-word" data-id="${x.id}" aria-label="Delete ${esc(x.word)}">🗑️</button></div></article>`).join(''):`<div class="empty card"><div class="big">🔎</div><p>No vocabulary entries match these filters.</p></div>`;
+    document.querySelectorAll('.edit-word').forEach(b=>b.onclick=()=>openWordForm(profiles,words.find(x=>x.id===b.dataset.id)));
+    document.querySelectorAll('.delete-word').forEach(b=>b.onclick=async()=>{const item=words.find(x=>x.id===b.dataset.id);if(item&&confirm(`Delete “${item.word}”? This cannot be undone.`)){await deleteItem('words',item.id);renderVocabulary();}});
+  };
+  ['vocabProfile','vocabSearch','vocabSort','vocabYear','vocabMonth','vocabDate'].forEach(id=>$('#'+id).addEventListener(id==='vocabSearch'?'input':'change',refresh));
+  $('#clearVocabFilters').onclick=()=>{['vocabYear','vocabMonth','vocabDate','vocabSearch'].forEach(id=>$('#'+id).value='');$('#vocabProfile').value='all';$('#vocabSort').value='alpha';refresh();};
+  $('#addWord').onclick=()=>openWordForm(profiles);
+  $('#bulkWords').onclick=()=>openBulkVocabulary(profiles,words);
+  refresh();
+}
+function openWordForm(profiles,item=null){
+  modalBody.innerHTML=`<h2>${item?'Edit':'Add'} vocabulary</h2><div class="form-grid"><div class="field"><label>Child</label><select id="wordProfile">${profiles.map(p=>`<option value="${p.id}" ${item?.profileId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Word or phrase</label><input id="wordText" value="${esc(item?.word||'')}" autocomplete="off"></div><div class="field"><label>Date first said</label><input id="wordDate" type="date" value="${item?.date||isoToday()}"></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="wordNotes">${esc(item?.notes||'')}</textarea></div><button id="saveWord" class="btn full" type="button">Save vocabulary</button></div>`;
+  modal.showModal();$('#saveWord').onclick=async()=>{const word=$('#wordText').value.trim(),date=$('#wordDate').value,profileId=$('#wordProfile').value;if(!word||!date)return alert('Please enter a word or phrase and the date first said.');const all=await getAll('words');if(all.some(x=>x.id!==item?.id&&x.profileId===profileId&&wordKey(x.word)===wordKey(word)))return alert('That word or phrase is already listed for this child.');await put('words',{id:item?.id||uid(),profileId,word,date,notes:$('#wordNotes').value.trim(),createdAt:item?.createdAt||nowISO(),updatedAt:nowISO(),syncStatus:'local'});modal.close();renderVocabulary();};
+}
+function openBulkVocabulary(profiles,existing){
+  modalBody.innerHTML=`<h2>Bulk import vocabulary</h2><div class="form-grid"><div class="field"><label>Child</label><select id="bulkProfile">${profiles.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Fallback date</label><input id="bulkFallback" type="date" value="${isoToday()}"><span class="hint">Used only for lines that do not contain a date or follow a dated heading.</span></div><div class="field"><label>Paste from Notes</label><textarea id="bulkText" class="bulk-text" placeholder="Mama — 4/12/2025&#10;Dada — 4/18/2025&#10;&#10;May 2, 2025&#10;Ball&#10;More"></textarea></div><div class="banner">Nothing will be saved until you review the parsed list.</div><button id="previewBulk" class="btn full" type="button">Parse and review</button></div>`;
+  if(!modal.open)modal.showModal();$('#previewBulk').onclick=()=>{const profileId=$('#bulkProfile').value,parsed=parseBulkVocabulary($('#bulkText').value,$('#bulkFallback').value);const seen=new Set(existing.filter(x=>x.profileId===profileId).map(x=>wordKey(x.word))),fresh=[];let duplicates=0;for(const entry of parsed.entries){const key=wordKey(entry.word);if(seen.has(key)){duplicates++;continue;}seen.add(key);fresh.push(entry);}modalBody.innerHTML=`<h2>Review vocabulary import</h2><p><strong>${fresh.length}</strong> ready to import • ${duplicates} duplicate${duplicates===1?'':'s'} skipped • ${parsed.skipped.length} unread line${parsed.skipped.length===1?'':'s'}</p><div class="import-preview">${fresh.map(x=>`<div class="preview-row"><strong>${esc(x.word)}</strong><span>${fmtDate(x.date)}</span></div>`).join('')||'<p>No new entries were found.</p>'}</div><div class="btn-row"><button id="backBulk" class="btn secondary" type="button">Go back</button>${fresh.length?'<button id="importBulk" class="btn" type="button">Import reviewed words</button>':''}</div>`;$('#backBulk').onclick=()=>openBulkVocabulary(profiles,existing);if(fresh.length)$('#importBulk').onclick=async()=>{await createSnapshot('Before vocabulary bulk import');for(const x of fresh)await put('words',{id:uid(),profileId,word:x.word,date:x.date,notes:'',createdAt:nowISO(),updatedAt:nowISO(),syncStatus:'local'});modal.close();alert(`${fresh.length} vocabulary ${fresh.length===1?'entry':'entries'} imported.`);renderVocabulary();};};
+}
+
 async function renderChild(){
   const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');
   if(!p.length){
@@ -78,7 +145,7 @@ async function renderChild(){
   $('#addProfile').onclick=openProfileForm;
   $('#addAchievement').onclick=()=>openAchievementForm(p);
   $('#viewAchievements').onclick=()=>openAchievements(a,p);
-  $('#viewWords').onclick=()=>underConstruction('Words & phrases');
+  $('#viewWords').onclick=()=>navigate('vocabulary');
   $('#providerSummary').onclick=()=>underConstruction('Provider summary');
 }
 
@@ -127,7 +194,7 @@ function renderAbout(){view.innerHTML=`<section class="hero"><h1>About Free to B
 
 function openDrawer(){$('#drawer').classList.add('open');$('#drawer').setAttribute('aria-hidden','false');$('#scrim').classList.remove('hidden');}
 function closeDrawer(){$('#drawer').classList.remove('open');$('#drawer').setAttribute('aria-hidden','true');$('#scrim').classList.add('hidden');}
-function setupDrawer(){const links=[['🏠','Home','home'],['🌱','My Child','child'],['📚','Resources','resources'],['🗺️','Explore','explore'],['💛','Caregiver Corner','caregiver'],['💾','Backup & Restore','backup'],['⚙️','Settings','settings'],['ℹ️','About','about']];$('#drawerNav').innerHTML=links.map(x=>`<button data-go="${x[2]}">${x[0]} ${x[1]}</button>`).join('');$('#drawerVersion').textContent=APP.version;bindRouteButtons();$('#menuBtn').onclick=openDrawer;$('#homeBadge').onclick=()=>navigate('home');$('#closeDrawer').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;}
+function setupDrawer(){const links=[['🏠','Home','home'],['🌱','My Child','child'],['🗣️','Vocabulary','vocabulary'],['📚','Resources','resources'],['🗺️','Explore','explore'],['💛','Caregiver Corner','caregiver'],['💾','Backup & Restore','backup'],['⚙️','Settings','settings'],['ℹ️','About','about']];$('#drawerNav').innerHTML=links.map(x=>`<button data-go="${x[2]}">${x[0]} ${x[1]}</button>`).join('');$('#drawerVersion').textContent=APP.version;bindRouteButtons();$('#menuBtn').onclick=openDrawer;$('#homeBadge').onclick=()=>navigate('home');$('#closeDrawer').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;}
 function setupPWA(){
   if('serviceWorker'in navigator){
     let refreshing=false;

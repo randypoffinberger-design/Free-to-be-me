@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.7
+# Free to Be Me v0.2.0
 
 Initial local-first PWA foundation.
 
@@ -61,3 +61,15 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added quiet background refreshes whenever a connection is available
 - Strengthened first-install caching for every critical offline file
 - Preserved automatic removal of obsolete version caches
+
+## v0.2.0 changes
+- Added a complete child vocabulary tracker
+- Added single word or phrase entry with the original first-said date and optional notes
+- Added bulk paste/import from Notes with parse-and-review before saving
+- Recognizes common date-first, word-first, dated-heading, tab, comma, dash, and plain-line formats
+- Skips duplicate words safely and creates a safety checkpoint before every bulk import
+- Added alphabetical, newest-first, and oldest-first sorting
+- Added live word and phrase search
+- Added filters for child, year, month, and exact first-said date
+- Added vocabulary editing and confirmed deletion
+- Connected Communication Support, My Child, and the hamburger menu to Vocabulary
