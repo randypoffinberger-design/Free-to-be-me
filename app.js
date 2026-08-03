@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.2',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.3',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -26,7 +26,25 @@ function navigate(r){(routes[r]||routes.home)();history.replaceState(null,'',`#$
 const card=(i,t,d,r)=>`<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
 function bindRouteButtons(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));}
 
-async function renderHome(){const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');view.innerHTML=`<section class="hero"><h1>Free to Be Me</h1><p>An autism caregiver village focused on strengths, progress, communication, and support.</p><button id="weeklyEncouragement" class="quote quote-button" type="button">“${esc(weeklyQuote())}”<span>Tap for caregiver encouragement</span></button></section><h2 class="section-title">Your village</h2><div class="grid">${card('🌱','My Child','Celebrate strengths, words, skills, and progress.','child')}${card('📚','Resources','Practical caregiver guides and tools.','resources')}${card('🗺️','Explore','Autism-friendly places and family activities.','explore')}${card('💛','Caregiver Corner','Encouragement and support for you.','caregiver')}${card('💾','Backup & Restore','Protect your family data locally.','backup')}${card('⚙️','Settings','Accessibility, app details, and preferences.','settings')}</div><h2 class="section-title">At a glance</h2><div class="stat-grid"><div class="stat"><strong>${p.length}</strong><small>Profiles</small></div><div class="stat"><strong>${a.length}</strong><small>Achievements</small></div><div class="stat"><strong>${w.length}</strong><small>Words</small></div></div>`;bindRouteButtons();$('#weeklyEncouragement').onclick=openWeeklyEncouragement;}
+async function renderHome(){
+  const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');
+  view.innerHTML=`<section class="illustrated-home" aria-label="Free to Be Me home navigation">
+    <img src="assets/home/homepage.jpeg" alt="Free to Be Me — celebrating every child’s unique journey" width="1254" height="1254">
+    <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
+    <button class="home-hotspot communication" data-feature="Communication Support" aria-label="Open Communication Support"><span>Communication Support</span></button>
+    <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
+    <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
+    <button class="home-hotspot learning" data-feature="Learning Tools" aria-label="Open Learning Tools"><span>Learning Tools</span></button>
+    <button class="home-hotspot medical" data-feature="Medical Resources" aria-label="Open Medical Resources"><span>Medical Resources</span></button>
+    <button class="home-hotspot caregiver-link" data-go="caregiver" aria-label="Open Caregiver Corner"><span>Caregiver Corner</span></button>
+    <button class="home-hotspot community" data-go="explore" aria-label="Open Community Village and Explore"><span>Community Village</span></button>
+  </section>
+  <button id="weeklyEncouragement" class="quote quote-button home-encouragement" type="button">“${esc(weeklyQuote())}”<span>Tap for this week’s caregiver encouragement</span></button>
+  <div class="stat-grid home-stats"><div class="stat"><strong>${p.length}</strong><small>Profiles</small></div><div class="stat"><strong>${a.length}</strong><small>Achievements</small></div><div class="stat"><strong>${w.length}</strong><small>Words</small></div></div>`;
+  bindRouteButtons();
+  document.querySelectorAll('.home-hotspot[data-feature]').forEach(b=>b.onclick=()=>underConstruction(b.dataset.feature));
+  $('#weeklyEncouragement').onclick=openWeeklyEncouragement;
+}
 
 function openWeeklyEncouragement(){
   modalBody.innerHTML=`<h2>💛 A message for you</h2>

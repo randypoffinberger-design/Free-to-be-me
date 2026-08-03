@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.2
+# Free to Be Me v0.1.3
 
 Initial local-first PWA foundation.
 
@@ -26,3 +26,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Caregiver Corner’s Encouragement card now opens the functional weekly message
 - Reflection and Support messaging continue to show the under-construction popup
 - Updated the app and offline cache versions so installed copies receive the fix
+
+## v0.1.3 changes
+- Replaced the original homepage hero and card grid with the illustrated Free to Be Me homepage
+- Added responsive clickable areas for all eight illustrated categories
+- Growth Journey, Caregiver Corner, and Community Village open their matching app sections
+- Unfinished illustrated categories open the standard under-construction popup
+- Included the homepage artwork in the offline app cache

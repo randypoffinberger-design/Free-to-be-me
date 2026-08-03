@@ -17,3 +17,12 @@ dialog{border:0;border-radius:24px;padding:0;max-width:min(92vw,560px);width:100
 
 .quote-button{display:block;width:100%;text-align:left;color:var(--ink);cursor:pointer}
 .quote-button span{display:block;margin-top:8px;font-size:.78rem;font-style:normal;color:var(--muted);font-weight:700}
+.illustrated-home{position:relative;width:100%;max-width:760px;margin:0 auto;border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(63,42,88,.12)}
+.illustrated-home img{display:block;width:100%;height:auto}
+.home-hotspot{position:absolute;top:77.2%;height:13.2%;border:0;border-radius:18px;background:transparent;color:transparent;padding:0}
+.home-hotspot span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.home-hotspot:focus-visible{outline:4px solid #173f75;outline-offset:-4px;background:rgba(255,255,255,.22)}
+.home-hotspot:active{background:rgba(255,255,255,.3)}
+.home-hotspot.growth{left:4.5%;width:11.5%}.home-hotspot.communication{left:16%;width:12%}.home-hotspot.sleep{left:28%;width:11.5%}.home-hotspot.sensory{left:39.5%;width:11.5%}.home-hotspot.learning{left:51%;width:11.5%}.home-hotspot.medical{left:62.5%;width:11.5%}.home-hotspot.caregiver-link{left:74%;width:11.5%}.home-hotspot.community{left:85.5%;width:10.5%}
+.home-encouragement{max-width:760px;margin:14px auto 0}.home-stats{max-width:760px;margin:14px auto 0}
+@media(max-width:520px){.view:has(.illustrated-home){padding-left:8px;padding-right:8px}.illustrated-home{border-radius:16px}.home-hotspot{top:76.5%;height:14.5%;border-radius:10px}}
