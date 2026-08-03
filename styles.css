@@ -14,3 +14,6 @@
 dialog{border:0;border-radius:24px;padding:0;max-width:min(92vw,560px);width:100%;box-shadow:var(--shadow)}dialog::backdrop{background:rgba(23,16,32,.5)}.modal-card{padding:22px;position:relative}.modal-close{position:absolute;right:10px;top:10px;border:0;background:#f1ebf7;border-radius:50%;width:36px;height:36px}.modal-card h2{padding-right:38px;margin-top:0}
 .list{display:grid;gap:10px}.list-item{display:flex;gap:12px;align-items:flex-start;padding:14px;background:white;border:1px solid var(--line);border-radius:16px}
 @media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.bottom-nav{left:50%;transform:translateX(-50%);max-width:700px;border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0}.view{padding-left:24px;padding-right:24px}}
+
+.quote-button{display:block;width:100%;text-align:left;color:var(--ink);cursor:pointer}
+.quote-button span{display:block;margin-top:8px;font-size:.78rem;font-style:normal;color:var(--muted);font-weight:700}

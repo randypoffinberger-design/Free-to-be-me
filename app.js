@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.0',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.1',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -26,14 +26,65 @@ function navigate(r){(routes[r]||routes.home)();history.replaceState(null,'',`#$
 const card=(i,t,d,r)=>`<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
 function bindRouteButtons(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));}
 
-async function renderHome(){const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');view.innerHTML=`<section class="hero"><h1>Free to Be Me</h1><p>An autism caregiver village focused on strengths, progress, communication, and support.</p><div class="quote">“${esc(weeklyQuote())}”</div></section><h2 class="section-title">Your village</h2><div class="grid">${card('🌱','My Child','Celebrate strengths, words, skills, and progress.','child')}${card('📚','Resources','Practical caregiver guides and tools.','resources')}${card('🗺️','Explore','Autism-friendly places and family activities.','explore')}${card('💛','Caregiver Corner','Encouragement and support for you.','caregiver')}${card('💾','Backup & Restore','Protect your family data locally.','backup')}${card('⚙️','Settings','Accessibility, app details, and preferences.','settings')}</div><h2 class="section-title">At a glance</h2><div class="stat-grid"><div class="stat"><strong>${p.length}</strong><small>Profiles</small></div><div class="stat"><strong>${a.length}</strong><small>Achievements</small></div><div class="stat"><strong>${w.length}</strong><small>Words</small></div></div>`;bindRouteButtons();}
+async function renderHome(){const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');view.innerHTML=`<section class="hero"><h1>Free to Be Me</h1><p>An autism caregiver village focused on strengths, progress, communication, and support.</p><button id="weeklyEncouragement" class="quote quote-button" type="button">“${esc(weeklyQuote())}”<span>Tap for caregiver encouragement</span></button></section><h2 class="section-title">Your village</h2><div class="grid">${card('🌱','My Child','Celebrate strengths, words, skills, and progress.','child')}${card('📚','Resources','Practical caregiver guides and tools.','resources')}${card('🗺️','Explore','Autism-friendly places and family activities.','explore')}${card('💛','Caregiver Corner','Encouragement and support for you.','caregiver')}${card('💾','Backup & Restore','Protect your family data locally.','backup')}${card('⚙️','Settings','Accessibility, app details, and preferences.','settings')}</div><h2 class="section-title">At a glance</h2><div class="stat-grid"><div class="stat"><strong>${p.length}</strong><small>Profiles</small></div><div class="stat"><strong>${a.length}</strong><small>Achievements</small></div><div class="stat"><strong>${w.length}</strong><small>Words</small></div></div>`;bindRouteButtons();$('#weeklyEncouragement').onclick=openWeeklyEncouragement;}
 
-async function renderChild(){const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');if(!p.length){view.innerHTML=`<div class="empty card"><div class="big">🌱</div><h2>Start your child’s journey</h2><p>Create a profile before adding real progress data.</p><div class="btn-row" style="justify-content:center"><button id="addProfile" class="btn">Create profile</button></div></div>`;$('#addProfile').onclick=openProfileForm;return;}view.innerHTML=`<div class="btn-row"><button id="addProfile" class="btn secondary">Add another child</button><button id="addAchievement" class="btn">Celebrate a new achievement</button></div><h2 class="section-title">Child profiles</h2><div class="list">${p.map(x=>`<div class="profile-card card"><div class="avatar">${esc(x.emoji||'🌟')}</div><div class="meta"><h3>${esc(x.name)}</h3><p>${x.birthDate?`Born ${fmtDate(x.birthDate)}`:'A unique journey worth celebrating'}</p></div></div>`).join('')}</div><h2 class="section-title">Early foundation</h2><div class="grid"><div class="card"><h3>✨ Achievements</h3><p>${a.length} saved. Full timeline arrives in v0.3.0.</p></div><div class="card"><h3>🗣️ Words & phrases</h3><p>${w.length} saved. Dedicated communication tracker arrives next.</p></div><div class="card"><h3>📄 Provider summary</h3><p>Report generation will use the same protected local records.</p></div></div>`;$('#addProfile').onclick=openProfileForm;$('#addAchievement').onclick=()=>openAchievementForm(p);}
+function openWeeklyEncouragement(){
+  modalBody.innerHTML=`<h2>💛 A message for you</h2>
+  <div class="card"><p style="font-size:1.1rem;line-height:1.6">“${esc(weeklyQuote())}”</p></div>
+  <p class="hint">A new encouragement appears automatically each week.</p>
+  <button id="closeEncouragement" class="btn full" type="button">Thank you</button>`;
+  modal.showModal();
+  $('#closeEncouragement').onclick=()=>modal.close();
+}
+
+function underConstruction(feature){
+  modalBody.innerHTML=`<h2>🚧 ${esc(feature)}</h2>
+  <div class="banner">This feature is still under construction and will become available in a future build.</div>
+  <button id="closeConstruction" class="btn full" type="button" style="margin-top:14px">Got it</button>`;
+  modal.showModal();
+  $('#closeConstruction').onclick=()=>modal.close();
+}
+
+async function renderChild(){
+  const p=await getAll('profiles'),a=await getAll('achievements'),w=await getAll('words');
+  if(!p.length){
+    view.innerHTML=`<div class="empty card"><div class="big">🌱</div><h2>Start your child’s journey</h2><p>Create a profile before adding real progress data.</p><div class="btn-row" style="justify-content:center"><button id="addProfile" class="btn">Create profile</button></div></div>`;
+    $('#addProfile').onclick=openProfileForm;
+    return;
+  }
+  view.innerHTML=`<div class="btn-row"><button id="addProfile" class="btn secondary">Add another child</button><button id="addAchievement" class="btn">Celebrate a new achievement</button></div>
+  <h2 class="section-title">Child profiles</h2>
+  <div class="list">${p.map(x=>`<div class="profile-card card"><div class="avatar">${esc(x.emoji||'🌟')}</div><div class="meta"><h3>${esc(x.name)}</h3><p>${x.birthDate?`Born ${fmtDate(x.birthDate)}`:'A unique journey worth celebrating'}</p></div></div>`).join('')}</div>
+  <h2 class="section-title">Progress tools</h2>
+  <div class="grid">
+    <button id="viewAchievements" class="card-button"><span class="emoji">✨</span><strong>Achievements</strong><small>${a.length} saved. Tap to view.</small></button>
+    <button id="viewWords" class="card-button"><span class="emoji">🗣️</span><strong>Words & phrases</strong><small>${w.length} saved.</small></button>
+    <button id="providerSummary" class="card-button"><span class="emoji">📄</span><strong>Provider summary</strong><small>Share progress over time.</small></button>
+  </div>`;
+  $('#addProfile').onclick=openProfileForm;
+  $('#addAchievement').onclick=()=>openAchievementForm(p);
+  $('#viewAchievements').onclick=()=>openAchievements(a,p);
+  $('#viewWords').onclick=()=>underConstruction('Words & phrases');
+  $('#providerSummary').onclick=()=>underConstruction('Provider summary');
+}
+
+function openAchievements(items,profiles){
+  const names=Object.fromEntries(profiles.map(p=>[p.id,p.name]));
+  const sorted=[...items].sort((a,b)=>new Date(b.date||b.createdAt)-new Date(a.date||a.createdAt));
+  modalBody.innerHTML=`<h2>✨ Achievements</h2>
+  ${sorted.length?`<div class="list">${sorted.map(x=>`<div class="list-item"><div style="font-size:1.7rem">🎉</div><div><strong>${esc(x.title)}</strong><div class="hint">${esc(names[x.profileId]||'Child')} • ${esc(x.category||'Achievement')} • ${fmtDate(x.date||x.createdAt)}</div>${x.notes?`<p style="margin-bottom:0">${esc(x.notes)}</p>`:''}</div></div>`).join('')}</div>`:`<div class="empty"><div class="big">🌱</div><p>No achievements have been saved yet.</p></div>`}
+  <button id="closeAchievements" class="btn full" type="button" style="margin-top:14px">Close</button>`;
+  modal.showModal();
+  $('#closeAchievements').onclick=()=>modal.close();
+}
 
 function openProfileForm(){modalBody.innerHTML=`<h2>Create child profile</h2><div class="form-grid"><div class="field"><label>Name</label><input id="pName" autocomplete="off"></div><div class="field"><label>Birth date <span class="hint">(optional)</span></label><input id="pBirth" type="date"></div><div class="field"><label>Profile symbol</label><select id="pEmoji"><option>🌟</option><option>🌱</option><option>🌈</option><option>🦋</option><option>🌻</option></select></div><button id="saveProfile" class="btn full" type="button">Save profile</button></div>`;modal.showModal();$('#saveProfile').onclick=async()=>{const name=$('#pName').value.trim();if(!name)return alert('Please enter a name.');await put('profiles',{id:uid(),name,birthDate:$('#pBirth').value||null,emoji:$('#pEmoji').value,createdAt:nowISO(),updatedAt:nowISO(),syncStatus:'local'});modal.close();renderChild();};}
 function openAchievementForm(p){modalBody.innerHTML=`<h2>Celebrate an achievement</h2><div class="form-grid"><div class="field"><label>Child</label><select id="aProfile">${p.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div><div class="field"><label>What happened?</label><input id="aTitle" placeholder="Used a new sentence"></div><div class="field"><label>Category</label><select id="aCategory"><option>Communication</option><option>Learning</option><option>Daily living</option><option>Motor skills</option><option>Sensory & regulation</option><option>Social connection</option><option>Other</option></select></div><div class="field"><label>Date</label><input id="aDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div><div class="field"><label>Notes</label><textarea id="aNotes" placeholder="What helped? What made this moment special?"></textarea></div><button id="saveAchievement" class="btn full" type="button">🎉 You did it! Save achievement</button></div>`;modal.showModal();$('#saveAchievement').onclick=async()=>{const t=$('#aTitle').value.trim();if(!t)return alert('Please describe the achievement.');await put('achievements',{id:uid(),profileId:$('#aProfile').value,title:t,category:$('#aCategory').value,date:$('#aDate').value,notes:$('#aNotes').value.trim(),createdAt:nowISO(),updatedAt:nowISO(),syncStatus:'local'});modal.close();alert('🎉 Achievement saved!');renderChild();};}
 
-function placeholder(t,i,c,items){view.innerHTML=`<section class="hero"><h1>${i} ${t}</h1><p>${c}</p></section><h2 class="section-title">Planned sections</h2><div class="grid">${items.map(x=>`<div class="card"><h3>${x[0]}</h3><p>${x[1]}</p></div>`).join('')}</div><div class="banner" style="margin-top:18px">This section is included in the app structure now and will be activated in a later version.</div>`;}
+function placeholder(t,i,c,items){
+  view.innerHTML=`<section class="hero"><h1>${i} ${t}</h1><p>${c}</p></section><h2 class="section-title">Planned sections</h2><div class="grid">${items.map(x=>`<button class="card-button future-feature" data-feature="${esc(x[0].replace(/^[^ ]+ /,''))}"><strong>${x[0]}</strong><small>${x[1]}</small></button>`).join('')}</div><div class="banner" style="margin-top:18px">This section is included in the app structure now and will be activated in a later version.</div>`;
+  document.querySelectorAll('.future-feature').forEach(b=>b.onclick=()=>underConstruction(b.dataset.feature));
+}
 function renderResources(){placeholder('Resources','📚','Practical information organized for overwhelmed caregivers.',[['🗣️ Communication','ASL, AAC, speech, and visual supports.'],['🧸 Sensory','Tools, toys, regulation, and room supports.'],['🌙 Sleep','Routines, tracking, and sleep environment ideas.'],['🏥 Medical advocacy','Equipment information and necessity-letter templates.'],['🧬 Health education','Careful, sourced explanations for labs and genetics.'],['🎓 Learning','Discovering how your child learns best.']]);}
 function renderExplore(){placeholder('Explore','🗺️','A future guide to autism-friendly family fun.',[['🎡 Family activities','Sensory-friendly events and destinations.'],['🔇 Sensory details','Noise, crowds, lighting, and quiet spaces.'],['📍 Location search','Find nearby options when online services are added.']]);}
 function renderCaregiver(){placeholder('Caregiver Corner','💛','Support for the caregiver matters too.',[['💬 Encouragement','Weekly messages and strength-focused reminders.'],['📝 Reflection','Private notes and observations.'],['🤝 Support messaging','A future premium support option with clear boundaries.']]);}

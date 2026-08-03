@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.0
+# Free to Be Me v0.1.1
 
 Initial local-first PWA foundation.
 
@@ -16,3 +16,8 @@ Initial local-first PWA foundation.
 
 ## GitHub Pages
 Upload the contents of this folder to the repository root, then enable GitHub Pages from the main branch/root folder.
+
+## v0.1.1 changes
+- Achievements can now be opened and viewed
+- Weekly encouragement opens in a caregiver message popup
+- Unfinished feature cards now show an under-construction popup
