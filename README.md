@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.5
+# Free to Be Me v0.1.6
 
 Initial local-first PWA foundation.
 
@@ -46,4 +46,11 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Remapped all eight illustrated category buttons to the new icon positions
 - Removed the separate encouragement, statistics, and bottom navigation from the homepage
 - Kept the hamburger menu as the complete navigation fallback
+- Updated the app and offline cache versions
+
+## v0.1.6 changes
+- Locked the homepage to the visible screen with no page scrolling
+- Extended the illustrated homepage behind the top controls to eliminate the white header bar
+- Made the Free to Be Me header badge a Home button
+- Preserved the standard header and scrolling behavior on internal pages
 - Updated the app and offline cache versions

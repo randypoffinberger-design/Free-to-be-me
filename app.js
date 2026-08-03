@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.5',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.6',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -22,7 +22,7 @@ const quotes=['You are not behind. You are learning your child, one loving step 
 const weeklyQuote=()=>quotes[Math.floor(Date.now()/604800000)%quotes.length];
 
 const routes={home:renderHome,child:renderChild,resources:renderResources,explore:renderExplore,caregiver:renderCaregiver,backup:renderBackup,about:renderAbout,settings:renderSettings};
-function navigate(r){(routes[r]||routes.home)();history.replaceState(null,'',`#${r}`);document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.route===r));closeDrawer();view.focus();}
+function navigate(r){const route=routes[r]?r:'home';document.body.classList.toggle('home-route',route==='home');routes[route]();history.replaceState(null,'',`#${route}`);closeDrawer();view.focus();}
 const card=(i,t,d,r)=>`<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
 function bindRouteButtons(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));}
 
@@ -127,7 +127,7 @@ function renderAbout(){view.innerHTML=`<section class="hero"><h1>About Free to B
 
 function openDrawer(){$('#drawer').classList.add('open');$('#drawer').setAttribute('aria-hidden','false');$('#scrim').classList.remove('hidden');}
 function closeDrawer(){$('#drawer').classList.remove('open');$('#drawer').setAttribute('aria-hidden','true');$('#scrim').classList.add('hidden');}
-function setupDrawer(){const links=[['🏠','Home','home'],['🌱','My Child','child'],['📚','Resources','resources'],['🗺️','Explore','explore'],['💛','Caregiver Corner','caregiver'],['💾','Backup & Restore','backup'],['⚙️','Settings','settings'],['ℹ️','About','about']];$('#drawerNav').innerHTML=links.map(x=>`<button data-go="${x[2]}">${x[0]} ${x[1]}</button>`).join('');$('#drawerVersion').textContent=APP.version;bindRouteButtons();$('#menuBtn').onclick=openDrawer;$('#closeDrawer').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;}
+function setupDrawer(){const links=[['🏠','Home','home'],['🌱','My Child','child'],['📚','Resources','resources'],['🗺️','Explore','explore'],['💛','Caregiver Corner','caregiver'],['💾','Backup & Restore','backup'],['⚙️','Settings','settings'],['ℹ️','About','about']];$('#drawerNav').innerHTML=links.map(x=>`<button data-go="${x[2]}">${x[0]} ${x[1]}</button>`).join('');$('#drawerVersion').textContent=APP.version;bindRouteButtons();$('#menuBtn').onclick=openDrawer;$('#homeBadge').onclick=()=>navigate('home');$('#closeDrawer').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;}
 function setupPWA(){
   if('serviceWorker'in navigator){
     let refreshing=false;

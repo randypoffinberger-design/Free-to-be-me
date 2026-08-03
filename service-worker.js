@@ -1,10 +1,10 @@
-const CACHE='ftbm-v0.1.5';
+const CACHE='ftbm-v0.1.6';
 const OFFLINE_PAGE='./index.html';
 const ASSETS=[
   './',
   OFFLINE_PAGE,
-  './styles.css?v=0.1.5',
-  './app.js?v=0.1.5',
+  './styles.css?v=0.1.6',
+  './app.js?v=0.1.6',
   './manifest.webmanifest',
   './assets/icons/icon.svg',
   './assets/icons/icon-192.png',
