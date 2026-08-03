@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.4
+# Free to Be Me v0.1.5
 
 Initial local-first PWA foundation.
 
@@ -40,3 +40,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added an immediate service-worker update check and one-time refresh when a new build takes control
 - Changed page navigation to network-first with the cached homepage retained as the offline fallback
 - Old Free to Be Me caches are removed automatically after an update
+
+## v0.1.5 changes
+- Replaced the square homepage artwork with the portrait two-row design
+- Remapped all eight illustrated category buttons to the new icon positions
+- Removed the separate encouragement, statistics, and bottom navigation from the homepage
+- Kept the hamburger menu as the complete navigation fallback
+- Updated the app and offline cache versions
