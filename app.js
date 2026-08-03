@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'More than Measured',version:'0.2.2',schemaVersion:1};
+const APP={name:'More than Measured',version:'0.2.3',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -30,13 +30,13 @@ async function renderHome(){
   view.innerHTML=`<section class="illustrated-home" aria-label="More than Measured home navigation">
     <img src="assets/home/homepage.jpeg" alt="More than Measured — celebrating every child’s unique journey" width="864" height="1536">
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
-    <button class="home-hotspot communication" data-go="vocabulary" aria-label="Open Communication Support and Vocabulary"><span>Communication Support</span></button>
+    <button class="home-hotspot communication" data-go="vocabulary" aria-label="Open Speech and Language Building and Vocabulary"><span>Speech/Language Building</span></button>
     <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
     <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
-    <button class="home-hotspot learning" data-feature="Learning Tools" aria-label="Open Learning Tools"><span>Learning Tools</span></button>
-    <button class="home-hotspot medical" data-feature="Medical Resources" aria-label="Open Medical Resources"><span>Medical Resources</span></button>
+    <button class="home-hotspot learning" data-feature="Skill Building" aria-label="Open Skill Building"><span>Skill Building</span></button>
+    <button class="home-hotspot medical" data-feature="Health and Wellness" aria-label="Open Health and Wellness"><span>Health and Wellness</span></button>
     <button class="home-hotspot caregiver-link" data-go="caregiver" aria-label="Open Caregiver Corner"><span>Caregiver Corner</span></button>
-    <button class="home-hotspot community" data-go="explore" aria-label="Open Community Village and Explore"><span>Community Village</span></button>
+    <button class="home-hotspot community" data-go="explore" aria-label="Open ASD Friendly Fun and Explore"><span>ASD Friendly Fun</span></button>
   </section>`;
   bindRouteButtons();
   document.querySelectorAll('.home-hotspot[data-feature]').forEach(b=>b.onclick=()=>underConstruction(b.dataset.feature));

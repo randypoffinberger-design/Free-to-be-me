@@ -1,4 +1,4 @@
-# More than Measured v0.2.2
+# More than Measured v0.2.3
 
 Initial local-first PWA foundation.
 
@@ -87,4 +87,12 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Changed the browser icon and Apple touch icon to the new branding
 - Removed the previous SVG icon from active browser and manifest references
 - Included the full-resolution MtM logo source in the project assets
+- Updated the app and offline cache versions
+
+## v0.2.3 changes
+- Replaced the homepage artwork with the updated family-and-village illustration
+- Updated the illustrated navigation labels to Speech/Language Building, Skill Building, Health and Wellness, and ASD Friendly Fun
+- Kept Speech/Language Building connected to the functional Vocabulary tracker
+- Kept ASD Friendly Fun connected to Explore
+- Preserved the existing two-row hotspot alignment and all family data
 - Updated the app and offline cache versions
