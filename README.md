@@ -1,4 +1,4 @@
-# Free to Be Me v0.2.0
+# More than Measured v0.2.1
 
 Initial local-first PWA foundation.
 
@@ -73,3 +73,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added filters for child, year, month, and exact first-said date
 - Added vocabulary editing and confirmed deletion
 - Connected Communication Support, My Child, and the hamburger menu to Vocabulary
+
+## v0.2.1 changes
+- Renamed the app from Free to Be Me to More than Measured
+- Replaced the full-screen homepage artwork with the new branded version
+- Updated the top Home badge, drawer, page title, install manifest, About page, backup filenames, and offline messaging
+- Preserved the existing database name and backup format so all profiles, achievements, vocabulary, and older backups remain compatible
+- Updated the app and offline cache versions

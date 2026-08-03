@@ -1,9 +1,9 @@
-const CACHE='ftbm-v0.2.0';
+const CACHE='ftbm-v0.2.1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.2.0',
-  './app.js?v=0.2.0',
+  './styles.css?v=0.2.1',
+  './app.js?v=0.2.1',
   './assets/home/homepage.jpeg'
 ];
 const OPTIONAL_ASSETS=[
@@ -46,7 +46,7 @@ self.addEventListener('fetch',event=>{
           event.waitUntil(network.catch(()=>undefined));
           return cached;
         }
-        return network.catch(()=>new Response('Free to Be Me is unavailable offline until it has completed its first online load.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}}));
+        return network.catch(()=>new Response('More than Measured is unavailable offline until it has completed its first online load.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}}));
       })
     );
     return;
