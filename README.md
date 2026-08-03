@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.6
+# Free to Be Me v0.1.7
 
 Initial local-first PWA foundation.
 
@@ -54,3 +54,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Made the Free to Be Me header badge a Home button
 - Preserved the standard header and scrolling behavior on internal pages
 - Updated the app and offline cache versions
+
+## v0.1.7 changes
+- Fixed the installed app failing to open without cellular service or Wi-Fi
+- Changed app navigation to load the cached app shell immediately when available
+- Added quiet background refreshes whenever a connection is available
+- Strengthened first-install caching for every critical offline file
+- Preserved automatic removal of obsolete version caches

@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.6',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.7',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');

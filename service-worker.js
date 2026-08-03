@@ -1,19 +1,27 @@
-const CACHE='ftbm-v0.1.6';
+const CACHE='ftbm-v0.1.7';
 const OFFLINE_PAGE='./index.html';
-const ASSETS=[
-  './',
+const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.1.6',
-  './app.js?v=0.1.6',
+  './styles.css?v=0.1.7',
+  './app.js?v=0.1.7',
+  './assets/home/homepage.jpeg'
+];
+const OPTIONAL_ASSETS=[
   './manifest.webmanifest',
   './assets/icons/icon.svg',
   './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png',
-  './assets/home/homepage.jpeg'
+  './assets/icons/icon-512.png'
 ];
 
 self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(async cache=>{
+        await Promise.all(CRITICAL_ASSETS.map(asset=>cache.add(new Request(asset,{cache:'reload'}))));
+        await Promise.allSettled(OPTIONAL_ASSETS.map(asset=>cache.add(new Request(asset,{cache:'reload'}))));
+      })
+      .then(()=>self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate',event=>{
@@ -28,22 +36,30 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   if(event.request.mode==='navigate'){
     event.respondWith(
-      fetch(event.request,{cache:'no-store'})
-        .then(response=>{
-          const copy=response.clone();
-          caches.open(CACHE).then(cache=>cache.put(OFFLINE_PAGE,copy));
+      caches.open(CACHE).then(async cache=>{
+        const cached=await cache.match(OFFLINE_PAGE);
+        const network=fetch(event.request,{cache:'no-store'}).then(response=>{
+          if(response&&response.ok)cache.put(OFFLINE_PAGE,response.clone());
           return response;
-        })
-        .catch(()=>caches.match(OFFLINE_PAGE))
+        });
+        if(cached){
+          event.waitUntil(network.catch(()=>undefined));
+          return cached;
+        }
+        return network.catch(()=>new Response('Free to Be Me is unavailable offline until it has completed its first online load.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}}));
+      })
     );
     return;
   }
   event.respondWith(
-    caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
-      if(!response||response.status!==200)return response;
-      const copy=response.clone();
-      caches.open(CACHE).then(cache=>cache.put(event.request,copy));
-      return response;
-    }))
+    caches.match(event.request).then(cached=>{
+      if(cached)return cached;
+      return fetch(event.request).then(response=>{
+        if(!response||!response.ok)return response;
+        const copy=response.clone();
+        caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        return response;
+      });
+    })
   );
 });
