@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.3',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.4',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -132,6 +132,20 @@ function renderAbout(){view.innerHTML=`<section class="hero"><h1>About Free to B
 function openDrawer(){$('#drawer').classList.add('open');$('#drawer').setAttribute('aria-hidden','false');$('#scrim').classList.remove('hidden');}
 function closeDrawer(){$('#drawer').classList.remove('open');$('#drawer').setAttribute('aria-hidden','true');$('#scrim').classList.add('hidden');}
 function setupDrawer(){const links=[['🏠','Home','home'],['🌱','My Child','child'],['📚','Resources','resources'],['🗺️','Explore','explore'],['💛','Caregiver Corner','caregiver'],['💾','Backup & Restore','backup'],['⚙️','Settings','settings'],['ℹ️','About','about']];$('#drawerNav').innerHTML=links.map(x=>`<button data-go="${x[2]}">${x[0]} ${x[1]}</button>`).join('');$('#drawerVersion').textContent=APP.version;bindRouteButtons();$('#menuBtn').onclick=openDrawer;$('#closeDrawer').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;}
-function setupPWA(){if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installBtn').classList.remove('hidden');});$('#installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('#installBtn').classList.add('hidden');};}
+function setupPWA(){
+  if('serviceWorker'in navigator){
+    let refreshing=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(refreshing)return;
+      refreshing=true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'})
+      .then(reg=>reg.update())
+      .catch(()=>{});
+  }
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installBtn').classList.remove('hidden');});
+  $('#installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('#installBtn').classList.add('hidden');};
+}
 async function init(){db=await openDB();setupDrawer();setupPWA();document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>navigate(b.dataset.route));$('#restoreInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await previewRestore(f);}catch(err){alert(err.message);}e.target.value='';};navigate(location.hash.slice(1)||'home');}
 init().catch(err=>{view.innerHTML=`<div class="banner"><strong>Startup error:</strong> ${esc(err.message)}</div>`;});

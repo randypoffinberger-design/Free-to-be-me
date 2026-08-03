@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.3
+# Free to Be Me v0.1.4
 
 Initial local-first PWA foundation.
 
@@ -33,3 +33,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Growth Journey, Caregiver Corner, and Community Village open their matching app sections
 - Unfinished illustrated categories open the standard under-construction popup
 - Included the homepage artwork in the offline app cache
+
+## v0.1.4 changes
+- Fixed installed Safari/PWA copies remaining stuck on an older cached version
+- Added versioned JavaScript and stylesheet URLs for dependable updates
+- Added an immediate service-worker update check and one-time refresh when a new build takes control
+- Changed page navigation to network-first with the cached homepage retained as the offline fallback
+- Old Free to Be Me caches are removed automatically after an update

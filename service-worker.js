@@ -1,5 +1,49 @@
-const CACHE='ftbm-v0.1.3';
-const ASSETS=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./assets/icons/icon.svg','./assets/icons/icon-192.png','./assets/icons/icon-512.png','./assets/home/homepage.jpeg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r;}).catch(()=>caches.match('./index.html'))));});
+const CACHE='ftbm-v0.1.4';
+const OFFLINE_PAGE='./index.html';
+const ASSETS=[
+  './',
+  OFFLINE_PAGE,
+  './styles.css?v=0.1.4',
+  './app.js?v=0.1.4',
+  './manifest.webmanifest',
+  './assets/icons/icon.svg',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
+  './assets/home/homepage.jpeg'
+];
+
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
+});
+
+self.addEventListener('activate',event=>{
+  event.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('ftbm-v')&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(()=>self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET')return;
+  if(event.request.mode==='navigate'){
+    event.respondWith(
+      fetch(event.request,{cache:'no-store'})
+        .then(response=>{
+          const copy=response.clone();
+          caches.open(CACHE).then(cache=>cache.put(OFFLINE_PAGE,copy));
+          return response;
+        })
+        .catch(()=>caches.match(OFFLINE_PAGE))
+    );
+    return;
+  }
+  event.respondWith(
+    caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
+      if(!response||response.status!==200)return response;
+      const copy=response.clone();
+      caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+      return response;
+    }))
+  );
+});
