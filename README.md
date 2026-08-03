@@ -1,4 +1,4 @@
-# Free to Be Me v0.1.1
+# Free to Be Me v0.1.2
 
 Initial local-first PWA foundation.
 
@@ -21,3 +21,8 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Achievements can now be opened and viewed
 - Weekly encouragement opens in a caregiver message popup
 - Unfinished feature cards now show an under-construction popup
+
+## v0.1.2 changes
+- Caregiver Corner’s Encouragement card now opens the functional weekly message
+- Reflection and Support messaging continue to show the under-construction popup
+- Updated the app and offline cache versions so installed copies receive the fix

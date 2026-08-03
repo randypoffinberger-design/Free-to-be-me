@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'Free to Be Me',version:'0.1.1',schemaVersion:1};
+const APP={name:'Free to Be Me',version:'0.1.2',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
@@ -87,7 +87,17 @@ function placeholder(t,i,c,items){
 }
 function renderResources(){placeholder('Resources','📚','Practical information organized for overwhelmed caregivers.',[['🗣️ Communication','ASL, AAC, speech, and visual supports.'],['🧸 Sensory','Tools, toys, regulation, and room supports.'],['🌙 Sleep','Routines, tracking, and sleep environment ideas.'],['🏥 Medical advocacy','Equipment information and necessity-letter templates.'],['🧬 Health education','Careful, sourced explanations for labs and genetics.'],['🎓 Learning','Discovering how your child learns best.']]);}
 function renderExplore(){placeholder('Explore','🗺️','A future guide to autism-friendly family fun.',[['🎡 Family activities','Sensory-friendly events and destinations.'],['🔇 Sensory details','Noise, crowds, lighting, and quiet spaces.'],['📍 Location search','Find nearby options when online services are added.']]);}
-function renderCaregiver(){placeholder('Caregiver Corner','💛','Support for the caregiver matters too.',[['💬 Encouragement','Weekly messages and strength-focused reminders.'],['📝 Reflection','Private notes and observations.'],['🤝 Support messaging','A future premium support option with clear boundaries.']]);}
+function renderCaregiver(){
+  view.innerHTML=`<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support for the caregiver matters too.</p></section>
+  <h2 class="section-title">Caregiver support</h2>
+  <div class="grid">
+    <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
+    <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
+    <button class="card-button future-feature" data-feature="Support messaging"><strong>🤝 Support messaging</strong><small>A future premium support option with clear boundaries.</small></button>
+  </div>`;
+  $('#caregiverEncouragement').onclick=openWeeklyEncouragement;
+  document.querySelectorAll('.future-feature').forEach(b=>b.onclick=()=>underConstruction(b.dataset.feature));
+}
 
 async function collectBackup(){const data={};for(const s of STORE_NAMES.filter(x=>x!=='snapshots'))data[s]=await getAll(s);return{format:'ftbm-backup',app:APP.name,appVersion:APP.version,schemaVersion:APP.schemaVersion,exportedAt:nowISO(),counts:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),data};}
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
