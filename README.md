@@ -1,4 +1,4 @@
-# More than Measured v0.2.1
+# More than Measured v0.2.2
 
 Initial local-first PWA foundation.
 
@@ -79,4 +79,12 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Replaced the full-screen homepage artwork with the new branded version
 - Updated the top Home badge, drawer, page title, install manifest, About page, backup filenames, and offline messaging
 - Preserved the existing database name and backup format so all profiles, achievements, vocabulary, and older backups remain compatible
+- Updated the app and offline cache versions
+
+## v0.2.2 changes
+- Replaced the text-and-rainbow Home badge with the new clickable MtM logo
+- Created new 192px and 512px install icons from the supplied MtM artwork
+- Changed the browser icon and Apple touch icon to the new branding
+- Removed the previous SVG icon from active browser and manifest references
+- Included the full-resolution MtM logo source in the project assets
 - Updated the app and offline cache versions

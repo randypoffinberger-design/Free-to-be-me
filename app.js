@@ -1,6 +1,6 @@
 'use strict';
 
-const APP={name:'More than Measured',version:'0.2.1',schemaVersion:1};
+const APP={name:'More than Measured',version:'0.2.2',schemaVersion:1};
 const DB_NAME='ftbm-db',DB_VERSION=1,STORE_NAMES=['profiles','achievements','words','notes','settings','snapshots'];
 let db,deferredInstallPrompt=null;
 const $=s=>document.querySelector(s),view=$('#view'),modal=$('#modal'),modalBody=$('#modalBody');
