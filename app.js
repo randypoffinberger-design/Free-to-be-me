@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.4.0", schemaVersion: 1 };
+const APP = { name: "More than Measured", version: "0.5.0", schemaVersion: 1 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 1,
   STORE_NAMES = [
@@ -167,6 +167,29 @@ const wordKey = (v) =>
   String(v || "")
     .trim()
     .toLocaleLowerCase();
+const sentenceWordKey = (v) => wordKey(v).replaceAll("’", "'");
+function sentenceWords(sentence) {
+  const matches =
+    String(sentence || "").match(/[\p{L}]+(?:['’][\p{L}]+)*/gu) || [];
+  return matches.filter(
+    (word, index) =>
+      matches.findIndex(
+        (candidate) => sentenceWordKey(candidate) === sentenceWordKey(word),
+      ) === index,
+  );
+}
+function entryMatchesSearch(item, query) {
+  if (!query) return true;
+  const metadata = wordKey(
+    `${item.notes || ""} ${wordCategories(item).join(" ")} ${languagesText(item.languages)}`,
+  );
+  if (metadata.includes(query)) return true;
+  if (item.entryType !== "sentence") return wordKey(item.word).includes(query);
+  if (query.includes(" ")) return wordKey(item.word).includes(query);
+  return sentenceWords(item.word).some(
+    (word) => sentenceWordKey(word) === sentenceWordKey(query),
+  );
+}
 function parseDateText(value) {
   const s = String(value || "")
     .trim()
@@ -221,6 +244,7 @@ function parseBulkVocabulary(text, fallbackDate) {
 }
 const DEFAULT_VOCAB_CATEGORIES = [
   "Uncategorized",
+  "Sentences",
   "Animals",
   "Toys",
   "Body Parts",
@@ -236,7 +260,7 @@ const DEFAULT_VOCAB_CATEGORIES = [
 ];
 async function getVocabCategories() {
   const saved = await getSetting("vocabCategories", []),
-    all = ["Uncategorized", ...saved, ...DEFAULT_VOCAB_CATEGORIES];
+    all = ["Uncategorized", "Sentences", ...saved, ...DEFAULT_VOCAB_CATEGORIES];
   return [...new Set(all.map((x) => String(x).trim()).filter(Boolean))];
 }
 const capabilityValue = (item, key) =>
@@ -259,12 +283,15 @@ const languagesText = (languages) =>
     .map((x) => `${x.language}: ${x.word}`)
     .join("\n");
 const wordCategories = (item) =>
-  [
-    item.category,
-    ...(Array.isArray(item.additionalCategories)
-      ? item.additionalCategories
-      : []),
-  ]
+  (item.entryType === "sentence"
+    ? ["Sentences"]
+    : [
+        item.category,
+        ...(Array.isArray(item.additionalCategories)
+          ? item.additionalCategories
+          : []),
+      ]
+  )
     .map((x) => String(x || "").trim())
     .filter((x, i, a) => x && a.indexOf(x) === i)
     .slice(0, 3);
@@ -285,6 +312,15 @@ function parseLanguages(text) {
 async function normalizeVocabulary(words) {
   for (const item of words) {
     let changed = false;
+    if (!item.entryType) {
+      item.entryType = "word";
+      changed = true;
+    }
+    if (item.entryType === "sentence" && item.category !== "Sentences") {
+      item.category = "Sentences";
+      item.additionalCategories = [];
+      changed = true;
+    }
     if (!item.category) {
       item.category = "Uncategorized";
       changed = true;
@@ -341,11 +377,12 @@ async function renderVocabulary() {
     ),
   ].sort((a, b) => b - a);
   view.innerHTML = `<section class="hero"><h1>🗣️ Speech & Language</h1><p>Track what your child can say, identify, or communicate with ASL.</p></section>
-  <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
-  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="bulkWords" class="btn secondary">Bulk import from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
+  <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
+  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import words from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
   <div class="vocab-controls card">
     <div class="field"><label>Child</label><select id="vocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
-    <div class="field"><label>Search words, notes, categories, or languages</label><input id="vocabSearch" type="search" placeholder="Search speech and language"></div>
+    <div class="field"><label>Entry type</label><select id="vocabType"><option value="all">Words and sentences</option><option value="word">Words only</option><option value="sentence">Sentences only</option></select></div>
+    <div class="field"><label>Search words, sentences, notes, categories, or languages</label><input id="vocabSearch" type="search" placeholder="Search speech and language"></div>
     <div class="field"><label>Category</label><select id="vocabCategory"><option value="">All categories</option>${categories.map((c) => `<option>${esc(c)}</option>`).join("")}</select></div>
     <div class="field"><label>Sort</label><select id="vocabSort"><option value="alpha">Alphabetical</option><option value="category">Category</option><option value="newest">Date first said — newest</option><option value="oldest">Date first said — oldest</option></select></div>
     <div class="field"><label>Year</label><select id="vocabYear"><option value="">All years</option>${years.map((y) => `<option>${y}</option>`).join("")}</select></div>
@@ -359,6 +396,7 @@ async function renderVocabulary() {
   const applyFilterDefaults = () => {
     const d = {
       profile: "all",
+      type: "all",
       search: "",
       category: "",
       sort: "alpha",
@@ -376,6 +414,9 @@ async function renderVocabulary() {
       ? d.profile
       : "all";
     $("#vocabSearch").value = d.search || "";
+    $("#vocabType").value = ["all", "word", "sentence"].includes(d.type)
+      ? d.type
+      : "all";
     $("#vocabCategory").value = [...$("#vocabCategory").options].some(
       (o) => o.value === d.category,
     )
@@ -404,6 +445,7 @@ async function renderVocabulary() {
         )
       : [];
     const profile = $("#vocabProfile").value,
+      type = $("#vocabType").value,
       q = wordKey($("#vocabSearch").value),
       category = $("#vocabCategory").value,
       year = $("#vocabYear").value,
@@ -416,16 +458,19 @@ async function renderVocabulary() {
             .checked,
       );
     const totals = words.filter(
-      (x) => profile === "all" || x.profileId === profile,
-    );
-    $("#totalWords").textContent = totals.length;
-    $("#totalSpeak").textContent = totals.filter((x) =>
+        (x) => profile === "all" || x.profileId === profile,
+      ),
+      totalWords = totals.filter((x) => x.entryType !== "sentence"),
+      totalSentences = totals.filter((x) => x.entryType === "sentence");
+    $("#totalWords").textContent = totalWords.length;
+    $("#totalSentences").textContent = totalSentences.length;
+    $("#totalSpeak").textContent = totalWords.filter((x) =>
       capabilityValue(x, "speak"),
     ).length;
-    $("#totalIdentify").textContent = totals.filter((x) =>
+    $("#totalIdentify").textContent = totalWords.filter((x) =>
       capabilityValue(x, "identify"),
     ).length;
-    $("#totalAsl").textContent = totals.filter((x) =>
+    $("#totalAsl").textContent = totalWords.filter((x) =>
       capabilityValue(x, "asl"),
     ).length;
     let shown = words.filter((x) => {
@@ -436,12 +481,10 @@ async function renderVocabulary() {
         assigned = wordCategories(x);
       return (
         (profile === "all" || x.profileId === profile) &&
+        (type === "all" || x.entryType === type) &&
         (!category || assigned.includes(category)) &&
         selected.some((k) => capabilityValue(x, k)) &&
-        (!q ||
-          wordKey(
-            `${x.word} ${x.notes || ""} ${assigned.join(" ")} ${languagesText(x.languages)}`,
-          ).includes(q)) &&
+        entryMatchesSearch(x, q) &&
         (!exact || dates.includes(exact)) &&
         ((!exact && !year) || dates.some((d) => d.startsWith(year))) &&
         ((!exact && !month) || dates.some((d) => d.slice(5, 7) === month))
@@ -459,27 +502,32 @@ async function renderVocabulary() {
               entryDate(b).localeCompare(entryDate(a)) ||
               a.word.localeCompare(b.word),
     );
+    const shownWords = shown.filter((x) => x.entryType !== "sentence").length,
+      shownSentences = shown.filter((x) => x.entryType === "sentence").length;
     $("#vocabSummary").textContent =
-      `${shown.length} of ${words.length} ${words.length === 1 ? "entry" : "entries"}`;
-    const drawCard = (x) =>
-      `<details class="word-card card" data-word-id="${x.id}"><summary><strong>${esc(x.word)}</strong>${entryDate(x) ? `<span>${fmtDate(entryDate(x))}</span>` : ""}</summary><div class="word-details"><div class="word-detail-meta">${wordCategories(
+      `${shown.length} ${shown.length === 1 ? "result" : "results"} • ${shownWords} ${shownWords === 1 ? "word" : "words"} • ${shownSentences} ${shownSentences === 1 ? "sentence" : "sentences"}`;
+    const drawCard = (x) => {
+      const controls =
+        x.entryType === "sentence"
+          ? `<div class="ability-checks"><div class="ability-row"><label>First said</label><input type="date" class="ability-date" data-id="${x.id}" data-key="speak" value="${abilityDate(x, "speak")}" aria-label="Sentence first said date"></div></div>`
+          : `<div class="ability-checks">${[
+              ["speak", "Speak"],
+              ["identify", "Identify"],
+              ["asl", "ASL"],
+            ]
+              .map(
+                ([k, label]) =>
+                  `<div class="ability-row"><label><input type="checkbox" class="ability-toggle" data-id="${x.id}" data-key="${k}" ${capabilityValue(x, k) ? "checked" : ""}> ${label}</label><input type="date" class="ability-date" data-id="${x.id}" data-key="${k}" value="${abilityDate(x, k)}" aria-label="${label} learned date"></div>`,
+              )
+              .join("")}</div>`;
+      return `<details class="word-card card ${x.entryType === "sentence" ? "sentence-card" : ""}" data-word-id="${x.id}"><summary><strong>${esc(x.word)}</strong>${entryDate(x) ? `<span>${fmtDate(entryDate(x))}</span>` : ""}</summary><div class="word-details"><div class="word-detail-meta">${wordCategories(
         x,
       )
         .map((c) => `<span class="category-chip">${esc(c)}</span>`)
         .join(
           "",
-        )}<span>${esc(names[x.profileId] || "Child")}</span></div>${x.notes ? `<p class="word-notes">${esc(x.notes)}</p>` : ""}<div class="ability-checks">${[
-        ["speak", "Speak"],
-        ["identify", "Identify"],
-        ["asl", "ASL"],
-      ]
-        .map(
-          ([k, label]) =>
-            `<div class="ability-row"><label><input type="checkbox" class="ability-toggle" data-id="${x.id}" data-key="${k}" ${capabilityValue(x, k) ? "checked" : ""}> ${label}</label><input type="date" class="ability-date" data-id="${x.id}" data-key="${k}" value="${abilityDate(x, k)}" aria-label="${label} learned date"></div>`,
-        )
-        .join(
-          "",
-        )}</div>${x.languages.length ? `<div class="language-list"><strong>Additional languages</strong>${x.languages.map((l) => `<span>${esc(l.language)}: ${esc(l.word)}</span>`).join("")}</div>` : ""}<div class="word-actions"><button class="small-action edit-word" data-id="${x.id}" type="button">Edit</button><button class="small-action danger-link delete-word" data-id="${x.id}" type="button">Delete</button></div></div></details>`;
+        )}<span>${esc(names[x.profileId] || "Child")}</span></div>${x.notes ? `<p class="word-notes">${esc(x.notes)}</p>` : ""}${controls}${x.entryType !== "sentence" && x.languages.length ? `<div class="language-list"><strong>Additional languages</strong>${x.languages.map((l) => `<span>${esc(l.language)}: ${esc(l.word)}</span>`).join("")}</div>` : ""}<div class="word-actions"><button class="small-action edit-word" data-id="${x.id}" type="button">Edit</button><button class="small-action danger-link delete-word" data-id="${x.id}" type="button">Delete</button></div></div></details>`;
+    };
     if (sort === "category" && shown.length) {
       const groups = new Map();
       for (const item of shown)
@@ -544,12 +592,11 @@ async function renderVocabulary() {
     );
     document.querySelectorAll(".edit-word").forEach(
       (b) =>
-        (b.onclick = () =>
-          openWordForm(
-            profiles,
-            words.find((x) => x.id === b.dataset.id),
-            categories,
-          )),
+        (b.onclick = () => {
+          const item = words.find((x) => x.id === b.dataset.id);
+          if (item?.entryType === "sentence") openSentenceForm(profiles, item);
+          else openWordForm(profiles, item, categories);
+        }),
     );
     document.querySelectorAll(".delete-word").forEach(
       (b) =>
@@ -572,6 +619,7 @@ async function renderVocabulary() {
   };
   [
     "vocabProfile",
+    "vocabType",
     "vocabSearch",
     "vocabCategory",
     "vocabSort",
@@ -592,6 +640,7 @@ async function renderVocabulary() {
     refresh();
   };
   $("#addWord").onclick = () => openWordForm(profiles, null, categories);
+  $("#addSentence").onclick = () => openSentenceForm(profiles);
   $("#bulkWords").onclick = () =>
     openBulkVocabulary(profiles, words, categories);
   $("#manageCategories").onclick = () => openCategoryManager(categories);
@@ -650,6 +699,7 @@ function openWordForm(profiles, item = null, categories = []) {
         (x) =>
           x.id !== item?.id &&
           x.profileId === profileId &&
+          x.entryType !== "sentence" &&
           wordKey(x.word) === wordKey(word),
       )
     )
@@ -663,6 +713,7 @@ function openWordForm(profiles, item = null, categories = []) {
         .filter((c, i, a) => a.indexOf(c) === i);
     const record = {
       id: item?.id || uid(),
+      entryType: "word",
       profileId,
       word,
       category,
@@ -682,6 +733,94 @@ function openWordForm(profiles, item = null, categories = []) {
     record.date = entryDate(record) || item?.date || isoToday();
     await put("words", record);
     modal.close();
+    renderVocabulary();
+  };
+}
+
+function openSentenceForm(profiles, item = null) {
+  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} sentence</h2><div class="form-grid"><div class="field"><label>Child</label><select id="sentenceProfile">${profiles.map((p) => `<option value="${p.id}" ${item?.profileId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Sentence</label><textarea id="sentenceText" class="sentence-text" placeholder="I want the blue ball">${esc(item?.word || "")}</textarea><span class="hint">Each word will be compared with this child’s individual word list. Missing words will be added automatically.</span></div><div class="field"><label>Date first said</label><input id="sentenceDate" type="date" value="${item ? abilityDate(item, "speak") : isoToday()}"></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="sentenceNotes">${esc(item?.notes || "")}</textarea></div><button id="saveSentence" class="btn full" type="button">Save sentence</button></div>`;
+  if (!modal.open) modal.showModal();
+  $("#saveSentence").onclick = async () => {
+    const sentence = $("#sentenceText").value.trim(),
+      profileId = $("#sentenceProfile").value,
+      date = $("#sentenceDate").value;
+    if (!sentence) return alert("Please enter a sentence.");
+    if (!date)
+      return alert("Please enter the date the sentence was first said.");
+    const all = await normalizeVocabulary(await getAll("words"));
+    if (
+      all.some(
+        (x) =>
+          x.id !== item?.id &&
+          x.profileId === profileId &&
+          x.entryType === "sentence" &&
+          sentenceWordKey(x.word) === sentenceWordKey(sentence),
+      )
+    )
+      return alert("That sentence is already listed for this child.");
+    const known = new Set(
+        all
+          .filter(
+            (x) => x.profileId === profileId && x.entryType !== "sentence",
+          )
+          .map((x) => sentenceWordKey(x.word)),
+      ),
+      missing = sentenceWords(sentence).filter(
+        (word) => !known.has(sentenceWordKey(word)),
+      ),
+      sentenceId = item?.id || uid();
+    if (missing.length)
+      await createSnapshot(
+        `Before adding ${missing.length} individual words from a sentence`,
+      );
+    await put("words", {
+      id: sentenceId,
+      entryType: "sentence",
+      profileId,
+      word: sentence,
+      date,
+      category: "Sentences",
+      additionalCategories: [],
+      speak: true,
+      identify: false,
+      asl: false,
+      speakDate: date,
+      identifyDate: "",
+      aslDate: "",
+      languages: [],
+      notes: $("#sentenceNotes").value.trim(),
+      createdAt: item?.createdAt || nowISO(),
+      updatedAt: nowISO(),
+      syncStatus: "local",
+    });
+    for (const word of missing)
+      await put("words", {
+        id: uid(),
+        entryType: "word",
+        profileId,
+        word,
+        date,
+        category: "Uncategorized",
+        additionalCategories: [],
+        speak: true,
+        identify: false,
+        asl: false,
+        speakDate: date,
+        identifyDate: "",
+        aslDate: "",
+        languages: [],
+        notes: "Added automatically from a sentence.",
+        derivedFromSentenceId: sentenceId,
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+        syncStatus: "local",
+      });
+    modal.close();
+    alert(
+      missing.length
+        ? `Sentence saved. ${missing.length} new individual ${missing.length === 1 ? "word was" : "words were"} added.`
+        : "Sentence saved. Every word was already in the individual word list.",
+    );
     renderVocabulary();
   };
 }
@@ -708,7 +847,9 @@ function openBulkVocabulary(profiles, existing, categories) {
       );
     const seen = new Set(
         existing
-          .filter((x) => x.profileId === profileId)
+          .filter(
+            (x) => x.profileId === profileId && x.entryType !== "sentence",
+          )
           .map((x) => wordKey(x.word)),
       ),
       fresh = [];
@@ -731,6 +872,7 @@ function openBulkVocabulary(profiles, existing, categories) {
         for (const x of fresh)
           await put("words", {
             id: uid(),
+            entryType: "word",
             profileId,
             word: x.word,
             date: x.date,
@@ -759,7 +901,7 @@ function openBulkVocabulary(profiles, existing, categories) {
 
 function openCategoryManager(categories) {
   const draw = () => {
-    modalBody.innerHTML = `<h2>Manage categories</h2><div class="category-list">${categories.map((c) => `<div class="category-row"><span>${esc(c)}</span><div>${c !== "Uncategorized" ? `<button class="small-action rename-category" data-name="${esc(c)}" type="button">Rename</button><button class="small-action danger-link remove-category" data-name="${esc(c)}" type="button">Delete</button>` : ""}</div></div>`).join("")}</div><button id="addCategory" class="btn full" type="button" style="margin-top:14px">Add category</button>`;
+    modalBody.innerHTML = `<h2>Manage categories</h2><div class="category-list">${categories.map((c) => `<div class="category-row"><span>${esc(c)}</span><div>${!["Uncategorized", "Sentences"].includes(c) ? `<button class="small-action rename-category" data-name="${esc(c)}" type="button">Rename</button><button class="small-action danger-link remove-category" data-name="${esc(c)}" type="button">Delete</button>` : ""}</div></div>`).join("")}</div><button id="addCategory" class="btn full" type="button" style="margin-top:14px">Add category</button>`;
     $("#addCategory").onclick = async () => {
       const name = prompt("New category name:")?.trim();
       if (!name) return;
@@ -1285,6 +1427,7 @@ async function renderSettings() {
     categories = await getVocabCategories(),
     d = {
       profile: "all",
+      type: "all",
       search: "",
       category: "",
       sort: "alpha",
@@ -1316,6 +1459,13 @@ async function renderSettings() {
     "",
   )}</select></div><div class="field"><label>Exact date</label><input id="defaultVocabDate" type="date" value="${esc(d.exactDate || "")}"></div><fieldset class="filter-abilities"><legend>Abilities included</legend><label><input id="defaultSpeak" type="checkbox" ${d.speak !== false ? "checked" : ""}> Speak</label><label><input id="defaultIdentify" type="checkbox" ${d.identify !== false ? "checked" : ""}> Identify</label><label><input id="defaultAsl" type="checkbox" ${d.asl !== false ? "checked" : ""}> ASL</label></fieldset></div><button id="saveVocabDefaults" class="btn" type="button">Save filter defaults</button></div><div class="card settings-card"><h3>Version</h3><p>${APP.name} v${APP.version}</p><p class="hint">Database schema ${APP.schemaVersion}</p></div><div class="card settings-card"><h3>Data model</h3><p>Local-first IndexedDB with permanent IDs and timestamps, ready for optional cloud sync later.</p></div><div class="btn-row"><button class="btn secondary" data-go="backup">Open backup tools</button><button class="btn secondary" data-go="about">About & disclaimer</button></div>`;
   const exactOption = $('#profileDisplay option[value="exact"]');
+  const defaultTypeField = document.createElement("div");
+  defaultTypeField.className = "field";
+  defaultTypeField.innerHTML = `<label>Entry type</label><select id="defaultVocabType"><option value="all">Words and sentences</option><option value="word">Words only</option><option value="sentence">Sentences only</option></select>`;
+  $("#defaultVocabProfile").closest(".field").after(defaultTypeField);
+  $("#defaultVocabType").value = ["all", "word", "sentence"].includes(d.type)
+    ? d.type
+    : "all";
   exactOption.disabled = !exactReady;
   if (!exactReady)
     $("#profileDisplay").insertAdjacentHTML(
@@ -1329,6 +1479,7 @@ async function renderSettings() {
   $("#saveVocabDefaults").onclick = async () => {
     await setSetting("vocabFilterDefaults", {
       profile: $("#defaultVocabProfile").value,
+      type: $("#defaultVocabType").value,
       search: $("#defaultVocabSearch").value.trim(),
       category: $("#defaultVocabCategory").value,
       sort: $("#defaultVocabSort").value,

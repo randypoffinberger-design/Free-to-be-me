@@ -1,4 +1,4 @@
-# More than Measured v0.4.0
+# More than Measured v0.5.0
 
 Initial local-first PWA foundation.
 
@@ -145,3 +145,16 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Requires a complete birth hour, minute, and second before live exact age can be selected
 - Keeps expanded speech cards open after ability or learned-date changes
 - Preserved all existing profiles and complete backup compatibility
+
+## v0.5.0 changes
+- Added sentences as a dedicated Speech & Language entry type and protected category
+- Added a separate total sentence count without increasing Total Words
+- Automatically checks every word in a saved sentence against the child’s individual word list
+- Automatically adds genuinely missing individual words with the sentence’s first-said date and Speak enabled
+- Adds automatically discovered words to Uncategorized for later organization
+- Avoids adding or counting duplicate words when every sentence word is already known
+- Added Words and sentences, Words only, and Sentences only filtering
+- Included entry type in customizable filter defaults
+- Search results include sentences containing the searched individual word unless Words only is selected
+- Added sentence editing, deletion, first-said dates, and notes
+- Preserved existing phrases as word entries and maintained backup compatibility
