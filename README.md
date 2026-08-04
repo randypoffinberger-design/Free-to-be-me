@@ -1,4 +1,4 @@
-# More than Measured v0.6.1
+# More than Measured v0.6.2
 
 Initial local-first PWA foundation.
 
@@ -178,3 +178,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added quick Add letter and Add number actions plus entry-type filters
 - Updated the Speech & Language introduction to include all communication, including ASL
 - Preserved existing entries, backups, and the established local database
+
+## v0.6.2 changes
+- Added a dedicated Speech & Language Building landing page
+- Moved the existing tracker into a clickable Communication Tracker card
+- Updated homepage and drawer navigation to open Speech & Language Building first
+- Renamed the tracker page heading to Communication Tracker
+- Preserved all existing communication entries, filters, and backups

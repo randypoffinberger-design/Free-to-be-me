@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.1", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.2", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -102,6 +102,7 @@ const weeklyQuote = () =>
 const routes = {
   home: renderHome,
   child: renderChild,
+  speech: renderSpeechBuilding,
   vocabulary: renderVocabulary,
   resources: renderResources,
   explore: renderExplore,
@@ -134,7 +135,7 @@ async function renderHome() {
   view.innerHTML = `<section class="illustrated-home" aria-label="More than Measured home navigation">
     <img src="assets/home/homepage.jpeg" alt="More than Measured — celebrating every child’s unique journey" width="864" height="1536">
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
-    <button class="home-hotspot communication" data-go="vocabulary" aria-label="Open Speech and Language Building and Vocabulary"><span>Speech/Language Building</span></button>
+    <button class="home-hotspot communication" data-go="speech" aria-label="Open Speech and Language Building"><span>Speech/Language Building</span></button>
     <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
     <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
     <button class="home-hotspot learning" data-feature="Skill Building" aria-label="Open Skill Building"><span>Skill Building</span></button>
@@ -384,6 +385,15 @@ async function normalizeVocabulary(words) {
   return words;
 }
 
+function renderSpeechBuilding() {
+  view.innerHTML = `<section class="hero"><h1>🗣️ Speech & Language Building</h1><p>Tools for supporting and celebrating how your child communicates.</p></section>
+  <h2 class="section-title">Communication tools</h2>
+  <div class="grid">
+    <button class="card-button" data-go="vocabulary"><span class="emoji">💬</span><strong>Communication Tracker</strong><small>Track words, sentences, letters, numbers, identification, speech, and ASL.</small></button>
+  </div>`;
+  bindRouteButtons();
+}
+
 async function renderVocabulary() {
   const profiles = await getAll("profiles"),
     words = await normalizeVocabulary(await getAll("words")),
@@ -404,7 +414,7 @@ async function renderVocabulary() {
         .filter(Boolean),
     ),
   ].sort((a, b) => b - a);
-  view.innerHTML = `<section class="hero"><h1>🗣️ Speech & Language</h1><p>Track what your child can say, identify, or communicate including ASL.</p></section>
+  view.innerHTML = `<section class="hero"><h1>💬 Communication Tracker</h1><p>Track what your child can say, identify, or communicate including ASL.</p></section>
   <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalLetters">0</strong><span>Letters</span></div><div class="speech-stat"><strong id="totalNumbers">0</strong><span>Numbers</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
   <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addLetter" class="btn">Add letter</button><button id="addNumber" class="btn">Add number</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import words from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
   <div class="vocab-controls card">
@@ -1933,7 +1943,7 @@ function setupDrawer() {
   const links = [
     ["🏠", "Home", "home"],
     ["🌱", "My Child", "child"],
-    ["🗣️", "Vocabulary", "vocabulary"],
+    ["🗣️", "Speech & Language", "speech"],
     ["📚", "Resources", "resources"],
     ["🗺️", "Explore", "explore"],
     ["💛", "Caregiver Corner", "caregiver"],
