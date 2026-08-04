@@ -1,4 +1,4 @@
-# More than Measured v0.3.2
+# More than Measured v0.4.0
 
 Initial local-first PWA foundation.
 
@@ -132,3 +132,16 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Expanded category search and category chips to include every assignment
 - Updated category rename and deletion to safely handle every assignment
 - Preserved existing single-category entries, backups, and offline compatibility
+
+## v0.4.0 changes
+- Added fully customizable Speech & Language filter defaults in Settings
+- Clear filters now returns to the caregiver’s saved defaults
+- Added an expanded profile-symbol library with balls, robots, bubbles, vehicles, balloons, animals, and more
+- Added optional child profile-photo uploads with automatic resizing for local storage and backups
+- Added profile editing so symbols, photos, birth details, and names can be updated
+- Added optional birth hour, minute, and second while preserving blank/unspecified birth times
+- Added profile-card display choices for birth date, whole-year age, years and months, live exact age, or no detail
+- Added a live age counter down to seconds when selected
+- Requires a complete birth hour, minute, and second before live exact age can be selected
+- Keeps expanded speech cards open after ability or learned-date changes
+- Preserved all existing profiles and complete backup compatibility
