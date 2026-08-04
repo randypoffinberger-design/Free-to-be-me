@@ -1,19 +1,22 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.5.0", schemaVersion: 1 };
+const APP = { name: "More than Measured", version: "0.6.0", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
-  DB_VERSION = 1,
+  DB_VERSION = 2,
   STORE_NAMES = [
     "profiles",
     "achievements",
     "words",
     "notes",
+    "appointments",
+    "todos",
     "settings",
     "snapshots",
   ];
 let db,
   deferredInstallPrompt = null,
-  profileAgeTimer = null;
+  profileAgeTimer = null,
+  vocabSessionFilters = null;
 const $ = (s) => document.querySelector(s),
   view = $("#view"),
   modal = $("#modal"),
@@ -406,7 +409,7 @@ async function renderVocabulary() {
       speak: true,
       identify: true,
       asl: true,
-      ...filterDefaults,
+      ...(vocabSessionFilters || filterDefaults),
     };
     $("#vocabProfile").value = [...$("#vocabProfile").options].some(
       (o) => o.value === d.profile,
@@ -446,7 +449,8 @@ async function renderVocabulary() {
       : [];
     const profile = $("#vocabProfile").value,
       type = $("#vocabType").value,
-      q = wordKey($("#vocabSearch").value),
+      search = $("#vocabSearch").value,
+      q = wordKey(search),
       category = $("#vocabCategory").value,
       year = $("#vocabYear").value,
       month = $("#vocabMonth").value,
@@ -457,6 +461,19 @@ async function renderVocabulary() {
           $("#filter" + (k === "asl" ? "Asl" : k[0].toUpperCase() + k.slice(1)))
             .checked,
       );
+    vocabSessionFilters = {
+      profile,
+      type,
+      search,
+      category,
+      sort,
+      year,
+      month,
+      exactDate: exact,
+      speak: selected.includes("speak"),
+      identify: selected.includes("identify"),
+      asl: selected.includes("asl"),
+    };
     const totals = words.filter(
         (x) => profile === "all" || x.profileId === profile,
       ),
@@ -636,6 +653,7 @@ async function renderVocabulary() {
     ),
   );
   $("#clearVocabFilters").onclick = () => {
+    vocabSessionFilters = null;
     applyFilterDefaults();
     refresh();
   };
@@ -1309,18 +1327,360 @@ function renderExplore() {
     ],
   );
 }
-function renderCaregiver() {
-  view.innerHTML = `<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support for the caregiver matters too.</p></section>
+const CAREGIVER_TERMS = [
+  [
+    "AAC",
+    "Augmentative and Alternative Communication. Any tool that supports communication beyond speech, including picture boards, sign language, and speech-generating devices. AAC does not prevent speech development.",
+  ],
+  [
+    "Autistic burnout",
+    "Deep physical, mental, and emotional exhaustion caused by prolonged stress, demands, masking, or sensory strain. Recovery often requires reduced demands, rest, predictability, and meaningful support.",
+  ],
+  [
+    "Dysregulation",
+    "A state where the nervous system is having difficulty managing emotions, sensory input, or demands. Behavior during dysregulation is communication, not simply disobedience.",
+  ],
+  [
+    "Echolalia",
+    "Repeating words or phrases heard from other people, shows, songs, or earlier experiences. It may be immediate or delayed and can serve purposes such as communication, processing, comfort, or practice.",
+  ],
+  [
+    "Elopement",
+    "Leaving a safe area or caregiver unexpectedly, often to reach something interesting or escape distress. It is a safety concern that calls for prevention, supervision, and understanding the reason behind it.",
+  ],
+  [
+    "Executive functioning",
+    "Skills used to begin tasks, plan, organize, shift attention, remember steps, control impulses, and manage time. A child may understand what to do but still need support getting started or completing it.",
+  ],
+  [
+    "Gestalt language processing",
+    "A way some people learn language in larger chunks or scripts before breaking them into smaller flexible words and phrases. Echolalia can be part of this language-development path.",
+  ],
+  [
+    "Interoception",
+    "The sense that notices signals inside the body, such as hunger, thirst, pain, temperature, needing the bathroom, or a racing heart. These signals may be noticed late, intensely, or inconsistently.",
+  ],
+  [
+    "Joint attention",
+    "Two people sharing attention toward the same object or experience. It can involve looking, pointing, sounds, body movement, or bringing an item—not only eye contact.",
+  ],
+  [
+    "Masking",
+    "Hiding or suppressing autistic traits to appear more neurotypical, sometimes by forcing eye contact, copying social behavior, or holding back stims. Masking can be exhausting and may contribute to anxiety or burnout.",
+  ],
+  [
+    "Meltdown",
+    "An involuntary loss of control caused by overwhelming sensory input, emotions, demands, communication difficulty, or accumulated stress. It is not manipulation or a chosen behavior; safety and reduced demands come first.",
+  ],
+  [
+    "Neurodiversity",
+    "The idea that brains naturally vary in how they process, learn, communicate, and experience the world. Neurodiversity recognizes differences while still acknowledging disability and support needs.",
+  ],
+  [
+    "Proprioception",
+    "The body-awareness sense coming from muscles and joints. Activities involving pushing, pulling, climbing, jumping, or deep pressure may help some children feel organized and regulated.",
+  ],
+  [
+    "Scripting",
+    "Using memorized lines, songs, or dialogue to communicate, process an experience, play, or self-regulate. Scripts can carry real meaning even when the wording comes from somewhere else.",
+  ],
+  [
+    "Sensory avoider",
+    "Someone who is especially sensitive to certain sounds, lights, textures, smells, tastes, touch, or movement and may try to escape or reduce that input.",
+  ],
+  [
+    "Sensory overload",
+    "When incoming sensory information becomes more than the nervous system can process. Signs may include covering ears, fleeing, crying, shutting down, aggression, or a meltdown.",
+  ],
+  [
+    "Sensory seeker",
+    "Someone who actively looks for stronger sensory input, such as spinning, crashing, chewing, touching, loud sounds, or constant movement. Safe alternatives can help meet the underlying need.",
+  ],
+  [
+    "Shutdown",
+    "An involuntary inward response to overwhelm that may involve becoming very quiet, unable to speak or move, sleepy, withdrawn, or less responsive. A shutdown needs time, safety, and reduced pressure.",
+  ],
+  [
+    "Special interest",
+    "A deeply focused interest that can bring joy, comfort, knowledge, motivation, and connection. Special interests can also be powerful tools for learning and relationship-building.",
+  ],
+  [
+    "Stimming",
+    "Self-stimulatory movement, sound, or behavior—such as rocking, hand movements, humming, pacing, or repeating sounds—that may help with regulation, expression, focus, or sensory needs. Safe stims generally do not need to be stopped.",
+  ],
+  [
+    "Support levels",
+    "Clinical autism levels describe the amount of support a person currently needs: Level 1 requires support, Level 2 substantial support, and Level 3 very substantial support. Needs can differ by skill, setting, stress, and time; a level does not define intelligence or potential.",
+  ],
+  [
+    "Tantrum",
+    "A goal-directed expression of frustration that usually eases when the goal is met or the audience changes. This differs from a meltdown, which is an involuntary response to overwhelm and does not simply stop when a demand is granted.",
+  ],
+  [
+    "Vestibular sense",
+    "The movement-and-balance sense centered in the inner ear. Swinging, spinning, climbing, and changes in head position affect this system; children may seek or avoid this input.",
+  ],
+];
+
+async function renderCaregiver() {
+  const appointments = await getAll("appointments"),
+    todos = await getAll("todos"),
+    activeTodos = todos.filter((item) => !item.completed).length,
+    upcoming = appointments.filter((item) => item.date >= isoToday()).length;
+  view.innerHTML = `<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support, organization, and clear information for the caregiver.</p></section>
   <h2 class="section-title">Caregiver support</h2>
   <div class="grid">
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
+    <button id="caregiverTerms" class="card-button"><strong>📖 Common terms</strong><small>Plain-language explanations of autism and sensory terminology.</small></button>
+    <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
+    <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
     <button class="card-button future-feature" data-feature="Support messaging"><strong>🤝 Support messaging</strong><small>A future premium support option with clear boundaries.</small></button>
   </div>`;
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
+  $("#caregiverTerms").onclick = openTermsGuide;
+  $("#caregiverCalendar").onclick = openCaregiverCalendar;
+  $("#caregiverTodos").onclick = () => openTodoList("active");
   document
     .querySelectorAll(".future-feature")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
+}
+
+function openTermsGuide() {
+  const draw = (query = "") => {
+    const q = wordKey(query),
+      shown = CAREGIVER_TERMS.filter(([term, explanation]) =>
+        wordKey(`${term} ${explanation}`).includes(q),
+      );
+    modalBody.innerHTML = `<h2>📖 Common terms</h2><p class="hint">These descriptions are educational and strengths-aware. They do not diagnose a child or replace guidance from qualified professionals.</p><div class="field"><label>Search terms</label><input id="termSearch" type="search" value="${esc(query)}" placeholder="Try stimming, sensory, or echolalia"></div><div class="terms-list">${shown.map(([term, explanation]) => `<details class="term-card"><summary>${esc(term)}</summary><p>${esc(explanation)}</p></details>`).join("") || '<div class="empty"><p>No terms match that search.</p></div>'}</div>`;
+    $("#termSearch").oninput = (event) => draw(event.target.value);
+    requestAnimationFrame(() => {
+      const input = $("#termSearch");
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  };
+  draw();
+  if (!modal.open) modal.showModal();
+}
+
+let caregiverCalendarCursor = new Date(
+  new Date().getFullYear(),
+  new Date().getMonth(),
+  1,
+);
+async function openCaregiverCalendar() {
+  const appointments = await getAll("appointments"),
+    profiles = await getAll("profiles"),
+    names = Object.fromEntries(profiles.map((p) => [p.id, p.name])),
+    year = caregiverCalendarCursor.getFullYear(),
+    month = caregiverCalendarCursor.getMonth(),
+    firstDay = new Date(year, month, 1).getDay(),
+    days = new Date(year, month + 1, 0).getDate(),
+    monthName = new Intl.DateTimeFormat(undefined, {
+      month: "long",
+      year: "numeric",
+    }).format(caregiverCalendarCursor),
+    dateKey = (day) =>
+      `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    cells = [
+      ...Array.from(
+        { length: firstDay },
+        () => '<div class="calendar-blank"></div>',
+      ),
+      ...Array.from({ length: days }, (_, index) => {
+        const day = index + 1,
+          date = dateKey(day),
+          count = appointments.filter((item) => item.date === date).length;
+        return `<button class="calendar-day ${date === isoToday() ? "today" : ""}" data-date="${date}" type="button"><span>${day}</span>${count ? `<small>${count}</small>` : ""}</button>`;
+      }),
+    ].join(""),
+    monthAppointments = appointments
+      .filter((item) =>
+        String(item.date || "").startsWith(
+          `${year}-${String(month + 1).padStart(2, "0")}`,
+        ),
+      )
+      .sort((a, b) =>
+        `${a.date}T${a.time || "23:59"}`.localeCompare(
+          `${b.date}T${b.time || "23:59"}`,
+        ),
+      );
+  modalBody.innerHTML = `<h2>📅 Caregiver calendar</h2><div class="calendar-toolbar"><button id="previousMonth" class="small-action" type="button" aria-label="Previous month">‹</button><strong>${esc(monthName)}</strong><button id="nextMonth" class="small-action" type="button" aria-label="Next month">›</button></div><div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="calendar-grid">${cells}</div><button id="addAppointment" class="btn full" type="button" style="margin-top:12px">Add appointment</button><h3>This month</h3><div class="appointment-list">${monthAppointments.map((item) => `<div class="appointment-item"><div><strong>${esc(item.title)}</strong><span>${fmtDate(item.date)}${item.time ? ` • ${esc(formatClockTime(item.time))}` : ""}${item.profileId ? ` • ${esc(names[item.profileId] || "Child")}` : ""}</span>${item.type ? `<small>${esc(item.type)}</small>` : ""}</div><div><button class="small-action edit-appointment" data-id="${item.id}" type="button">Edit</button><button class="small-action danger-link delete-appointment" data-id="${item.id}" type="button">Delete</button></div></div>`).join("") || '<p class="hint">No appointments this month.</p>'}</div>`;
+  if (!modal.open) modal.showModal();
+  $("#previousMonth").onclick = () => {
+    caregiverCalendarCursor = new Date(year, month - 1, 1);
+    openCaregiverCalendar();
+  };
+  $("#nextMonth").onclick = () => {
+    caregiverCalendarCursor = new Date(year, month + 1, 1);
+    openCaregiverCalendar();
+  };
+  $("#addAppointment").onclick = () => openAppointmentForm(profiles);
+  document
+    .querySelectorAll(".calendar-day")
+    .forEach(
+      (button) =>
+        (button.onclick = () =>
+          openAppointmentForm(profiles, null, button.dataset.date)),
+    );
+  document.querySelectorAll(".edit-appointment").forEach(
+    (button) =>
+      (button.onclick = () =>
+        openAppointmentForm(
+          profiles,
+          appointments.find((item) => item.id === button.dataset.id),
+        )),
+  );
+  document.querySelectorAll(".delete-appointment").forEach(
+    (button) =>
+      (button.onclick = async () => {
+        const item = appointments.find(
+          (entry) => entry.id === button.dataset.id,
+        );
+        if (!item || !confirm(`Delete “${item.title}”?`)) return;
+        await createSnapshot(`Before deleting appointment ${item.title}`);
+        await deleteItem("appointments", item.id);
+        openCaregiverCalendar();
+      }),
+  );
+}
+
+function formatClockTime(value) {
+  if (!value) return "";
+  const [hour, minute] = value.split(":").map(Number),
+    date = new Date(2000, 0, 1, hour, minute);
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function openAppointmentForm(profiles, item = null, selectedDate = "") {
+  const types = [
+    "Doctor",
+    "Therapy",
+    "Play date",
+    "School",
+    "Evaluation",
+    "Family",
+    "Other",
+  ];
+  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} appointment</h2><div class="form-grid"><div class="field"><label>Title</label><input id="appointmentTitle" value="${esc(item?.title || "")}" placeholder="Speech therapy"></div><div class="field"><label>Type</label><select id="appointmentType">${types.map((type) => `<option ${item?.type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select></div><div class="field"><label>Child <span class="hint">(optional)</span></label><select id="appointmentProfile"><option value="">Family/general</option>${profiles.map((profile) => `<option value="${profile.id}" ${item?.profileId === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Date</label><input id="appointmentDate" type="date" value="${item?.date || selectedDate || isoToday()}"></div><div class="field"><label>Time <span class="hint">(optional)</span></label><input id="appointmentTime" type="time" value="${item?.time || ""}"></div><div class="field"><label>Location <span class="hint">(optional)</span></label><input id="appointmentLocation" value="${esc(item?.location || "")}"></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="appointmentNotes">${esc(item?.notes || "")}</textarea></div><div class="btn-row"><button id="cancelAppointment" class="btn secondary" type="button">Back to calendar</button><button id="saveAppointment" class="btn" type="button">Save appointment</button></div></div>`;
+  if (!modal.open) modal.showModal();
+  $("#cancelAppointment").onclick = openCaregiverCalendar;
+  $("#saveAppointment").onclick = async () => {
+    const title = $("#appointmentTitle").value.trim(),
+      date = $("#appointmentDate").value;
+    if (!title || !date)
+      return alert("Please enter an appointment title and date.");
+    await put("appointments", {
+      id: item?.id || uid(),
+      title,
+      type: $("#appointmentType").value,
+      profileId: $("#appointmentProfile").value || null,
+      date,
+      time: $("#appointmentTime").value || null,
+      location: $("#appointmentLocation").value.trim(),
+      notes: $("#appointmentNotes").value.trim(),
+      createdAt: item?.createdAt || nowISO(),
+      updatedAt: nowISO(),
+      syncStatus: "local",
+    });
+    caregiverCalendarCursor = new Date(`${date}T12:00:00`);
+    caregiverCalendarCursor.setDate(1);
+    openCaregiverCalendar();
+  };
+}
+
+async function openTodoList(filter = "active") {
+  const todos = await getAll("todos"),
+    profiles = await getAll("profiles"),
+    names = Object.fromEntries(
+      profiles.map((profile) => [profile.id, profile.name]),
+    ),
+    shown = todos
+      .filter(
+        (item) =>
+          filter === "all" ||
+          (filter === "completed" ? item.completed : !item.completed),
+      )
+      .sort(
+        (a, b) =>
+          Number(a.completed) - Number(b.completed) ||
+          String(a.dueDate || "9999").localeCompare(
+            String(b.dueDate || "9999"),
+          ) ||
+          a.title.localeCompare(b.title),
+      );
+  modalBody.innerHTML = `<h2>✅ Caregiver to-do list</h2><div class="todo-add"><input id="newTodoTitle" placeholder="Add a task"><input id="newTodoDue" type="date" aria-label="Optional due date"><select id="newTodoProfile" aria-label="Optional child"><option value="">General</option>${profiles.map((profile) => `<option value="${profile.id}">${esc(profile.name)}</option>`).join("")}</select><button id="addTodo" class="btn" type="button">Add</button></div><div class="todo-filters"><button class="small-action todo-filter ${filter === "active" ? "selected" : ""}" data-filter="active" type="button">Active</button><button class="small-action todo-filter ${filter === "all" ? "selected" : ""}" data-filter="all" type="button">All</button><button class="small-action todo-filter ${filter === "completed" ? "selected" : ""}" data-filter="completed" type="button">Completed</button></div><div class="todo-list">${shown.map((item) => `<div class="todo-item ${item.completed ? "completed" : ""}"><label><input class="todo-toggle" data-id="${item.id}" type="checkbox" ${item.completed ? "checked" : ""}><span><strong>${esc(item.title)}</strong>${item.dueDate ? `<small>Due ${fmtDate(item.dueDate)}</small>` : ""}${item.profileId ? `<small>${esc(names[item.profileId] || "Child")}</small>` : ""}</span></label><div><button class="small-action edit-todo" data-id="${item.id}" type="button">Edit</button><button class="small-action danger-link delete-todo" data-id="${item.id}" type="button">Delete</button></div></div>`).join("") || '<div class="empty"><p>No tasks in this view.</p></div>'}</div>`;
+  if (!modal.open) modal.showModal();
+  $("#addTodo").onclick = async () => {
+    const title = $("#newTodoTitle").value.trim();
+    if (!title) return alert("Please enter a task.");
+    await put("todos", {
+      id: uid(),
+      title,
+      dueDate: $("#newTodoDue").value || null,
+      profileId: $("#newTodoProfile").value || null,
+      completed: false,
+      completedAt: null,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+      syncStatus: "local",
+    });
+    openTodoList(filter);
+  };
+  document
+    .querySelectorAll(".todo-filter")
+    .forEach(
+      (button) => (button.onclick = () => openTodoList(button.dataset.filter)),
+    );
+  document.querySelectorAll(".todo-toggle").forEach(
+    (box) =>
+      (box.onchange = async () => {
+        const item = todos.find((entry) => entry.id === box.dataset.id);
+        item.completed = box.checked;
+        item.completedAt = box.checked ? nowISO() : null;
+        item.updatedAt = nowISO();
+        await put("todos", item);
+        openTodoList(filter);
+      }),
+  );
+  document.querySelectorAll(".edit-todo").forEach(
+    (button) =>
+      (button.onclick = () =>
+        openTodoForm(
+          profiles,
+          todos.find((item) => item.id === button.dataset.id),
+          filter,
+        )),
+  );
+  document.querySelectorAll(".delete-todo").forEach(
+    (button) =>
+      (button.onclick = async () => {
+        const item = todos.find((entry) => entry.id === button.dataset.id);
+        if (!item || !confirm(`Delete “${item.title}”?`)) return;
+        await createSnapshot(`Before deleting to-do item ${item.title}`);
+        await deleteItem("todos", item.id);
+        openTodoList(filter);
+      }),
+  );
+}
+
+function openTodoForm(profiles, item, filter) {
+  modalBody.innerHTML = `<h2>Edit task</h2><div class="form-grid"><div class="field"><label>Task</label><input id="editTodoTitle" value="${esc(item.title)}"></div><div class="field"><label>Due date <span class="hint">(optional)</span></label><input id="editTodoDue" type="date" value="${item.dueDate || ""}"></div><div class="field"><label>Child <span class="hint">(optional)</span></label><select id="editTodoProfile"><option value="">General</option>${profiles.map((profile) => `<option value="${profile.id}" ${item.profileId === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="btn-row"><button id="cancelTodoEdit" class="btn secondary" type="button">Back</button><button id="saveTodoEdit" class="btn" type="button">Save task</button></div></div>`;
+  $("#cancelTodoEdit").onclick = () => openTodoList(filter);
+  $("#saveTodoEdit").onclick = async () => {
+    const title = $("#editTodoTitle").value.trim();
+    if (!title) return alert("Please enter a task.");
+    item.title = title;
+    item.dueDate = $("#editTodoDue").value || null;
+    item.profileId = $("#editTodoProfile").value || null;
+    item.updatedAt = nowISO();
+    await put("todos", item);
+    openTodoList(filter);
+  };
 }
 
 async function collectBackup() {
@@ -1382,7 +1742,7 @@ function validateBackup(b) {
 async function previewRestore(file) {
   const b = JSON.parse(await file.text());
   validateBackup(b);
-  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Words:</strong> ${b.data.words.length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
+  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Words and sentences:</strong> ${b.data.words.length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
   modal.showModal();
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");

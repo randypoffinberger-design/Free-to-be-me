@@ -1,4 +1,4 @@
-# More than Measured v0.5.0
+# More than Measured v0.6.0
 
 Initial local-first PWA foundation.
 
@@ -158,3 +158,16 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Search results include sentences containing the searched individual word unless Words only is selected
 - Added sentence editing, deletion, first-said dates, and notes
 - Preserved existing phrases as word entries and maintained backup compatibility
+
+## v0.6.0 changes
+- Speech & Language filters now remain active for the full app session after editing or saving entries
+- Clear Filters still returns to the caregiver’s saved filter defaults
+- Added a searchable plain-language guide to common autism, communication, regulation, and sensory terms
+- Added explanations for stimming, masking, echolalia, meltdowns, shutdowns, support levels, sensory seeking and avoiding, AAC, interoception, proprioception, vestibular processing, and more
+- Added a monthly Caregiver Calendar with doctor, therapy, play-date, school, evaluation, family, and custom appointments
+- Added optional child, time, location, and notes fields to appointments
+- Added appointment editing and protected deletion
+- Added a persistent Caregiver To-do List with optional due dates and child assignments
+- Added Active, All, and Completed task views plus editing, completion, reopening, and protected deletion
+- Added appointments and to-do items to complete backups, restores, and safety checkpoints
+- Upgraded the local database safely without changing its established identity
