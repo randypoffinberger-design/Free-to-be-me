@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.3", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.4", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -428,7 +428,7 @@ async function renderVocabulary() {
   ].sort((a, b) => b - a);
   view.innerHTML = `<section class="hero"><h1>💬 Communication Tracker</h1><p>Track what your child can say, identify, or communicate including ASL.</p></section>
   <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalLetters">0</strong><span>Letters</span></div><div class="speech-stat"><strong id="totalNumbers">0</strong><span>Numbers</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
-  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addLetter" class="btn">Add letter</button><button id="addNumber" class="btn">Add number</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import words from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
+  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addLetter" class="btn">Add letter</button><button id="addNumber" class="btn">Add number</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import entries from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
   <div class="vocab-controls card">
     <div class="field"><label>Child</label><select id="vocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
     <div class="field"><label>Entry type</label><select id="vocabType"><option value="all">All entry types</option><option value="word">Words only</option><option value="sentence">Sentences only</option><option value="letter">Letters only</option><option value="number">Numbers only</option></select></div>
@@ -927,21 +927,59 @@ function openSentenceForm(profiles, item = null) {
 }
 
 function openBulkVocabulary(profiles, existing, categories) {
-  const optionalCategories = `<option value="">None</option>${categories.map((c) => `<option>${esc(c)}</option>`).join("")}`;
-  modalBody.innerHTML = `<h2>Bulk import speech/language</h2><div class="form-grid"><div class="field"><label>Child</label><select id="bulkProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Primary category for this import</label><select id="bulkCategory">${categories.map((c) => `<option>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Secondary category <span class="hint">(optional)</span></label><select id="bulkCategory2">${optionalCategories}</select></div><div class="field"><label>Tertiary category <span class="hint">(optional)</span></label><select id="bulkCategory3">${optionalCategories}</select></div><fieldset class="ability-field"><legend>Abilities for imported entries</legend><label><input id="bulkSpeak" type="checkbox" checked> Speak</label><label><input id="bulkIdentify" type="checkbox"> Identify</label><label><input id="bulkAsl" type="checkbox"> ASL</label></fieldset><div class="field"><label>Fallback date</label><input id="bulkFallback" type="date" value="${isoToday()}"><span class="hint">Used only for lines that do not contain a date or follow a dated heading.</span></div><div class="field"><label>Paste from Notes</label><textarea id="bulkText" class="bulk-text" placeholder="Mama — 4/12/2025&#10;Dada — 4/18/2025&#10;&#10;May 2, 2025&#10;Ball&#10;More"></textarea></div><div class="banner">Nothing will be saved until you review the parsed list.</div><button id="previewBulk" class="btn full" type="button">Parse and review</button></div>`;
+  const protectedCategories = ["Sentences", "Letters", "Numbers"],
+    wordCategoriesOnly = categories.filter(
+      (category) => !protectedCategories.includes(category),
+    ),
+    categoryOptions = wordCategoriesOnly
+      .map((category) => `<option>${esc(category)}</option>`)
+      .join(""),
+    optionalCategories = `<option value="">None</option>${categoryOptions}`;
+  modalBody.innerHTML = `<h2>Bulk import speech/language</h2><div class="form-grid"><div class="field"><label>Child</label><select id="bulkProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Entry type</label><select id="bulkEntryType"><option value="word">Words or phrases</option><option value="letter">Letters</option><option value="number">Numbers</option><option value="sentence">Sentences</option></select><span id="bulkTypeHint" class="hint"></span></div><div class="field"><label>Primary category for this import</label><select id="bulkCategory">${categoryOptions}</select></div><div class="field"><label>Secondary category <span class="hint">(optional)</span></label><select id="bulkCategory2">${optionalCategories}</select></div><div class="field"><label>Tertiary category <span class="hint">(optional)</span></label><select id="bulkCategory3">${optionalCategories}</select></div><fieldset class="ability-field"><legend>Abilities for imported entries</legend><label><input id="bulkSpeak" type="checkbox" checked> Speak</label><label><input id="bulkIdentify" type="checkbox"> Identify</label><label><input id="bulkAsl" type="checkbox"> ASL</label></fieldset><div class="field"><label>Fallback date</label><input id="bulkFallback" type="date" value="${isoToday()}"><span class="hint">Used only for lines that do not contain a date or follow a dated heading.</span></div><div class="field"><label>Paste from Notes</label><textarea id="bulkText" class="bulk-text" placeholder="Mama — 4/12/2025&#10;Dada — 4/18/2025&#10;&#10;May 2, 2025&#10;Ball&#10;More"></textarea><span class="hint">Enter one item per line. Dates and dated headings are supported.</span></div><div class="banner">Nothing will be saved until you review the parsed list.</div><button id="previewBulk" class="btn full" type="button">Parse and review</button></div>`;
   if (!modal.open) modal.showModal();
+  const syncBulkType = () => {
+    const type = $("#bulkEntryType").value,
+      categoryName = {
+        letter: "Letters",
+        number: "Numbers",
+        sentence: "Sentences",
+      }[type],
+      wordType = type === "word";
+    for (const id of ["bulkCategory", "bulkCategory2", "bulkCategory3"])
+      $("#" + id).disabled = !wordType;
+    $("#bulkTypeHint").textContent = wordType
+      ? "Choose up to three categories for these words or phrases."
+      : `These entries will be placed in the protected ${categoryName} category.`;
+    if (type === "sentence") {
+      $("#bulkSpeak").checked = true;
+      $("#bulkIdentify").checked = false;
+      $("#bulkAsl").checked = false;
+    }
+    for (const id of ["bulkSpeak", "bulkIdentify", "bulkAsl"])
+      $("#" + id).disabled = type === "sentence";
+  };
+  $("#bulkEntryType").onchange = syncBulkType;
+  syncBulkType();
   $("#previewBulk").onclick = () => {
     const profileId = $("#bulkProfile").value,
-      category = $("#bulkCategory").value,
-      additionalCategories = [
-        $("#bulkCategory2").value,
-        $("#bulkCategory3").value,
-      ]
-        .filter((c) => c && c !== category)
-        .filter((c, i, a) => a.indexOf(c) === i),
-      speak = $("#bulkSpeak").checked,
-      identify = $("#bulkIdentify").checked,
-      asl = $("#bulkAsl").checked,
+      entryType = $("#bulkEntryType").value,
+      category =
+        entryType === "letter"
+          ? "Letters"
+          : entryType === "number"
+            ? "Numbers"
+            : entryType === "sentence"
+              ? "Sentences"
+              : $("#bulkCategory").value || "Uncategorized",
+      additionalCategories =
+        entryType === "word"
+          ? [$("#bulkCategory2").value, $("#bulkCategory3").value]
+              .filter((c) => c && c !== category)
+              .filter((c, i, a) => a.indexOf(c) === i)
+          : [],
+      speak = entryType === "sentence" || $("#bulkSpeak").checked,
+      identify = entryType !== "sentence" && $("#bulkIdentify").checked,
+      asl = entryType !== "sentence" && $("#bulkAsl").checked,
       parsed = parseBulkVocabulary(
         $("#bulkText").value,
         $("#bulkFallback").value,
@@ -949,14 +987,32 @@ function openBulkVocabulary(profiles, existing, categories) {
     const seen = new Set(
         existing
           .filter(
-            (x) => x.profileId === profileId && x.entryType === "word",
+            (x) => x.profileId === profileId && x.entryType === entryType,
           )
-          .map((x) => wordKey(x.word)),
+          .map((x) =>
+            entryType === "sentence"
+              ? sentenceWordKey(x.word)
+              : wordKey(x.word),
+          ),
       ),
       fresh = [];
-    let duplicates = 0;
+    let duplicates = 0,
+      invalid = parsed.skipped.length;
     for (const entry of parsed.entries) {
-      const key = wordKey(entry.word);
+      const valid =
+          entryType === "letter"
+            ? /^\p{L}$/u.test(entry.word)
+            : entryType === "number"
+              ? /^\p{N}+$/u.test(entry.word)
+              : true,
+        key =
+          entryType === "sentence"
+            ? sentenceWordKey(entry.word)
+            : wordKey(entry.word);
+      if (!valid) {
+        invalid++;
+        continue;
+      }
       if (seen.has(key)) {
         duplicates++;
         continue;
@@ -964,16 +1020,26 @@ function openBulkVocabulary(profiles, existing, categories) {
       seen.add(key);
       fresh.push(entry);
     }
-    modalBody.innerHTML = `<h2>Review import</h2><p><strong>${fresh.length}</strong> ready • ${duplicates} duplicate${duplicates === 1 ? "" : "s"} skipped • ${parsed.skipped.length} unread line${parsed.skipped.length === 1 ? "" : "s"}</p><p class="hint">Categories: ${[category, ...additionalCategories].map(esc).join(", ")} • ${[speak ? "Speak" : "", identify ? "Identify" : "", asl ? "ASL" : ""].filter(Boolean).join(", ") || "No abilities selected"}</p><div class="import-preview">${fresh.map((x) => `<div class="preview-row"><strong>${esc(x.word)}</strong><span>${fmtDate(x.date)}</span></div>`).join("") || "<p>No new entries were found.</p>"}</div><div class="btn-row"><button id="backBulk" class="btn secondary" type="button">Go back</button>${fresh.length ? '<button id="importBulk" class="btn" type="button">Import reviewed entries</button>' : ""}</div>`;
+    modalBody.innerHTML = `<h2>Review import</h2><p><strong>${fresh.length}</strong> ready • ${duplicates} duplicate${duplicates === 1 ? "" : "s"} skipped • ${invalid} invalid or unread line${invalid === 1 ? "" : "s"}</p><p class="hint">Entry type: ${esc(entryType[0].toUpperCase() + entryType.slice(1))} • Categories: ${[category, ...additionalCategories].map(esc).join(", ")} • ${[speak ? "Speak" : "", identify ? "Identify" : "", asl ? "ASL" : ""].filter(Boolean).join(", ") || "No abilities selected"}</p><div class="import-preview">${fresh.map((x) => `<div class="preview-row"><strong>${esc(x.word)}</strong><span>${fmtDate(x.date)}</span></div>`).join("") || "<p>No new entries were found.</p>"}</div><div class="btn-row"><button id="backBulk" class="btn secondary" type="button">Go back</button>${fresh.length ? '<button id="importBulk" class="btn" type="button">Import reviewed entries</button>' : ""}</div>`;
     $("#backBulk").onclick = () =>
       openBulkVocabulary(profiles, existing, categories);
     if (fresh.length)
       $("#importBulk").onclick = async () => {
         await createSnapshot("Before speech/language bulk import");
-        for (const x of fresh)
+        const knownWords = new Set(
+          existing
+            .filter(
+              (item) =>
+                item.profileId === profileId && item.entryType === "word",
+            )
+            .map((item) => sentenceWordKey(item.word)),
+        );
+        let addedSentenceWords = 0;
+        for (const x of fresh) {
+          const entryId = uid();
           await put("words", {
-            id: uid(),
-            entryType: "word",
+            id: entryId,
+            entryType,
             profileId,
             word: x.word,
             date: x.date,
@@ -991,9 +1057,40 @@ function openBulkVocabulary(profiles, existing, categories) {
             updatedAt: nowISO(),
             syncStatus: "local",
           });
+          if (entryType === "sentence") {
+            const missingWords = sentenceWords(x.word).filter(
+              (word) => !knownWords.has(sentenceWordKey(word)),
+            );
+            for (const word of missingWords) {
+              knownWords.add(sentenceWordKey(word));
+              addedSentenceWords++;
+              await put("words", {
+                id: uid(),
+                entryType: "word",
+                profileId,
+                word,
+                date: x.date,
+                category: "Uncategorized",
+                additionalCategories: [],
+                speak: true,
+                identify: false,
+                asl: false,
+                speakDate: x.date,
+                identifyDate: "",
+                aslDate: "",
+                languages: [],
+                notes: "Added automatically from a sentence.",
+                derivedFromSentenceId: entryId,
+                createdAt: nowISO(),
+                updatedAt: nowISO(),
+                syncStatus: "local",
+              });
+            }
+          }
+        }
         modal.close();
         alert(
-          `${fresh.length} ${fresh.length === 1 ? "entry" : "entries"} imported.`,
+          `${fresh.length} ${fresh.length === 1 ? "entry" : "entries"} imported.${addedSentenceWords ? ` ${addedSentenceWords} new individual ${addedSentenceWords === 1 ? "word was" : "words were"} added from the sentences.` : ""}`,
         );
         renderVocabulary();
       };

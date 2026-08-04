@@ -1,4 +1,4 @@
-# More than Measured v0.6.3
+# More than Measured v0.6.4
 
 Initial local-first PWA foundation.
 
@@ -190,3 +190,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added seven new Speech & Language Building cards for future ASL, AAC, flash card, app, and product resources
 - Connected every unfinished card to the standard under-construction popup
 - Kept Communication Tracker fully functional
+
+## v0.6.4 changes
+- Expanded bulk import to support words, phrases, letters, numbers, and sentences
+- Added an entry-type selector and category choices to the bulk importer
+- Places letters, numbers, and sentences in their protected categories automatically
+- Validates single-letter and numeric imports and reports invalid lines during review
+- Bulk sentence imports add genuinely missing individual words just like single sentence entry
