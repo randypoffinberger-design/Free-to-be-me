@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.5", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.6", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -722,16 +722,41 @@ function openFixedEntryPicker(profiles, existing, entryType) {
     choices = isLetter ? Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)) : [...new Set([...Array.from({ length: 101 }, (_, i) => String(i)), ...existing.filter((x) => x.entryType === "number" && /^\d+$/.test(x.word)).map((x) => String(Number(x.word)))])].sort((a, b) => Number(a) - Number(b));
   let selectedProfile = profiles[0]?.id || "";
   const entryFor = (value) => existing.find((x) => x.profileId === selectedProfile && x.entryType === entryType && wordKey(x.word) === wordKey(value));
-  const rowHtml = (value) => { const item = entryFor(value); return `<div class="fixed-entry-row" data-value="${esc(value)}"><strong>${esc(value)}</strong>${[["speak", "Say"], ["identify", "Identify"], ["asl", "ASL"]].map(([key, label]) => `<div class="fixed-ability"><label><input type="checkbox" data-key="${key}" ${item && capabilityValue(item, key) ? "checked" : ""}><span>${label}</span></label><input type="date" data-date-key="${key}" value="${item ? abilityDate(item, key) : ""}" aria-label="${esc(value)} ${label} learned date"></div>`).join("")}</div>`; };
+  const rowHtml = (value) => {
+    const item = entryFor(value), abilities = [["speak", "Say"], ["identify", "Identify"], ["asl", "ASL"]];
+    return `<div class="fixed-entry-block" data-value="${esc(value)}"><div class="fixed-entry-row"><strong>${esc(value)}</strong>${abilities.map(([key, label]) => `<label class="fixed-ability-toggle"><input type="checkbox" data-key="${key}" ${item && capabilityValue(item, key) ? "checked" : ""}><span>${label}</span></label>`).join("")}</div><div class="fixed-entry-dates">${abilities.map(([key, label]) => `<label data-date-wrap="${key}" class="${item && capabilityValue(item, key) ? "" : "hidden"}"><span>${label} date <small>(optional)</small></span><input type="date" data-date-key="${key}" value="${item ? abilityDate(item, key) : ""}" aria-label="${esc(value)} ${label} learned date"></label>`).join("")}</div></div>`;
+  };
   modalBody.innerHTML = `<div class="fixed-entry-picker"><h2>Add or update ${category.toLowerCase()}</h2><div class="field"><label>Child</label><select id="fixedEntryProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><p class="hint">Check each ability learned. Dates are optional and can differ for Say, Identify, and ASL.</p>${isLetter ? "" : `<div class="inline-field"><div class="field"><label>Track numbers beyond 100</label><input id="extraNumber" inputmode="numeric" placeholder="Example: 125"></div><button id="addExtraNumber" class="btn secondary fixed-add-number" type="button">Add number</button></div>`}<div class="fixed-entry-grid"><div class="fixed-entry-head"><strong>${isLetter ? "Letter" : "Number"}</strong>${[["speak", "Say"], ["identify", "Identify"], ["asl", "ASL"]].map(([key, label]) => `<label><input class="fixed-select-all" data-key="${key}" type="checkbox"> Add all ${label}</label>`).join("")}</div><div id="fixedEntryRows">${choices.map(rowHtml).join("")}</div></div><button id="saveFixedEntries" class="btn full" type="button">Save ${category.toLowerCase()}</button></div>`;
   modal.classList.add("wide-modal"); modal.addEventListener("close", () => modal.classList.remove("wide-modal"), { once: true }); if (!modal.open) modal.showModal();
-  const bindRows = () => { document.querySelectorAll(".fixed-entry-row input[type=checkbox]").forEach((box) => box.onchange = () => { if (!box.checked) box.closest(".fixed-ability").querySelector("input[type=date]").value = ""; }); document.querySelectorAll(".fixed-entry-row input[type=date]").forEach((date) => date.onchange = () => { if (date.value) date.closest(".fixed-ability").querySelector("input[type=checkbox]").checked = true; }); };
+  const syncBlockDates = (block) => {
+    let visible = false;
+    for (const key of ["speak", "identify", "asl"]) {
+      const checked = block.querySelector(`[data-key="${key}"]`).checked,
+        wrap = block.querySelector(`[data-date-wrap="${key}"]`);
+      wrap.classList.toggle("hidden", !checked);
+      if (checked) visible = true;
+      else wrap.querySelector("input").value = "";
+    }
+    block.querySelector(".fixed-entry-dates").classList.toggle("hidden", !visible);
+  };
+  const bindRows = () => {
+    document.querySelectorAll(".fixed-entry-block").forEach((block) => {
+      syncBlockDates(block);
+      block.querySelectorAll("input[type=checkbox]").forEach((box) => box.onchange = () => syncBlockDates(block));
+      block.querySelectorAll("input[type=date]").forEach((date) => date.onchange = () => {
+        if (date.value) block.querySelector(`[data-key="${date.dataset.dateKey}"]`).checked = true;
+        syncBlockDates(block);
+      });
+    });
+  };
   const redrawRows = () => { $("#fixedEntryRows").innerHTML = choices.map(rowHtml).join(""); bindRows(); };
   $("#fixedEntryProfile").onchange = (event) => { selectedProfile = event.target.value; redrawRows(); document.querySelectorAll(".fixed-select-all").forEach((box) => box.checked = false); };
-  document.querySelectorAll(".fixed-select-all").forEach((allBox) => allBox.onchange = () => document.querySelectorAll(`.fixed-entry-row input[type=checkbox][data-key="${allBox.dataset.key}"]`).forEach((box) => { box.checked = allBox.checked; if (!box.checked) box.closest(".fixed-ability").querySelector("input[type=date]").value = ""; }));
-  if (!isLetter) $("#addExtraNumber").onclick = () => { const value = $("#extraNumber").value.trim(); if (!/^\d+$/.test(value) || Number(value) <= 100) return alert("Enter a whole number greater than 100."); const normalized = String(Number(value)); if (!choices.includes(normalized)) { choices.push(normalized); choices.sort((a, b) => Number(a) - Number(b)); redrawRows(); } $("#extraNumber").value = ""; document.querySelector(`.fixed-entry-row[data-value="${CSS.escape(normalized)}"]`)?.scrollIntoView({ block: "center" }); };
+  document.querySelectorAll(".fixed-select-all").forEach((allBox) => allBox.onchange = () => {
+    document.querySelectorAll(`.fixed-entry-block input[type=checkbox][data-key="${allBox.dataset.key}"]`).forEach((box) => { box.checked = allBox.checked; syncBlockDates(box.closest(".fixed-entry-block")); });
+  });
+  if (!isLetter) $("#addExtraNumber").onclick = () => { const value = $("#extraNumber").value.trim(); if (!/^\d+$/.test(value) || Number(value) <= 100) return alert("Enter a whole number greater than 100."); const normalized = String(Number(value)); if (!choices.includes(normalized)) { choices.push(normalized); choices.sort((a, b) => Number(a) - Number(b)); redrawRows(); } $("#extraNumber").value = ""; document.querySelector(`.fixed-entry-block[data-value="${CSS.escape(normalized)}"]`)?.scrollIntoView({ block: "center" }); };
   bindRows();
-  $("#saveFixedEntries").onclick = async () => { const changes = []; for (const row of document.querySelectorAll(".fixed-entry-row")) { const value = row.dataset.value, old = entryFor(value), state = {}; for (const key of ["speak", "identify", "asl"]) { state[key] = row.querySelector(`[data-key="${key}"]`).checked; state[`${key}Date`] = row.querySelector(`[data-date-key="${key}"]`).value; } if (!old && !state.speak && !state.identify && !state.asl) continue; const record = { ...(old || {}), id: old?.id || uid(), entryType, profileId: selectedProfile, word: value, category, additionalCategories: [], ...state, languages: old?.languages || [], notes: old?.notes || "", createdAt: old?.createdAt || nowISO(), updatedAt: nowISO(), syncStatus: "local" }; record.date = entryDate(record) || ""; if (!old || ["speak", "identify", "asl", "speakDate", "identifyDate", "aslDate"].some((key) => old[key] !== record[key])) changes.push(record); } if (!changes.length) return alert("No changes were selected."); await createSnapshot(`Before updating ${category.toLowerCase()}`); for (const record of changes) await put("words", record); modal.close(); renderVocabulary(); };
+  $("#saveFixedEntries").onclick = async () => { const changes = []; for (const row of document.querySelectorAll(".fixed-entry-block")) { const value = row.dataset.value, old = entryFor(value), state = {}; for (const key of ["speak", "identify", "asl"]) { state[key] = row.querySelector(`[data-key="${key}"]`).checked; state[`${key}Date`] = row.querySelector(`[data-date-key="${key}"]`).value; } if (!old && !state.speak && !state.identify && !state.asl) continue; const record = { ...(old || {}), id: old?.id || uid(), entryType, profileId: selectedProfile, word: value, category, additionalCategories: [], ...state, languages: old?.languages || [], notes: old?.notes || "", createdAt: old?.createdAt || nowISO(), updatedAt: nowISO(), syncStatus: "local" }; record.date = entryDate(record) || ""; if (!old || ["speak", "identify", "asl", "speakDate", "identifyDate", "aslDate"].some((key) => old[key] !== record[key])) changes.push(record); } if (!changes.length) return alert("No changes were selected."); await createSnapshot(`Before updating ${category.toLowerCase()}`); for (const record of changes) await put("words", record); modal.close(); renderVocabulary(); };
 }
 
 function openWordForm(profiles, item = null, categories = [], initialType = "word") {

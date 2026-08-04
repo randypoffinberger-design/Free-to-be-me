@@ -1,4 +1,4 @@
-# More than Measured v0.6.5
+# More than Measured v0.6.6
 
 Initial local-first PWA foundation.
 
@@ -205,3 +205,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added Say and ASL tracking with independent dates for sentences and bulk sentence imports
 - Kept Identify unavailable for sentences while retaining it for all other entry types
 - Preserved existing entries and complete backup compatibility
+
+## v0.6.6 changes
+- Removed horizontal scrolling from the letter and number pickers
+- Kept Letter/Number, Say, Identify, and ASL checkboxes visible together on phones
+- Hid the large optional date fields until the related ability is selected
+- Displayed selected ability dates in a compact expandable area beneath that entry
+- Preserved all v0.6.5 data and behavior
