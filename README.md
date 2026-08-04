@@ -1,4 +1,4 @@
-# More than Measured v0.6.6
+# More than Measured v0.6.7
 
 Initial local-first PWA foundation.
 
@@ -212,3 +212,9 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Hid the large optional date fields until the related ability is selected
 - Displayed selected ability dates in a compact expandable area beneath that entry
 - Preserved all v0.6.5 data and behavior
+
+## v0.6.7 changes
+- Fixed words with no active ability being hidden when all ability filters are selected
+- Search can now reveal an untracked word so its Say, Identify, or ASL status can be corrected
+- Unchecking an ability now clears its learned date to prevent contradictory records
+- Preserved the compact letter and number picker introduced in v0.6.6

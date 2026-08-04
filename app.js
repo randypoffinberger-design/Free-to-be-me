@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.6", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.7", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -547,7 +547,7 @@ async function renderVocabulary() {
         (profile === "all" || x.profileId === profile) &&
         (type === "all" || x.entryType === type) &&
         (!category || assigned.includes(category)) &&
-        selected.some((k) => capabilityValue(x, k)) &&
+        (selected.length === 3 || selected.some((k) => capabilityValue(x, k))) &&
         entryMatchesSearch(x, q) &&
         (!exact || dates.includes(exact)) &&
         ((!exact && !year) || dates.some((d) => d.startsWith(year))) &&
@@ -637,6 +637,7 @@ async function renderVocabulary() {
           item[box.dataset.key] = box.checked;
           if (box.checked && !item[`${box.dataset.key}Date`])
             item[`${box.dataset.key}Date`] = isoToday();
+          if (!box.checked) item[`${box.dataset.key}Date`] = "";
           item.date = entryDate(item) || item.date;
           item.updatedAt = nowISO();
           await put("words", item);
