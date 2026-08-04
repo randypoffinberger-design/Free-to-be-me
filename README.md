@@ -1,4 +1,4 @@
-# More than Measured v0.6.7
+# More than Measured v0.6.8
 
 Initial local-first PWA foundation.
 
@@ -218,3 +218,11 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Search can now reveal an untracked word so its Say, Identify, or ASL status can be corrected
 - Unchecking an ability now clears its learned date to prevent contradictory records
 - Preserved the compact letter and number picker introduced in v0.6.6
+
+## v0.6.8 changes
+- Added a New word detected review before sentence words are automatically added, including bulk sentence imports
+- Defaults each detected word to the sentence date
+- Allows a different first-said date to be chosen for each detected word
+- Restored responsive Speak, Identify, and ASL result filtering
+- Keeps directly searched ability-less records visible so they can be corrected
+- Clears learned dates whenever an ability is unchecked in cards or edit forms

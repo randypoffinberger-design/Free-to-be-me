@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.7", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.8", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -547,7 +547,8 @@ async function renderVocabulary() {
         (profile === "all" || x.profileId === profile) &&
         (type === "all" || x.entryType === type) &&
         (!category || assigned.includes(category)) &&
-        (selected.length === 3 || selected.some((k) => capabilityValue(x, k))) &&
+        (selected.some((k) => capabilityValue(x, k)) ||
+          (q && !["speak", "identify", "asl"].some((k) => capabilityValue(x, k)))) &&
         entryMatchesSearch(x, q) &&
         (!exact || dates.includes(exact)) &&
         ((!exact && !year) || dates.some((d) => d.startsWith(year))) &&
@@ -811,6 +812,7 @@ function openWordForm(profiles, item = null, categories = [], initialType = "wor
       date = $("#word" + key + "Date");
     box.onchange = () => {
       if (box.checked && !date.value) date.value = isoToday();
+      if (!box.checked) date.value = "";
     };
     date.onchange = () => {
       if (date.value) box.checked = true;
@@ -906,12 +908,14 @@ function openSentenceForm(profiles, item = null) {
       missing = sentenceWords(sentence).filter(
         (word) => !known.has(sentenceWordKey(word)),
       ),
-      sentenceId = item?.id || uid();
-    if (speak && missing.length)
+      sentenceId = item?.id || uid(),
+      notes = $("#sentenceNotes").value.trim();
+    const saveSentenceAndWords = async (wordDates = {}) => {
+      if (speak && missing.length)
       await createSnapshot(
         `Before adding ${missing.length} individual words from a sentence`,
       );
-    await put("words", {
+      await put("words", {
       id: sentenceId,
       entryType: "sentence",
       profileId,
@@ -926,24 +930,25 @@ function openSentenceForm(profiles, item = null) {
       identifyDate: "",
       aslDate,
       languages: [],
-      notes: $("#sentenceNotes").value.trim(),
+      notes,
       createdAt: item?.createdAt || nowISO(),
       updatedAt: nowISO(),
       syncStatus: "local",
     });
-    for (const word of speak ? missing : [])
-      await put("words", {
+      for (const word of speak ? missing : []) {
+        const wordDate = wordDates[sentenceWordKey(word)] ?? speakDate;
+        await put("words", {
         id: uid(),
         entryType: "word",
         profileId,
         word,
-        date: speakDate,
+        date: wordDate,
         category: "Uncategorized",
         additionalCategories: [],
         speak: true,
         identify: false,
         asl: false,
-        speakDate,
+        speakDate: wordDate,
         identifyDate: "",
         aslDate: "",
         languages: [],
@@ -952,14 +957,32 @@ function openSentenceForm(profiles, item = null) {
         createdAt: nowISO(),
         updatedAt: nowISO(),
         syncStatus: "local",
-      });
-    modal.close();
-    alert(
-      speak && missing.length
-        ? `Sentence saved. ${missing.length} new individual ${missing.length === 1 ? "word was" : "words were"} added.`
-        : speak ? "Sentence saved. Every word was already in the individual word list." : "ASL sentence saved.",
-    );
-    renderVocabulary();
+        });
+      }
+      modal.close();
+      alert(
+        speak && missing.length
+          ? `Sentence saved. ${missing.length} new individual ${missing.length === 1 ? "word was" : "words were"} added.`
+          : speak ? "Sentence saved. Every word was already in the individual word list." : "ASL sentence saved.",
+      );
+      renderVocabulary();
+    };
+    if (speak && missing.length) {
+      modalBody.innerHTML = `<h2>New ${missing.length === 1 ? "word" : "words"} detected</h2><div class="banner">${missing.length === 1 ? "A new word was" : "New words were"} detected in this sentence. ${missing.length === 1 ? "It will" : "They will"} be added to the word list.</div><p class="hint">Each word will use the sentence date${speakDate ? ` (${fmtDate(speakDate)})` : ""} unless you choose a different date.</p><div class="new-word-review">${missing.map((word) => `<div class="new-word-row" data-word-key="${esc(sentenceWordKey(word))}"><strong>${esc(word)}</strong><label><input class="custom-word-date-toggle" type="checkbox"> Use a different date</label><input class="custom-word-date hidden" type="date" value="${speakDate}" aria-label="Date first said for ${esc(word)}"></div>`).join("")}</div><button id="confirmSentenceWords" class="btn full" type="button">Add ${missing.length === 1 ? "word" : "words"} and save sentence</button>`;
+      document.querySelectorAll(".custom-word-date-toggle").forEach((box) => box.onchange = () => box.closest(".new-word-row").querySelector(".custom-word-date").classList.toggle("hidden", !box.checked));
+      $("#confirmSentenceWords").onclick = () => {
+        const wordDates = {};
+        for (const row of document.querySelectorAll(".new-word-row")) {
+          const custom = row.querySelector(".custom-word-date-toggle").checked,
+            date = row.querySelector(".custom-word-date").value;
+          if (custom && !date) return alert("Choose a date for each word marked to use a different date.");
+          wordDates[row.dataset.wordKey] = custom ? date : speakDate;
+        }
+        saveSentenceAndWords(wordDates);
+      };
+      return;
+    }
+    await saveSentenceAndWords();
   };
 }
 
@@ -1059,11 +1082,30 @@ function openBulkVocabulary(profiles, existing, categories) {
       seen.add(key);
       fresh.push(entry);
     }
-    modalBody.innerHTML = `<h2>Review import</h2><p><strong>${fresh.length}</strong> ready • ${duplicates} duplicate${duplicates === 1 ? "" : "s"} skipped • ${invalid} invalid or unread line${invalid === 1 ? "" : "s"}</p><p class="hint">Entry type: ${esc(entryType[0].toUpperCase() + entryType.slice(1))} • Categories: ${[category, ...additionalCategories].map(esc).join(", ")} • ${[speak ? "Speak" : "", identify ? "Identify" : "", asl ? "ASL" : ""].filter(Boolean).join(", ") || "No abilities selected"}</p><div class="import-preview">${fresh.map((x) => `<div class="preview-row"><strong>${esc(x.word)}</strong><span>${fmtDate(x.date)}</span></div>`).join("") || "<p>No new entries were found.</p>"}</div><div class="btn-row"><button id="backBulk" class="btn secondary" type="button">Go back</button>${fresh.length ? '<button id="importBulk" class="btn" type="button">Import reviewed entries</button>' : ""}</div>`;
+    const bulkDetectedWords = [];
+    if (entryType === "sentence" && speak) {
+      const knownWords = new Set(existing.filter((x) => x.profileId === profileId && x.entryType === "word").map((x) => sentenceWordKey(x.word)));
+      for (const sentence of fresh)
+        for (const word of sentenceWords(sentence.word)) {
+          const key = sentenceWordKey(word);
+          if (!knownWords.has(key)) {
+            knownWords.add(key);
+            bulkDetectedWords.push({ word, key, date: sentence.date });
+          }
+        }
+    }
+    modalBody.innerHTML = `<h2>Review import</h2><p><strong>${fresh.length}</strong> ready • ${duplicates} duplicate${duplicates === 1 ? "" : "s"} skipped • ${invalid} invalid or unread line${invalid === 1 ? "" : "s"}</p><p class="hint">Entry type: ${esc(entryType[0].toUpperCase() + entryType.slice(1))} • Categories: ${[category, ...additionalCategories].map(esc).join(", ")} • ${[speak ? "Speak" : "", identify ? "Identify" : "", asl ? "ASL" : ""].filter(Boolean).join(", ") || "No abilities selected"}</p><div class="import-preview">${fresh.map((x) => `<div class="preview-row"><strong>${esc(x.word)}</strong><span>${fmtDate(x.date)}</span></div>`).join("") || "<p>No new entries were found.</p>"}</div>${bulkDetectedWords.length ? `<h3>New ${bulkDetectedWords.length === 1 ? "word" : "words"} detected</h3><div class="banner">These will be added to the individual word list using each sentence’s date unless changed below.</div><div class="new-word-review">${bulkDetectedWords.map((x) => `<div class="new-word-row" data-word-key="${esc(x.key)}"><strong>${esc(x.word)}</strong><span class="hint">Sentence date: ${fmtDate(x.date)}</span><label><input class="custom-word-date-toggle" type="checkbox"> Use a different date</label><input class="custom-word-date hidden" type="date" value="${x.date}" data-default-date="${x.date}" aria-label="Date first said for ${esc(x.word)}"></div>`).join("")}</div>` : ""}<div class="btn-row"><button id="backBulk" class="btn secondary" type="button">Go back</button>${fresh.length ? '<button id="importBulk" class="btn" type="button">Import reviewed entries</button>' : ""}</div>`;
+    document.querySelectorAll(".custom-word-date-toggle").forEach((box) => box.onchange = () => box.closest(".new-word-row").querySelector(".custom-word-date").classList.toggle("hidden", !box.checked));
     $("#backBulk").onclick = () =>
       openBulkVocabulary(profiles, existing, categories);
     if (fresh.length)
       $("#importBulk").onclick = async () => {
+        const bulkWordDates = {};
+        for (const row of document.querySelectorAll(".new-word-row")) {
+          const input = row.querySelector(".custom-word-date"), custom = row.querySelector(".custom-word-date-toggle").checked;
+          if (custom && !input.value) return alert("Choose a date for each word marked to use a different date.");
+          bulkWordDates[row.dataset.wordKey] = custom ? input.value : input.dataset.defaultDate;
+        }
         await createSnapshot("Before speech/language bulk import");
         const knownWords = new Set(
           existing
@@ -1101,6 +1143,7 @@ function openBulkVocabulary(profiles, existing, categories) {
               (word) => !knownWords.has(sentenceWordKey(word)),
             );
             for (const word of missingWords) {
+              const wordDate = bulkWordDates[sentenceWordKey(word)] ?? x.date;
               knownWords.add(sentenceWordKey(word));
               addedSentenceWords++;
               await put("words", {
@@ -1108,13 +1151,13 @@ function openBulkVocabulary(profiles, existing, categories) {
                 entryType: "word",
                 profileId,
                 word,
-                date: x.date,
+                date: wordDate,
                 category: "Uncategorized",
                 additionalCategories: [],
                 speak: true,
                 identify: false,
                 asl: false,
-                speakDate: x.date,
+                speakDate: wordDate,
                 identifyDate: "",
                 aslDate: "",
                 languages: [],
