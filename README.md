@@ -1,4 +1,4 @@
-# More than Measured v0.6.2
+# More than Measured v0.6.3
 
 Initial local-first PWA foundation.
 
@@ -185,3 +185,8 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Updated homepage and drawer navigation to open Speech & Language Building first
 - Renamed the tracker page heading to Communication Tracker
 - Preserved all existing communication entries, filters, and backups
+
+## v0.6.3 changes
+- Added seven new Speech & Language Building cards for future ASL, AAC, flash card, app, and product resources
+- Connected every unfinished card to the standard under-construction popup
+- Kept Communication Tracker fully functional

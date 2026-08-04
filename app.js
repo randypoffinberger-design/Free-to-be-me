@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.2", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.3", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -390,8 +390,20 @@ function renderSpeechBuilding() {
   <h2 class="section-title">Communication tools</h2>
   <div class="grid">
     <button class="card-button" data-go="vocabulary"><span class="emoji">💬</span><strong>Communication Tracker</strong><small>Track words, sentences, letters, numbers, identification, speech, and ASL.</small></button>
+    <button class="card-button speech-future" data-feature="ASL for ASD"><span class="emoji">🤟</span><strong>ASL for ASD</strong><small>ASL support designed with autistic children in mind.</small></button>
+    <button class="card-button speech-future" data-feature="ASL Quick Guide"><span class="emoji">🖐️</span><strong>ASL Quick Guide</strong><small>A quick reference for useful everyday signs.</small></button>
+    <button class="card-button speech-future" data-feature="How to Use ASL"><span class="emoji">📘</span><strong>How to Use ASL</strong><small>Practical guidance for introducing and using ASL.</small></button>
+    <button class="card-button speech-future" data-feature="AAC and Your Child"><span class="emoji">🔊</span><strong>AAC and Your Child</strong><small>Information about augmentative and alternative communication.</small></button>
+    <button class="card-button speech-future" data-feature="Flash Cards for ASD"><span class="emoji">🃏</span><strong>Flash Cards for ASD</strong><small>Visual cards for communication and language practice.</small></button>
+    <button class="card-button speech-future" data-feature="Speech Language Apps"><span class="emoji">📱</span><strong>Speech Language APPS</strong><small>Helpful apps for speech, language, and communication.</small></button>
+    <button class="card-button speech-future" data-feature="Links to Products"><span class="emoji">🛍️</span><strong>Links to Products</strong><small>Communication tools and related product links.</small></button>
   </div>`;
   bindRouteButtons();
+  document
+    .querySelectorAll(".speech-future")
+    .forEach((button) =>
+      (button.onclick = () => underConstruction(button.dataset.feature)),
+    );
 }
 
 async function renderVocabulary() {
