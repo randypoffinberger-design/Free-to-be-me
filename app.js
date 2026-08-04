@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.4", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.5", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -427,7 +427,7 @@ async function renderVocabulary() {
     ),
   ].sort((a, b) => b - a);
   view.innerHTML = `<section class="hero"><h1>💬 Communication Tracker</h1><p>Track what your child can say, identify, or communicate including ASL.</p></section>
-  <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalLetters">0</strong><span>Letters</span></div><div class="speech-stat"><strong id="totalNumbers">0</strong><span>Numbers</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
+  <div class="speech-totals card" aria-label="Speech and language totals"><div class="totals-heading">Type</div><div class="totals-heading">Total</div><div class="totals-heading">Say</div><div class="totals-heading">Identify</div><div class="totals-heading">ASL</div>${[["Words", "Words"], ["Sentences", "Sentences"], ["Letters", "Letters"], ["Numbers", "Numbers"]].map(([label, id]) => `<div class="totals-label">${label}</div><strong id="total${id}">0</strong><strong id="total${id}Speak">0</strong><strong id="total${id}Identify">0</strong><strong id="total${id}Asl">0</strong>`).join("")}</div>
   <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addLetter" class="btn">Add letter</button><button id="addNumber" class="btn">Add number</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import entries from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
   <div class="vocab-controls card">
     <div class="field"><label>Child</label><select id="vocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
@@ -527,21 +527,16 @@ async function renderVocabulary() {
       totalWords = totals.filter((x) => x.entryType === "word"),
       totalSentences = totals.filter((x) => x.entryType === "sentence"),
       totalLetters = totals.filter((x) => x.entryType === "letter"),
-      totalNumbers = totals.filter((x) => x.entryType === "number"),
-      abilityEntries = totals.filter((x) => x.entryType !== "sentence");
+      totalNumbers = totals.filter((x) => x.entryType === "number");
     $("#totalWords").textContent = totalWords.length;
     $("#totalSentences").textContent = totalSentences.length;
     $("#totalLetters").textContent = totalLetters.length;
     $("#totalNumbers").textContent = totalNumbers.length;
-    $("#totalSpeak").textContent = abilityEntries.filter((x) =>
-      capabilityValue(x, "speak"),
-    ).length;
-    $("#totalIdentify").textContent = abilityEntries.filter((x) =>
-      capabilityValue(x, "identify"),
-    ).length;
-    $("#totalAsl").textContent = abilityEntries.filter((x) =>
-      capabilityValue(x, "asl"),
-    ).length;
+    for (const [id, entries, sentence] of [["Words", totalWords, false], ["Sentences", totalSentences, true], ["Letters", totalLetters, false], ["Numbers", totalNumbers, false]]) {
+      $("#total" + id + "Speak").textContent = entries.filter((x) => capabilityValue(x, "speak")).length;
+      $("#total" + id + "Identify").textContent = sentence ? "—" : entries.filter((x) => capabilityValue(x, "identify")).length;
+      $("#total" + id + "Asl").textContent = entries.filter((x) => capabilityValue(x, "asl")).length;
+    }
     let shown = words.filter((x) => {
       const dates = selected
           .filter((k) => capabilityValue(x, k))
@@ -580,7 +575,7 @@ async function renderVocabulary() {
     const drawCard = (x) => {
       const controls =
         x.entryType === "sentence"
-          ? `<div class="ability-checks"><div class="ability-row"><label>First said</label><input type="date" class="ability-date" data-id="${x.id}" data-key="speak" value="${abilityDate(x, "speak")}" aria-label="Sentence first said date"></div></div>`
+          ? `<div class="ability-checks"><div class="ability-row"><label><input type="checkbox" class="ability-toggle" data-id="${x.id}" data-key="speak" ${capabilityValue(x, "speak") ? "checked" : ""}> Say</label><input type="date" class="ability-date" data-id="${x.id}" data-key="speak" value="${abilityDate(x, "speak")}" aria-label="Sentence first said date"></div><div class="ability-row"><label><input type="checkbox" class="ability-toggle" data-id="${x.id}" data-key="asl" ${capabilityValue(x, "asl") ? "checked" : ""}> ASL</label><input type="date" class="ability-date" data-id="${x.id}" data-key="asl" value="${abilityDate(x, "asl")}" aria-label="Sentence ASL learned date"></div></div>`
           : `<div class="ability-checks">${[
               ["speak", "Speak"],
               ["identify", "Identify"],
@@ -712,16 +707,31 @@ async function renderVocabulary() {
     refresh();
   };
   $("#addWord").onclick = () => openWordForm(profiles, null, categories);
-  $("#addLetter").onclick = () =>
-    openWordForm(profiles, null, categories, "letter");
-  $("#addNumber").onclick = () =>
-    openWordForm(profiles, null, categories, "number");
+  $("#addLetter").onclick = () => openFixedEntryPicker(profiles, words, "letter");
+  $("#addNumber").onclick = () => openFixedEntryPicker(profiles, words, "number");
   $("#addSentence").onclick = () => openSentenceForm(profiles);
   $("#bulkWords").onclick = () =>
     openBulkVocabulary(profiles, words, categories);
   $("#manageCategories").onclick = () => openCategoryManager(categories);
   applyFilterDefaults();
   refresh();
+}
+
+function openFixedEntryPicker(profiles, existing, entryType) {
+  const isLetter = entryType === "letter", category = isLetter ? "Letters" : "Numbers",
+    choices = isLetter ? Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)) : [...new Set([...Array.from({ length: 101 }, (_, i) => String(i)), ...existing.filter((x) => x.entryType === "number" && /^\d+$/.test(x.word)).map((x) => String(Number(x.word)))])].sort((a, b) => Number(a) - Number(b));
+  let selectedProfile = profiles[0]?.id || "";
+  const entryFor = (value) => existing.find((x) => x.profileId === selectedProfile && x.entryType === entryType && wordKey(x.word) === wordKey(value));
+  const rowHtml = (value) => { const item = entryFor(value); return `<div class="fixed-entry-row" data-value="${esc(value)}"><strong>${esc(value)}</strong>${[["speak", "Say"], ["identify", "Identify"], ["asl", "ASL"]].map(([key, label]) => `<div class="fixed-ability"><label><input type="checkbox" data-key="${key}" ${item && capabilityValue(item, key) ? "checked" : ""}><span>${label}</span></label><input type="date" data-date-key="${key}" value="${item ? abilityDate(item, key) : ""}" aria-label="${esc(value)} ${label} learned date"></div>`).join("")}</div>`; };
+  modalBody.innerHTML = `<div class="fixed-entry-picker"><h2>Add or update ${category.toLowerCase()}</h2><div class="field"><label>Child</label><select id="fixedEntryProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><p class="hint">Check each ability learned. Dates are optional and can differ for Say, Identify, and ASL.</p>${isLetter ? "" : `<div class="inline-field"><div class="field"><label>Track numbers beyond 100</label><input id="extraNumber" inputmode="numeric" placeholder="Example: 125"></div><button id="addExtraNumber" class="btn secondary fixed-add-number" type="button">Add number</button></div>`}<div class="fixed-entry-grid"><div class="fixed-entry-head"><strong>${isLetter ? "Letter" : "Number"}</strong>${[["speak", "Say"], ["identify", "Identify"], ["asl", "ASL"]].map(([key, label]) => `<label><input class="fixed-select-all" data-key="${key}" type="checkbox"> Add all ${label}</label>`).join("")}</div><div id="fixedEntryRows">${choices.map(rowHtml).join("")}</div></div><button id="saveFixedEntries" class="btn full" type="button">Save ${category.toLowerCase()}</button></div>`;
+  modal.classList.add("wide-modal"); modal.addEventListener("close", () => modal.classList.remove("wide-modal"), { once: true }); if (!modal.open) modal.showModal();
+  const bindRows = () => { document.querySelectorAll(".fixed-entry-row input[type=checkbox]").forEach((box) => box.onchange = () => { if (!box.checked) box.closest(".fixed-ability").querySelector("input[type=date]").value = ""; }); document.querySelectorAll(".fixed-entry-row input[type=date]").forEach((date) => date.onchange = () => { if (date.value) date.closest(".fixed-ability").querySelector("input[type=checkbox]").checked = true; }); };
+  const redrawRows = () => { $("#fixedEntryRows").innerHTML = choices.map(rowHtml).join(""); bindRows(); };
+  $("#fixedEntryProfile").onchange = (event) => { selectedProfile = event.target.value; redrawRows(); document.querySelectorAll(".fixed-select-all").forEach((box) => box.checked = false); };
+  document.querySelectorAll(".fixed-select-all").forEach((allBox) => allBox.onchange = () => document.querySelectorAll(`.fixed-entry-row input[type=checkbox][data-key="${allBox.dataset.key}"]`).forEach((box) => { box.checked = allBox.checked; if (!box.checked) box.closest(".fixed-ability").querySelector("input[type=date]").value = ""; }));
+  if (!isLetter) $("#addExtraNumber").onclick = () => { const value = $("#extraNumber").value.trim(); if (!/^\d+$/.test(value) || Number(value) <= 100) return alert("Enter a whole number greater than 100."); const normalized = String(Number(value)); if (!choices.includes(normalized)) { choices.push(normalized); choices.sort((a, b) => Number(a) - Number(b)); redrawRows(); } $("#extraNumber").value = ""; document.querySelector(`.fixed-entry-row[data-value="${CSS.escape(normalized)}"]`)?.scrollIntoView({ block: "center" }); };
+  bindRows();
+  $("#saveFixedEntries").onclick = async () => { const changes = []; for (const row of document.querySelectorAll(".fixed-entry-row")) { const value = row.dataset.value, old = entryFor(value), state = {}; for (const key of ["speak", "identify", "asl"]) { state[key] = row.querySelector(`[data-key="${key}"]`).checked; state[`${key}Date`] = row.querySelector(`[data-date-key="${key}"]`).value; } if (!old && !state.speak && !state.identify && !state.asl) continue; const record = { ...(old || {}), id: old?.id || uid(), entryType, profileId: selectedProfile, word: value, category, additionalCategories: [], ...state, languages: old?.languages || [], notes: old?.notes || "", createdAt: old?.createdAt || nowISO(), updatedAt: nowISO(), syncStatus: "local" }; record.date = entryDate(record) || ""; if (!old || ["speak", "identify", "asl", "speakDate", "identifyDate", "aslDate"].some((key) => old[key] !== record[key])) changes.push(record); } if (!changes.length) return alert("No changes were selected."); await createSnapshot(`Before updating ${category.toLowerCase()}`); for (const record of changes) await put("words", record); modal.close(); renderVocabulary(); };
 }
 
 function openWordForm(profiles, item = null, categories = [], initialType = "word") {
@@ -839,15 +849,16 @@ function openWordForm(profiles, item = null, categories = [], initialType = "wor
 }
 
 function openSentenceForm(profiles, item = null) {
-  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} sentence</h2><div class="form-grid"><div class="field"><label>Child</label><select id="sentenceProfile">${profiles.map((p) => `<option value="${p.id}" ${item?.profileId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Sentence</label><textarea id="sentenceText" class="sentence-text" placeholder="I want the blue ball">${esc(item?.word || "")}</textarea><span class="hint">Each word will be compared with this child’s individual word list. Missing words will be added automatically.</span></div><div class="field"><label>Date first said</label><input id="sentenceDate" type="date" value="${item ? abilityDate(item, "speak") : isoToday()}"></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="sentenceNotes">${esc(item?.notes || "")}</textarea></div><button id="saveSentence" class="btn full" type="button">Save sentence</button></div>`;
+  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} sentence</h2><div class="form-grid"><div class="field"><label>Child</label><select id="sentenceProfile">${profiles.map((p) => `<option value="${p.id}" ${item?.profileId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Sentence</label><textarea id="sentenceText" class="sentence-text" placeholder="I want the blue ball">${esc(item?.word || "")}</textarea><span class="hint">Missing spoken words will be added automatically.</span></div><fieldset class="ability-field dated-abilities"><legend>Sentence abilities and dates learned</legend><div class="ability-row"><label><input id="sentenceSpeak" type="checkbox" ${item ? (capabilityValue(item, "speak") ? "checked" : "") : "checked"}> Say</label><input id="sentenceSpeakDate" type="date" value="${item ? abilityDate(item, "speak") : isoToday()}"></div><div class="ability-row"><label><input id="sentenceAsl" type="checkbox" ${item && capabilityValue(item, "asl") ? "checked" : ""}> ASL</label><input id="sentenceAslDate" type="date" value="${item ? abilityDate(item, "asl") : ""}"></div></fieldset><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="sentenceNotes">${esc(item?.notes || "")}</textarea></div><button id="saveSentence" class="btn full" type="button">Save sentence</button></div>`;
   if (!modal.open) modal.showModal();
+  for (const key of ["Speak", "Asl"]) { const box = $("#sentence" + key), date = $("#sentence" + key + "Date"); box.onchange = () => { if (!box.checked) date.value = ""; }; date.onchange = () => { if (date.value) box.checked = true; }; }
   $("#saveSentence").onclick = async () => {
     const sentence = $("#sentenceText").value.trim(),
       profileId = $("#sentenceProfile").value,
-      date = $("#sentenceDate").value;
+      speak = $("#sentenceSpeak").checked, asl = $("#sentenceAsl").checked,
+      speakDate = $("#sentenceSpeakDate").value, aslDate = $("#sentenceAslDate").value;
     if (!sentence) return alert("Please enter a sentence.");
-    if (!date)
-      return alert("Please enter the date the sentence was first said.");
+    if (!speak && !asl) return alert("Select Say, ASL, or both for this sentence.");
     const all = await normalizeVocabulary(await getAll("words"));
     if (
       all.some(
@@ -870,7 +881,7 @@ function openSentenceForm(profiles, item = null) {
         (word) => !known.has(sentenceWordKey(word)),
       ),
       sentenceId = item?.id || uid();
-    if (missing.length)
+    if (speak && missing.length)
       await createSnapshot(
         `Before adding ${missing.length} individual words from a sentence`,
       );
@@ -879,34 +890,34 @@ function openSentenceForm(profiles, item = null) {
       entryType: "sentence",
       profileId,
       word: sentence,
-      date,
+      date: speakDate || aslDate || "",
       category: "Sentences",
       additionalCategories: [],
-      speak: true,
+      speak,
       identify: false,
-      asl: false,
-      speakDate: date,
+      asl,
+      speakDate,
       identifyDate: "",
-      aslDate: "",
+      aslDate,
       languages: [],
       notes: $("#sentenceNotes").value.trim(),
       createdAt: item?.createdAt || nowISO(),
       updatedAt: nowISO(),
       syncStatus: "local",
     });
-    for (const word of missing)
+    for (const word of speak ? missing : [])
       await put("words", {
         id: uid(),
         entryType: "word",
         profileId,
         word,
-        date,
+        date: speakDate,
         category: "Uncategorized",
         additionalCategories: [],
         speak: true,
         identify: false,
         asl: false,
-        speakDate: date,
+        speakDate,
         identifyDate: "",
         aslDate: "",
         languages: [],
@@ -918,9 +929,9 @@ function openSentenceForm(profiles, item = null) {
       });
     modal.close();
     alert(
-      missing.length
+      speak && missing.length
         ? `Sentence saved. ${missing.length} new individual ${missing.length === 1 ? "word was" : "words were"} added.`
-        : "Sentence saved. Every word was already in the individual word list.",
+        : speak ? "Sentence saved. Every word was already in the individual word list." : "ASL sentence saved.",
     );
     renderVocabulary();
   };
@@ -953,10 +964,11 @@ function openBulkVocabulary(profiles, existing, categories) {
     if (type === "sentence") {
       $("#bulkSpeak").checked = true;
       $("#bulkIdentify").checked = false;
-      $("#bulkAsl").checked = false;
     }
-    for (const id of ["bulkSpeak", "bulkIdentify", "bulkAsl"])
-      $("#" + id).disabled = type === "sentence";
+    $("#bulkSpeak").disabled = false;
+    $("#bulkAsl").disabled = false;
+    $("#bulkIdentify").disabled = type === "sentence";
+    $("#bulkIdentify").closest("label").classList.toggle("hidden", type === "sentence");
   };
   $("#bulkEntryType").onchange = syncBulkType;
   syncBulkType();
@@ -977,13 +989,14 @@ function openBulkVocabulary(profiles, existing, categories) {
               .filter((c) => c && c !== category)
               .filter((c, i, a) => a.indexOf(c) === i)
           : [],
-      speak = entryType === "sentence" || $("#bulkSpeak").checked,
+      speak = $("#bulkSpeak").checked,
       identify = entryType !== "sentence" && $("#bulkIdentify").checked,
-      asl = entryType !== "sentence" && $("#bulkAsl").checked,
+      asl = $("#bulkAsl").checked,
       parsed = parseBulkVocabulary(
         $("#bulkText").value,
         $("#bulkFallback").value,
       );
+    if (!speak && !identify && !asl) return alert("Select at least one ability for this import.");
     const seen = new Set(
         existing
           .filter(
@@ -1057,7 +1070,7 @@ function openBulkVocabulary(profiles, existing, categories) {
             updatedAt: nowISO(),
             syncStatus: "local",
           });
-          if (entryType === "sentence") {
+          if (entryType === "sentence" && speak) {
             const missingWords = sentenceWords(x.word).filter(
               (word) => !knownWords.has(sentenceWordKey(word)),
             );

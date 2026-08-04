@@ -1,4 +1,4 @@
-# More than Measured v0.6.4
+# More than Measured v0.6.5
 
 Initial local-first PWA foundation.
 
@@ -197,3 +197,11 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Places letters, numbers, and sentences in their protected categories automatically
 - Validates single-letter and numeric imports and reports invalid lines during review
 - Bulk sentence imports add genuinely missing individual words just like single sentence entry
+
+## v0.6.5 changes
+- Added complete A–Z and 0–100 ability pickers, plus custom numbers beyond 100
+- Added column-level Add all controls and separate optional Say, Identify, and ASL dates
+- Reworked totals into per-type rows for Words, Sentences, Letters, and Numbers
+- Added Say and ASL tracking with independent dates for sentences and bulk sentence imports
+- Kept Identify unavailable for sentences while retaining it for all other entry types
+- Preserved existing entries and complete backup compatibility
