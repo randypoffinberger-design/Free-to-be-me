@@ -1,4 +1,4 @@
-# More than Measured v0.6.0
+# More than Measured v0.6.1
 
 Initial local-first PWA foundation.
 
@@ -171,3 +171,10 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Added Active, All, and Completed task views plus editing, completion, reopening, and protected deletion
 - Added appointments and to-do items to complete backups, restores, and safety checkpoints
 - Upgraded the local database safely without changing its established identity
+
+## v0.6.1 changes
+- Added letters and numbers as dedicated Speech & Language entry types
+- Added separate total letter and total number counts without increasing Total Words
+- Added quick Add letter and Add number actions plus entry-type filters
+- Updated the Speech & Language introduction to include all communication, including ASL
+- Preserved existing entries, backups, and the established local database

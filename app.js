@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.0", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.6.1", schemaVersion: 2 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 2,
   STORE_NAMES = [
@@ -248,6 +248,8 @@ function parseBulkVocabulary(text, fallbackDate) {
 const DEFAULT_VOCAB_CATEGORIES = [
   "Uncategorized",
   "Sentences",
+  "Letters",
+  "Numbers",
   "Animals",
   "Toys",
   "Body Parts",
@@ -263,7 +265,14 @@ const DEFAULT_VOCAB_CATEGORIES = [
 ];
 async function getVocabCategories() {
   const saved = await getSetting("vocabCategories", []),
-    all = ["Uncategorized", "Sentences", ...saved, ...DEFAULT_VOCAB_CATEGORIES];
+    all = [
+      "Uncategorized",
+      "Sentences",
+      "Letters",
+      "Numbers",
+      ...saved,
+      ...DEFAULT_VOCAB_CATEGORIES,
+    ];
   return [...new Set(all.map((x) => String(x).trim()).filter(Boolean))];
 }
 const capabilityValue = (item, key) =>
@@ -286,8 +295,14 @@ const languagesText = (languages) =>
     .map((x) => `${x.language}: ${x.word}`)
     .join("\n");
 const wordCategories = (item) =>
-  (item.entryType === "sentence"
-    ? ["Sentences"]
+  (["sentence", "letter", "number"].includes(item.entryType)
+    ? [
+        item.entryType === "sentence"
+          ? "Sentences"
+          : item.entryType === "letter"
+            ? "Letters"
+            : "Numbers",
+      ]
     : [
         item.category,
         ...(Array.isArray(item.additionalCategories)
@@ -321,6 +336,16 @@ async function normalizeVocabulary(words) {
     }
     if (item.entryType === "sentence" && item.category !== "Sentences") {
       item.category = "Sentences";
+      item.additionalCategories = [];
+      changed = true;
+    }
+    if (item.entryType === "letter" && item.category !== "Letters") {
+      item.category = "Letters";
+      item.additionalCategories = [];
+      changed = true;
+    }
+    if (item.entryType === "number" && item.category !== "Numbers") {
+      item.category = "Numbers";
       item.additionalCategories = [];
       changed = true;
     }
@@ -379,13 +404,13 @@ async function renderVocabulary() {
         .filter(Boolean),
     ),
   ].sort((a, b) => b - a);
-  view.innerHTML = `<section class="hero"><h1>🗣️ Speech & Language</h1><p>Track what your child can say, identify, or communicate with ASL.</p></section>
-  <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
-  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import words from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
+  view.innerHTML = `<section class="hero"><h1>🗣️ Speech & Language</h1><p>Track what your child can say, identify, or communicate including ASL.</p></section>
+  <div class="speech-stats" aria-label="Speech and language totals"><div class="speech-stat"><strong id="totalWords">0</strong><span>Total words</span></div><div class="speech-stat"><strong id="totalSentences">0</strong><span>Sentences</span></div><div class="speech-stat"><strong id="totalLetters">0</strong><span>Letters</span></div><div class="speech-stat"><strong id="totalNumbers">0</strong><span>Numbers</span></div><div class="speech-stat"><strong id="totalSpeak">0</strong><span>Speak</span></div><div class="speech-stat"><strong id="totalIdentify">0</strong><span>Identify</span></div><div class="speech-stat"><strong id="totalAsl">0</strong><span>ASL</span></div></div>
+  <div class="btn-row"><button id="addWord" class="btn">Add one word</button><button id="addLetter" class="btn">Add letter</button><button id="addNumber" class="btn">Add number</button><button id="addSentence" class="btn">Add sentence</button><button id="bulkWords" class="btn secondary">Bulk import words from Notes</button><button id="manageCategories" class="btn secondary">Manage categories</button></div>
   <div class="vocab-controls card">
     <div class="field"><label>Child</label><select id="vocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div>
-    <div class="field"><label>Entry type</label><select id="vocabType"><option value="all">Words and sentences</option><option value="word">Words only</option><option value="sentence">Sentences only</option></select></div>
-    <div class="field"><label>Search words, sentences, notes, categories, or languages</label><input id="vocabSearch" type="search" placeholder="Search speech and language"></div>
+    <div class="field"><label>Entry type</label><select id="vocabType"><option value="all">All entry types</option><option value="word">Words only</option><option value="sentence">Sentences only</option><option value="letter">Letters only</option><option value="number">Numbers only</option></select></div>
+    <div class="field"><label>Search words, sentences, letters, numbers, notes, categories, or languages</label><input id="vocabSearch" type="search" placeholder="Search speech and language"></div>
     <div class="field"><label>Category</label><select id="vocabCategory"><option value="">All categories</option>${categories.map((c) => `<option>${esc(c)}</option>`).join("")}</select></div>
     <div class="field"><label>Sort</label><select id="vocabSort"><option value="alpha">Alphabetical</option><option value="category">Category</option><option value="newest">Date first said — newest</option><option value="oldest">Date first said — oldest</option></select></div>
     <div class="field"><label>Year</label><select id="vocabYear"><option value="">All years</option>${years.map((y) => `<option>${y}</option>`).join("")}</select></div>
@@ -417,7 +442,7 @@ async function renderVocabulary() {
       ? d.profile
       : "all";
     $("#vocabSearch").value = d.search || "";
-    $("#vocabType").value = ["all", "word", "sentence"].includes(d.type)
+    $("#vocabType").value = ["all", "word", "sentence", "letter", "number"].includes(d.type)
       ? d.type
       : "all";
     $("#vocabCategory").value = [...$("#vocabCategory").options].some(
@@ -477,17 +502,22 @@ async function renderVocabulary() {
     const totals = words.filter(
         (x) => profile === "all" || x.profileId === profile,
       ),
-      totalWords = totals.filter((x) => x.entryType !== "sentence"),
-      totalSentences = totals.filter((x) => x.entryType === "sentence");
+      totalWords = totals.filter((x) => x.entryType === "word"),
+      totalSentences = totals.filter((x) => x.entryType === "sentence"),
+      totalLetters = totals.filter((x) => x.entryType === "letter"),
+      totalNumbers = totals.filter((x) => x.entryType === "number"),
+      abilityEntries = totals.filter((x) => x.entryType !== "sentence");
     $("#totalWords").textContent = totalWords.length;
     $("#totalSentences").textContent = totalSentences.length;
-    $("#totalSpeak").textContent = totalWords.filter((x) =>
+    $("#totalLetters").textContent = totalLetters.length;
+    $("#totalNumbers").textContent = totalNumbers.length;
+    $("#totalSpeak").textContent = abilityEntries.filter((x) =>
       capabilityValue(x, "speak"),
     ).length;
-    $("#totalIdentify").textContent = totalWords.filter((x) =>
+    $("#totalIdentify").textContent = abilityEntries.filter((x) =>
       capabilityValue(x, "identify"),
     ).length;
-    $("#totalAsl").textContent = totalWords.filter((x) =>
+    $("#totalAsl").textContent = abilityEntries.filter((x) =>
       capabilityValue(x, "asl"),
     ).length;
     let shown = words.filter((x) => {
@@ -519,10 +549,12 @@ async function renderVocabulary() {
               entryDate(b).localeCompare(entryDate(a)) ||
               a.word.localeCompare(b.word),
     );
-    const shownWords = shown.filter((x) => x.entryType !== "sentence").length,
-      shownSentences = shown.filter((x) => x.entryType === "sentence").length;
+    const shownWords = shown.filter((x) => x.entryType === "word").length,
+      shownSentences = shown.filter((x) => x.entryType === "sentence").length,
+      shownLetters = shown.filter((x) => x.entryType === "letter").length,
+      shownNumbers = shown.filter((x) => x.entryType === "number").length;
     $("#vocabSummary").textContent =
-      `${shown.length} ${shown.length === 1 ? "result" : "results"} • ${shownWords} ${shownWords === 1 ? "word" : "words"} • ${shownSentences} ${shownSentences === 1 ? "sentence" : "sentences"}`;
+      `${shown.length} ${shown.length === 1 ? "result" : "results"} • ${shownWords} ${shownWords === 1 ? "word" : "words"} • ${shownSentences} ${shownSentences === 1 ? "sentence" : "sentences"} • ${shownLetters} ${shownLetters === 1 ? "letter" : "letters"} • ${shownNumbers} ${shownNumbers === 1 ? "number" : "numbers"}`;
     const drawCard = (x) => {
       const controls =
         x.entryType === "sentence"
@@ -658,6 +690,10 @@ async function renderVocabulary() {
     refresh();
   };
   $("#addWord").onclick = () => openWordForm(profiles, null, categories);
+  $("#addLetter").onclick = () =>
+    openWordForm(profiles, null, categories, "letter");
+  $("#addNumber").onclick = () =>
+    openWordForm(profiles, null, categories, "number");
   $("#addSentence").onclick = () => openSentenceForm(profiles);
   $("#bulkWords").onclick = () =>
     openBulkVocabulary(profiles, words, categories);
@@ -666,11 +702,12 @@ async function renderVocabulary() {
   refresh();
 }
 
-function openWordForm(profiles, item = null, categories = []) {
+function openWordForm(profiles, item = null, categories = [], initialType = "word") {
+  const entryType = item?.entryType || initialType;
   const assigned = wordCategories(item || {}),
     categoryOptions = (selected, optional = false) =>
       `${optional ? '<option value="">None</option>' : ""}${categories.map((c) => `<option ${selected === c ? "selected" : ""}>${esc(c)}</option>`).join("")}`;
-  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} speech/language entry</h2><div class="form-grid"><div class="field"><label>Child</label><select id="wordProfile">${profiles.map((p) => `<option value="${p.id}" ${item?.profileId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Word or phrase</label><input id="wordText" value="${esc(item?.word || "")}" autocomplete="off"></div><div class="field"><label>Primary category</label><div class="inline-field"><select id="wordCategory">${categoryOptions(assigned[0] || "Uncategorized")}</select><button id="quickCategory" class="btn secondary" type="button">New</button></div></div><div class="field"><label>Secondary category <span class="hint">(optional)</span></label><select id="wordCategory2">${categoryOptions(assigned[1], true)}</select></div><div class="field"><label>Tertiary category <span class="hint">(optional)</span></label><select id="wordCategory3">${categoryOptions(assigned[2], true)}</select></div><fieldset class="ability-field dated-abilities"><legend>Abilities and dates learned</legend>${[
+  modalBody.innerHTML = `<h2>${item ? "Edit" : "Add"} speech/language entry</h2><div class="form-grid"><div class="field"><label>Child</label><select id="wordProfile">${profiles.map((p) => `<option value="${p.id}" ${item?.profileId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Entry type</label><select id="wordEntryType"><option value="word" ${entryType === "word" ? "selected" : ""}>Word or phrase</option><option value="letter" ${entryType === "letter" ? "selected" : ""}>Letter</option><option value="number" ${entryType === "number" ? "selected" : ""}>Number</option></select></div><div class="field"><label>Entry</label><input id="wordText" value="${esc(item?.word || "")}" autocomplete="off"></div><div class="field"><label>Primary category</label><div class="inline-field"><select id="wordCategory">${categoryOptions(assigned[0] || (entryType === "letter" ? "Letters" : entryType === "number" ? "Numbers" : "Uncategorized"))}</select><button id="quickCategory" class="btn secondary" type="button">New</button></div></div><div class="field"><label>Secondary category <span class="hint">(optional)</span></label><select id="wordCategory2">${categoryOptions(assigned[1], true)}</select></div><div class="field"><label>Tertiary category <span class="hint">(optional)</span></label><select id="wordCategory3">${categoryOptions(assigned[2], true)}</select></div><fieldset class="ability-field dated-abilities"><legend>Abilities and dates learned</legend>${[
     ["speak", "Speak"],
     ["identify", "Identify"],
     ["asl", "ASL"],
@@ -683,6 +720,20 @@ function openWordForm(profiles, item = null, categories = []) {
       "",
     )}</fieldset><div class="field"><label>Additional spoken languages <span class="hint">(optional, one per line)</span></label><textarea id="wordLanguages" placeholder="Spanish: gato&#10;French: chat">${esc(languagesText(item?.languages))}</textarea><span class="hint">Use Language: word or phrase. Dates are not required.</span></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="wordNotes">${esc(item?.notes || "")}</textarea></div><button id="saveWord" class="btn full" type="button">Save entry</button></div>`;
   if (!modal.open) modal.showModal();
+  const syncTypeCategory = () => {
+    const type = $("#wordEntryType").value;
+    if (type === "letter") $("#wordCategory").value = "Letters";
+    if (type === "number") $("#wordCategory").value = "Numbers";
+    if (
+      type === "word" &&
+      ["Letters", "Numbers"].includes($("#wordCategory").value)
+    )
+      $("#wordCategory").value = "Uncategorized";
+    for (const id of ["wordCategory", "wordCategory2", "wordCategory3", "quickCategory"])
+      $("#" + id).disabled = type !== "word";
+  };
+  $("#wordEntryType").onchange = syncTypeCategory;
+  syncTypeCategory();
   $("#quickCategory").onclick = async () => {
     const name = prompt("New category name:")?.trim();
     if (!name) return;
@@ -709,29 +760,39 @@ function openWordForm(profiles, item = null, categories = []) {
   }
   $("#saveWord").onclick = async () => {
     const word = $("#wordText").value.trim(),
+      entryType = $("#wordEntryType").value,
       profileId = $("#wordProfile").value;
-    if (!word) return alert("Please enter a word or phrase.");
+    if (!word) return alert("Please enter a word, phrase, letter, or number.");
+    if (entryType === "letter" && !/^\p{L}$/u.test(word))
+      return alert("Please enter one letter.");
+    if (entryType === "number" && !/^\p{N}+$/u.test(word))
+      return alert("Please enter a number using digits.");
     const all = await getAll("words");
     if (
       all.some(
         (x) =>
           x.id !== item?.id &&
           x.profileId === profileId &&
-          x.entryType !== "sentence" &&
+          x.entryType === entryType &&
           wordKey(x.word) === wordKey(word),
       )
     )
-      return alert("That word or phrase is already listed for this child.");
-    const category = $("#wordCategory").value || "Uncategorized",
-      additionalCategories = [
-        $("#wordCategory2").value,
-        $("#wordCategory3").value,
-      ]
-        .filter((c) => c && c !== category)
-        .filter((c, i, a) => a.indexOf(c) === i);
+      return alert("That entry is already listed for this child.");
+    const category =
+        entryType === "letter"
+          ? "Letters"
+          : entryType === "number"
+            ? "Numbers"
+            : $("#wordCategory").value || "Uncategorized",
+      additionalCategories =
+        entryType === "word"
+          ? [$("#wordCategory2").value, $("#wordCategory3").value]
+              .filter((c) => c && c !== category)
+              .filter((c, i, a) => a.indexOf(c) === i)
+          : [];
     const record = {
       id: item?.id || uid(),
-      entryType: "word",
+      entryType,
       profileId,
       word,
       category,
@@ -779,7 +840,7 @@ function openSentenceForm(profiles, item = null) {
     const known = new Set(
         all
           .filter(
-            (x) => x.profileId === profileId && x.entryType !== "sentence",
+            (x) => x.profileId === profileId && x.entryType === "word",
           )
           .map((x) => sentenceWordKey(x.word)),
       ),
@@ -866,7 +927,7 @@ function openBulkVocabulary(profiles, existing, categories) {
     const seen = new Set(
         existing
           .filter(
-            (x) => x.profileId === profileId && x.entryType !== "sentence",
+            (x) => x.profileId === profileId && x.entryType === "word",
           )
           .map((x) => wordKey(x.word)),
       ),
@@ -919,7 +980,7 @@ function openBulkVocabulary(profiles, existing, categories) {
 
 function openCategoryManager(categories) {
   const draw = () => {
-    modalBody.innerHTML = `<h2>Manage categories</h2><div class="category-list">${categories.map((c) => `<div class="category-row"><span>${esc(c)}</span><div>${!["Uncategorized", "Sentences"].includes(c) ? `<button class="small-action rename-category" data-name="${esc(c)}" type="button">Rename</button><button class="small-action danger-link remove-category" data-name="${esc(c)}" type="button">Delete</button>` : ""}</div></div>`).join("")}</div><button id="addCategory" class="btn full" type="button" style="margin-top:14px">Add category</button>`;
+    modalBody.innerHTML = `<h2>Manage categories</h2><div class="category-list">${categories.map((c) => `<div class="category-row"><span>${esc(c)}</span><div>${!["Uncategorized", "Sentences", "Letters", "Numbers"].includes(c) ? `<button class="small-action rename-category" data-name="${esc(c)}" type="button">Rename</button><button class="small-action danger-link remove-category" data-name="${esc(c)}" type="button">Delete</button>` : ""}</div></div>`).join("")}</div><button id="addCategory" class="btn full" type="button" style="margin-top:14px">Add category</button>`;
     $("#addCategory").onclick = async () => {
       const name = prompt("New category name:")?.trim();
       if (!name) return;
@@ -1742,7 +1803,7 @@ function validateBackup(b) {
 async function previewRestore(file) {
   const b = JSON.parse(await file.text());
   validateBackup(b);
-  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Words and sentences:</strong> ${b.data.words.length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
+  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
   modal.showModal();
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");
@@ -1821,9 +1882,9 @@ async function renderSettings() {
   const exactOption = $('#profileDisplay option[value="exact"]');
   const defaultTypeField = document.createElement("div");
   defaultTypeField.className = "field";
-  defaultTypeField.innerHTML = `<label>Entry type</label><select id="defaultVocabType"><option value="all">Words and sentences</option><option value="word">Words only</option><option value="sentence">Sentences only</option></select>`;
+  defaultTypeField.innerHTML = `<label>Entry type</label><select id="defaultVocabType"><option value="all">All entry types</option><option value="word">Words only</option><option value="sentence">Sentences only</option><option value="letter">Letters only</option><option value="number">Numbers only</option></select>`;
   $("#defaultVocabProfile").closest(".field").after(defaultTypeField);
-  $("#defaultVocabType").value = ["all", "word", "sentence"].includes(d.type)
+  $("#defaultVocabType").value = ["all", "word", "sentence", "letter", "number"].includes(d.type)
     ? d.type
     : "all";
   exactOption.disabled = !exactReady;
