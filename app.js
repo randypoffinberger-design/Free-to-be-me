@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.0", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.1", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -1593,100 +1593,44 @@ function renderExplore() {
     ],
   );
 }
+// Each entry already has a place for future media. Empty sources create no
+// image or video elements, so this browser build carries no media overhead.
 const CAREGIVER_TERMS = [
-  [
-    "AAC",
-    "Augmentative and Alternative Communication. Any tool that supports communication beyond speech, including picture boards, sign language, and speech-generating devices. AAC does not prevent speech development.",
-  ],
-  [
-    "Autistic burnout",
-    "Deep physical, mental, and emotional exhaustion caused by prolonged stress, demands, masking, or sensory strain. Recovery often requires reduced demands, rest, predictability, and meaningful support.",
-  ],
-  [
-    "Dysregulation",
-    "A state where the nervous system is having difficulty managing emotions, sensory input, or demands. Behavior during dysregulation is communication, not simply disobedience.",
-  ],
-  [
-    "Echolalia",
-    "Repeating words or phrases heard from other people, shows, songs, or earlier experiences. It may be immediate or delayed and can serve purposes such as communication, processing, comfort, or practice.",
-  ],
-  [
-    "Elopement",
-    "Leaving a safe area or caregiver unexpectedly, often to reach something interesting or escape distress. It is a safety concern that calls for prevention, supervision, and understanding the reason behind it.",
-  ],
-  [
-    "Executive functioning",
-    "Skills used to begin tasks, plan, organize, shift attention, remember steps, control impulses, and manage time. A child may understand what to do but still need support getting started or completing it.",
-  ],
-  [
-    "Gestalt language processing",
-    "A way some people learn language in larger chunks or scripts before breaking them into smaller flexible words and phrases. Echolalia can be part of this language-development path.",
-  ],
-  [
-    "Interoception",
-    "The sense that notices signals inside the body, such as hunger, thirst, pain, temperature, needing the bathroom, or a racing heart. These signals may be noticed late, intensely, or inconsistently.",
-  ],
-  [
-    "Joint attention",
-    "Two people sharing attention toward the same object or experience. It can involve looking, pointing, sounds, body movement, or bringing an item—not only eye contact.",
-  ],
-  [
-    "Masking",
-    "Hiding or suppressing autistic traits to appear more neurotypical, sometimes by forcing eye contact, copying social behavior, or holding back stims. Masking can be exhausting and may contribute to anxiety or burnout.",
-  ],
-  [
-    "Meltdown",
-    "An involuntary loss of control caused by overwhelming sensory input, emotions, demands, communication difficulty, or accumulated stress. It is not manipulation or a chosen behavior; safety and reduced demands come first.",
-  ],
-  [
-    "Neurodiversity",
-    "The idea that brains naturally vary in how they process, learn, communicate, and experience the world. Neurodiversity recognizes differences while still acknowledging disability and support needs.",
-  ],
-  [
-    "Proprioception",
-    "The body-awareness sense coming from muscles and joints. Activities involving pushing, pulling, climbing, jumping, or deep pressure may help some children feel organized and regulated.",
-  ],
-  [
-    "Scripting",
-    "Using memorized lines, songs, or dialogue to communicate, process an experience, play, or self-regulate. Scripts can carry real meaning even when the wording comes from somewhere else.",
-  ],
-  [
-    "Sensory avoider",
-    "Someone who is especially sensitive to certain sounds, lights, textures, smells, tastes, touch, or movement and may try to escape or reduce that input.",
-  ],
-  [
-    "Sensory overload",
-    "When incoming sensory information becomes more than the nervous system can process. Signs may include covering ears, fleeing, crying, shutting down, aggression, or a meltdown.",
-  ],
-  [
-    "Sensory seeker",
-    "Someone who actively looks for stronger sensory input, such as spinning, crashing, chewing, touching, loud sounds, or constant movement. Safe alternatives can help meet the underlying need.",
-  ],
-  [
-    "Shutdown",
-    "An involuntary inward response to overwhelm that may involve becoming very quiet, unable to speak or move, sleepy, withdrawn, or less responsive. A shutdown needs time, safety, and reduced pressure.",
-  ],
-  [
-    "Special interest",
-    "A deeply focused interest that can bring joy, comfort, knowledge, motivation, and connection. Special interests can also be powerful tools for learning and relationship-building.",
-  ],
-  [
-    "Stimming",
-    "Self-stimulatory movement, sound, or behavior—such as rocking, hand movements, humming, pacing, or repeating sounds—that may help with regulation, expression, focus, or sensory needs. Safe stims generally do not need to be stopped.",
-  ],
-  [
-    "Support levels",
-    "Clinical autism levels describe the amount of support a person currently needs: Level 1 requires support, Level 2 substantial support, and Level 3 very substantial support. Needs can differ by skill, setting, stress, and time; a level does not define intelligence or potential.",
-  ],
-  [
-    "Tantrum",
-    "A goal-directed expression of frustration that usually eases when the goal is met or the audience changes. This differs from a meltdown, which is an involuntary response to overwhelm and does not simply stop when a demand is granted.",
-  ],
-  [
-    "Vestibular sense",
-    "The movement-and-balance sense centered in the inner ear. Swinging, spinning, climbing, and changes in head position affect this system; children may seek or avoid this input.",
-  ],
-];
+  ["AAC", "AAC stands for Augmentative and Alternative Communication. It simply means using another way to help someone communicate—like pictures, signs, a letter board, or a device that speaks. AAC can be used alongside speech, and it does not stop a child from learning to talk."],
+  ["ASD Level 1", "ASD Level 1 generally means a person needs some support in everyday life. They may communicate well but still find things like social situations, changes, planning, or sensory input difficult. The help they need can change from one setting or day to another, and the level does not tell you their intelligence or potential."],
+  ["ASD Level 2", "ASD Level 2 generally means a person needs more noticeable or consistent support. Communication, changes in routine, sensory needs, or daily tasks may be harder to manage without help. Their needs can still vary a lot by skill, setting, stress, and stage of life."],
+  ["ASD Level 3", "ASD Level 3 generally means a person needs very substantial, ongoing support in daily life. They may need a great deal of help with communication, safety, transitions, sensory needs, or personal care. This level describes support needs—not intelligence, personality, worth, or what someone may learn over time."],
+  ["Autistic burnout", "Autistic burnout is a deep kind of exhaustion that can happen after someone has spent a long time coping with stress, demands, sensory strain, or hiding parts of themselves. They may have less energy, find everyday skills harder, or need more quiet and recovery time. Rest, fewer demands, predictability, and understanding can help."],
+  ["Dysregulation", "Dysregulation means the nervous system is having a hard time handling feelings, sensory input, or what is being asked in that moment. A child may become upset, very active, withdrawn, or unable to do things they normally can. It helps to see the behavior as a sign that they need support, not as simple disobedience."],
+  ["Echolalia", "Echolalia is when someone repeats words or phrases they have heard from people, shows, songs, or earlier moments. The repetition may happen right away or much later. It can be a way to communicate, work out language, practice, remember something, or feel comforted."],
+  ["Elopement", "Elopement means leaving a safe place or caregiver unexpectedly. A child may be trying to reach something interesting, get away from something uncomfortable, or meet a need they cannot explain yet. Because it can be dangerous, the focus should be on safety, prevention, supervision, and figuring out what is drawing them away."],
+  ["Executive functioning", "Executive functioning is the set of skills that helps us get started, remember steps, plan, switch tasks, manage time, and control impulses. A child may truly understand what to do and still need help beginning or finishing it. Visual steps, reminders, and doing the first part together can make a big difference."],
+  ["Gestalt language processing", "Some children seem to learn language in whole chunks—like a full phrase from a song or show—before they learn to mix and match individual words. This is often called gestalt language processing. Echolalia may be part of that journey, and the repeated phrase may carry a real message even if it sounds out of place to someone else."],
+  ["Interoception", "Interoception is the sense that tells us what is happening inside our body—things like hunger, thirst, pain, temperature, a racing heart, or needing the bathroom. Some children notice these signals very strongly, very late, or only sometimes, so they may need help learning what each feeling means."],
+  ["Joint attention", "Joint attention is simply two people sharing interest in the same thing. A child might look back and forth, point, make a sound, move their body, or bring you an object to share the moment. It does not have to involve eye contact to count."],
+  ["Masking", "Masking is when an autistic person hides or holds back natural behaviors to fit in or avoid negative reactions. They might force eye contact, copy other people, stay quiet about discomfort, or stop themselves from stimming. It can take a lot of energy and may leave someone anxious, exhausted, or burned out afterward."],
+  ["Meltdown", "A meltdown happens when everything becomes too much and the person loses the ability to stay in control. Noise, feelings, demands, communication trouble, or a day full of small stresses can all build toward one. It is not manipulation or a choice; the most helpful response is usually safety, fewer words, less pressure, and time to recover."],
+  ["Neurodiversity", "Neurodiversity is the idea that brains naturally work in different ways. People can think, learn, communicate, focus, and experience the world differently from one another. Those differences can include strengths and real disabilities at the same time, and everyone deserves the support that helps them live well."],
+  ["Proprioception", "Proprioception is the body's sense of where it is and how its muscles and joints are moving. Pushing, pulling, carrying, climbing, jumping, or firm pressure can feel calming and organizing for some children. You may hear people call these activities ‘heavy work.’"],
+  ["Scripting", "Scripting is using remembered lines from shows, songs, books, or past conversations. A script may help a child communicate, play, understand what happened, or calm themselves. Even when the words came from somewhere else, the child may be using them to say something meaningful."],
+  ["Sensory avoider", "A sensory avoider is someone who tries to get away from certain sounds, lights, textures, smells, tastes, touch, or movement because the input feels too strong or uncomfortable. Avoiding it is often their way of protecting themselves, not being difficult."],
+  ["Sensory overload", "Sensory overload happens when the brain is receiving more sights, sounds, touch, movement, or other input than it can comfortably sort through. A child might cover their ears, run away, cry, become agitated, shut down, or have a meltdown. A quieter space and less pressure can help their system settle."],
+  ["Sensory seeker", "A sensory seeker is someone who looks for extra sensory input. They might spin, crash into cushions, chew, touch everything, make loud sounds, or stay in motion. Offering safe ways to get that input can work better than simply asking them to stop."],
+  ["Shutdown", "A shutdown is an inward response to being overwhelmed. A person may become very quiet, stop speaking or moving, seem sleepy, withdraw, or respond less than usual. They are not ignoring you; their system may need quiet, safety, fewer demands, and time before they can reconnect."],
+  ["Special interest", "A special interest is something a person feels deeply drawn to and may know a great deal about. It can bring joy, comfort, confidence, motivation, and connection. Joining a child in that interest can also be a wonderful way to build trust and support learning."],
+  ["Stimming", "Stimming means repeating a movement, sound, or action—such as rocking, hand movements, humming, pacing, or repeating sounds. It may help a person feel calm, express excitement, focus, or get the sensory input they need. If a stim is safe, it usually does not need to be stopped."],
+  ["Tantrum", "A tantrum is usually an expression of frustration tied to wanting or avoiding something, and it often settles when the situation changes. A meltdown comes from being overwhelmed and cannot simply be switched off by giving in. From the outside they can look similar, so it helps to consider what happened beforehand and what actually helps the child recover."],
+  ["Vestibular sense", "The vestibular sense helps the body understand movement and balance. Swinging, spinning, climbing, jumping, and changing head position all involve this system. Some children seek a lot of this movement, while others may feel uncomfortable or unsteady with it."],
+].map(([term, explanation, media = {}]) => ({
+  term,
+  explanation,
+  media: {
+    image: media.image || "",
+    clip: media.clip || "",
+    alt: media.alt || "",
+    caption: media.caption || "",
+  },
+}));
 
 function renderSkills() {
   view.innerHTML = `<section class="hero"><h1>📚 Skill Building</h1><p>Practical tools for supporting everyday skills at your child’s pace.</p></section><h2 class="section-title">Daily living</h2><div class="grid"><button class="card-button" data-go="potty"><span class="emoji">🚽</span><strong>Potty Training Tracker</strong><small>Track potty successes and accidents by day.</small></button><button class="card-button" data-go="pottyTips"><span class="emoji">💡</span><strong>Potty Training Tips & Tricks</strong><small>Gentle, practical ideas to support learning and comfort.</small></button></div>`;
@@ -1768,12 +1712,25 @@ async function renderCaregiver() {
 }
 
 function openTermsGuide() {
+  const renderTermMedia = ({ term, media }) => {
+    if (!media.image && !media.clip) return "";
+    const image = media.image
+      ? `<img class="term-media-image" src="${esc(media.image)}" alt="${esc(media.alt || `${term} example`)}" loading="lazy" decoding="async">`
+      : "";
+    const clip = media.clip
+      ? `<video class="term-media-clip" controls preload="none" playsinline aria-label="${esc(media.alt || `${term} example clip`)}"><source src="${esc(media.clip)}"></video>`
+      : "";
+    const caption = media.caption
+      ? `<small class="term-media-caption">${esc(media.caption)}</small>`
+      : "";
+    return `<div class="term-media">${image}${clip}${caption}</div>`;
+  };
   const draw = (query = "") => {
     const q = wordKey(query),
-      shown = CAREGIVER_TERMS.filter(([term, explanation]) =>
+      shown = CAREGIVER_TERMS.filter(({ term, explanation }) =>
         wordKey(`${term} ${explanation}`).includes(q),
       );
-    modalBody.innerHTML = `<h2>📖 Common terms</h2><p class="hint">These descriptions are educational and strengths-aware. They do not diagnose a child or replace guidance from qualified professionals.</p><div class="field"><label>Search terms</label><input id="termSearch" type="search" value="${esc(query)}" placeholder="Try stimming, sensory, or echolalia"></div><div class="terms-list">${shown.map(([term, explanation]) => `<details class="term-card"><summary>${esc(term)}</summary><p>${esc(explanation)}</p></details>`).join("") || '<div class="empty"><p>No terms match that search.</p></div>'}</div>`;
+    modalBody.innerHTML = `<h2>📖 Common terms</h2><p class="hint">Friendly, plain-language explanations to help you make sense of words you may hear. They are not a diagnosis or a replacement for guidance from someone who knows your child.</p><div class="field"><label>Search terms</label><input id="termSearch" type="search" value="${esc(query)}" placeholder="Try stimming, sensory, or echolalia"></div><div class="terms-list">${shown.map((item) => `<details class="term-card"><summary>${esc(item.term)}</summary><p>${esc(item.explanation)}</p>${renderTermMedia(item)}</details>`).join("") || '<div class="empty"><p>No terms match that search.</p></div>'}</div>`;
     $("#termSearch").oninput = (event) => draw(event.target.value);
     requestAnimationFrame(() => {
       const input = $("#termSearch");

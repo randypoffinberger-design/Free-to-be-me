@@ -1,4 +1,11 @@
-# More than Measured v0.7.0
+# More than Measured v0.7.1
+
+## v0.7.1 changes
+- Rewrote the Common Terms guide in warmer, friendlier, plain language
+- Replaced the combined Support Levels entry with separate ASD Level 1, ASD Level 2, and ASD Level 3 explanations
+- Prepared every glossary entry for an optional image, short clip, alt text, and caption
+- Media elements are created only when a source is supplied; clips use no preload and images use lazy loading
+- Added no media files, keeping this browser build lightweight and fully offline
 
 Initial local-first PWA foundation.
 
@@ -163,7 +170,7 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Speech & Language filters now remain active for the full app session after editing or saving entries
 - Clear Filters still returns to the caregiver’s saved filter defaults
 - Added a searchable plain-language guide to common autism, communication, regulation, and sensory terms
-- Added explanations for stimming, masking, echolalia, meltdowns, shutdowns, support levels, sensory seeking and avoiding, AAC, interoception, proprioception, vestibular processing, and more
+- Added explanations for stimming, masking, echolalia, meltdowns, shutdowns, ASD levels, sensory seeking and avoiding, AAC, interoception, proprioception, vestibular processing, and more
 - Added a monthly Caregiver Calendar with doctor, therapy, play-date, school, evaluation, family, and custom appointments
 - Added optional child, time, location, and notes fields to appointments
 - Added appointment editing and protected deletion
