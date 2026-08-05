@@ -1,4 +1,4 @@
-# More than Measured v0.6.8
+# More than Measured v0.7.0
 
 Initial local-first PWA foundation.
 
@@ -226,3 +226,12 @@ Upload the contents of this folder to the repository root, then enable GitHub Pa
 - Restored responsive Speak, Identify, and ASL result filtering
 - Keeps directly searched ability-less records visible so they can be corrected
 - Clears learned dates whenever an ability is unchecked in cards or edit forms
+
+## v0.7.0 changes
+- Opened Skill Building as a functional section from the illustrated homepage and drawer
+- Added a Potty Training Tracker with one editable record per child and day
+- Tracks pees in the potty, poops in the potty, accidents, and optional notes
+- Added recent-day history, editing, protected deletion, and seven-day totals
+- Added a Potty Training Tips & Tricks guide with gentle routines, visual supports, communication, sensory, clothing, accident, pattern, and health guidance
+- Included every potty-training record in complete backups, restores, and safety checkpoints
+- Safely upgraded the established local database without changing its identity

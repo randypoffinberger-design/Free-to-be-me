@@ -1,8 +1,8 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.6.8", schemaVersion: 2 };
+const APP = { name: "More than Measured", version: "0.7.0", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
-  DB_VERSION = 2,
+  DB_VERSION = 3,
   STORE_NAMES = [
     "profiles",
     "achievements",
@@ -10,6 +10,7 @@ const DB_NAME = "ftbm-db",
     "notes",
     "appointments",
     "todos",
+    "pottyLogs",
     "settings",
     "snapshots",
   ];
@@ -104,6 +105,9 @@ const routes = {
   child: renderChild,
   speech: renderSpeechBuilding,
   vocabulary: renderVocabulary,
+  skills: renderSkills,
+  potty: renderPottyTracker,
+  pottyTips: renderPottyTips,
   resources: renderResources,
   explore: renderExplore,
   caregiver: renderCaregiver,
@@ -138,7 +142,7 @@ async function renderHome() {
     <button class="home-hotspot communication" data-go="speech" aria-label="Open Speech and Language Building"><span>Speech/Language Building</span></button>
     <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
     <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
-    <button class="home-hotspot learning" data-feature="Skill Building" aria-label="Open Skill Building"><span>Skill Building</span></button>
+    <button class="home-hotspot learning" data-go="skills" aria-label="Open Skill Building"><span>Skill Building</span></button>
     <button class="home-hotspot medical" data-feature="Health and Wellness" aria-label="Open Health and Wellness"><span>Health and Wellness</span></button>
     <button class="home-hotspot caregiver-link" data-go="caregiver" aria-label="Open Caregiver Corner"><span>Caregiver Corner</span></button>
     <button class="home-hotspot community" data-go="explore" aria-label="Open ASD Friendly Fun and Explore"><span>ASD Friendly Fun</span></button>
@@ -1684,6 +1688,61 @@ const CAREGIVER_TERMS = [
   ],
 ];
 
+function renderSkills() {
+  view.innerHTML = `<section class="hero"><h1>📚 Skill Building</h1><p>Practical tools for supporting everyday skills at your child’s pace.</p></section><h2 class="section-title">Daily living</h2><div class="grid"><button class="card-button" data-go="potty"><span class="emoji">🚽</span><strong>Potty Training Tracker</strong><small>Track potty successes and accidents by day.</small></button><button class="card-button" data-go="pottyTips"><span class="emoji">💡</span><strong>Potty Training Tips & Tricks</strong><small>Gentle, practical ideas to support learning and comfort.</small></button></div>`;
+  bindRouteButtons();
+}
+
+async function renderPottyTracker() {
+  const profiles = await getAll("profiles"), logs = await getAll("pottyLogs");
+  if (!profiles.length) {
+    view.innerHTML = `<div class="empty card"><div class="big">🚽</div><h2>Create a child profile first</h2><p>Potty-training records are connected to a child.</p><button id="pottyCreateProfile" class="btn">Create profile</button></div>`;
+    $("#pottyCreateProfile").onclick = openProfileForm;
+    return;
+  }
+  view.innerHTML = `<section class="hero"><h1>🚽 Potty Training Tracker</h1><p>Record each day with patience, privacy, and no comparison.</p></section><div class="potty-entry card"><div class="field"><label>Child</label><select id="pottyProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="pottyDate" type="date" value="${isoToday()}"></div><div class="potty-count-grid"><label><span>💧 Pees in potty</span><input id="pottyPees" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>💩 Poops in potty</span><input id="pottyPoops" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>🧺 Accidents</span><input id="pottyAccidents" type="number" min="0" step="1" inputmode="numeric" value="0"></label></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="pottyNotes" placeholder="What helped, timing, signs noticed, or anything worth remembering"></textarea></div><button id="savePottyDay" class="btn full" type="button">Save day</button></div><div id="pottyStats"></div><h2 class="section-title">Recent days</h2><div id="pottyHistory" class="potty-history"></div>`;
+  const selectedLogs = () => logs.filter((x) => x.profileId === $("#pottyProfile").value).sort((a, b) => b.date.localeCompare(a.date));
+  const loadDay = () => {
+    const item = logs.find((x) => x.profileId === $("#pottyProfile").value && x.date === $("#pottyDate").value);
+    $("#pottyPees").value = item?.pees ?? 0; $("#pottyPoops").value = item?.poops ?? 0; $("#pottyAccidents").value = item?.accidents ?? 0; $("#pottyNotes").value = item?.notes || "";
+    $("#savePottyDay").textContent = item ? "Update day" : "Save day";
+  };
+  const draw = () => {
+    const shown = selectedLogs(), recent = shown.filter((x) => x.date >= new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)), sum = (key) => recent.reduce((total, x) => total + Number(x[key] || 0), 0);
+    $("#pottyStats").innerHTML = `<h2 class="section-title">Last 7 days</h2><div class="potty-stats"><div><strong>${sum("pees")}</strong><span>Pees in potty</span></div><div><strong>${sum("poops")}</strong><span>Poops in potty</span></div><div><strong>${sum("accidents")}</strong><span>Accidents</span></div></div>`;
+    $("#pottyHistory").innerHTML = shown.length ? shown.map((x) => `<div class="potty-day card" data-id="${x.id}"><div><strong>${fmtDate(x.date)}</strong><span>💧 ${Number(x.pees || 0)} pee • 💩 ${Number(x.poops || 0)} poop • 🧺 ${Number(x.accidents || 0)} ${Number(x.accidents || 0) === 1 ? "accident" : "accidents"}</span>${x.notes ? `<p>${esc(x.notes)}</p>` : ""}</div><div><button class="small-action edit-potty" data-id="${x.id}" type="button">Edit</button><button class="small-action danger-link delete-potty" data-id="${x.id}" type="button">Delete</button></div></div>`).join("") : `<div class="empty card"><p>No potty-training days recorded yet.</p></div>`;
+    document.querySelectorAll(".edit-potty").forEach((button) => button.onclick = () => { const item = logs.find((x) => x.id === button.dataset.id); $("#pottyDate").value = item.date; loadDay(); scrollTo({ top: 0, behavior: "smooth" }); });
+    document.querySelectorAll(".delete-potty").forEach((button) => button.onclick = async () => { const item = logs.find((x) => x.id === button.dataset.id); if (!item || !confirm(`Delete the potty-training record for ${fmtDate(item.date)}?`)) return; await createSnapshot(`Before deleting potty-training day ${item.date}`); await deleteItem("pottyLogs", item.id); logs.splice(logs.indexOf(item), 1); loadDay(); draw(); });
+  };
+  $("#pottyProfile").onchange = () => { loadDay(); draw(); };
+  $("#pottyDate").onchange = loadDay;
+  $("#savePottyDay").onclick = async () => {
+    const profileId = $("#pottyProfile").value, date = $("#pottyDate").value, cleanCount = (id) => Math.max(0, Math.floor(Number($(id).value) || 0));
+    if (!date) return alert("Choose a day to record.");
+    const old = logs.find((x) => x.profileId === profileId && x.date === date), item = { id: old?.id || `potty-${profileId}-${date}`, profileId, date, pees: cleanCount("#pottyPees"), poops: cleanCount("#pottyPoops"), accidents: cleanCount("#pottyAccidents"), notes: $("#pottyNotes").value.trim(), createdAt: old?.createdAt || nowISO(), updatedAt: nowISO(), syncStatus: "local" };
+    await put("pottyLogs", item);
+    if (old) Object.assign(old, item); else logs.push(item);
+    loadDay(); draw(); alert("Potty-training day saved.");
+  };
+  loadDay(); draw();
+}
+
+function renderPottyTips() {
+  const tips = [
+    ["Look for readiness, not a deadline", "Signs may include staying dry longer, noticing a wet or dirty diaper, hiding to go, showing interest in the toilet, or communicating before or after going. Readiness can be uneven and may come and go."],
+    ["Build a predictable routine", "Offer calm toilet opportunities at natural times such as after waking, after meals, before leaving home, and before bed. Keep the routine brief and consistent."],
+    ["Use a simple visual sequence", "Pictures or a short list—pants down, sit, wipe, flush, wash hands—can make the steps easier to understand and reduce verbal overload."],
+    ["Support communication", "Teach and honor a consistent word, sign, picture, or AAC button for bathroom. Respond to attempts even when they come after the child has already gone."],
+    ["Make the bathroom sensory-friendly", "Consider lighting, fan and flush noise, seat temperature, foot support, smells, and clothing textures. A stable footstool and smaller seat insert can help a child feel secure."],
+    ["Choose easy clothing", "Elastic-waist pants and simple layers reduce the number of steps and make independent success more reachable."],
+    ["Keep praise specific and pressure low", "Notice the exact step: ‘You sat on the potty,’ ‘You told me,’ or ‘Pee went in the potty.’ Avoid shame, punishment, comparison, or forcing a child to remain seated."],
+    ["Treat accidents neutrally", "Use a calm, brief response: ‘Pee goes in the potty. Let’s get clean and try again next time.’ Record patterns without making the accident feel like failure."],
+    ["Watch for patterns", "The tracker can reveal common times, signals, constipation patterns, or environments where success is easier. Use the pattern to adjust reminders rather than increasing pressure."],
+    ["Protect comfort and health", "Constipation, painful stools, urinary symptoms, or sudden regression can make training much harder. Pause pressure and contact the child’s healthcare professional when pain or medical concerns are present."],
+  ];
+  view.innerHTML = `<section class="hero"><h1>💡 Potty Training Tips & Tricks</h1><p>Gentle starting points that can be adapted to your child.</p></section><div class="banner" style="margin-top:16px">Potty training is a skill, not a test. Progress may be non-linear, and comfort and communication come first.</div><div class="tips-list">${tips.map(([title, text]) => `<details class="term-card"><summary>${esc(title)}</summary><p>${esc(text)}</p></details>`).join("")}</div>`;
+}
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -2004,7 +2063,7 @@ function validateBackup(b) {
 async function previewRestore(file) {
   const b = JSON.parse(await file.text());
   validateBackup(b);
-  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
+  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
   modal.showModal();
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");
@@ -2034,7 +2093,7 @@ async function renderBackup() {
     snaps = (await getAll("snapshots")).sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
-  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Your family data stays on this device unless you export it yourself.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, achievements, words, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
+  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Your family data stays on this device unless you export it yourself.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, achievements, communication entries, potty-training records, caregiver tools, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
   $("#exportBtn").onclick = exportBackup;
   $("#restoreBtn").onclick = () => $("#restoreInput").click();
   $("#checkpointBtn").onclick = async () => {
@@ -2135,6 +2194,7 @@ function setupDrawer() {
     ["🏠", "Home", "home"],
     ["🌱", "My Child", "child"],
     ["🗣️", "Speech & Language", "speech"],
+    ["📚", "Skill Building", "skills"],
     ["📚", "Resources", "resources"],
     ["🗺️", "Explore", "explore"],
     ["💛", "Caregiver Corner", "caregiver"],
