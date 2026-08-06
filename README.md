@@ -1,4 +1,13 @@
-# More than Measured v0.7.5
+# More than Measured v0.7.6
+
+## v0.7.6 changes
+- Expanded ASD water safety based on caregiver feedback
+- Explained why some autistic children may find water especially attractive or regulating without implying that every autistic child does
+- Added a carefully qualified drowning-risk fact box using current AAP and CDC guidance
+- Added detailed safety guidance for any water outing, private pools and hot tubs, and homes near natural or neighborhood water
+- Added water-watcher and touch-supervision guidance, adaptive swim-lesson considerations, life-jacket reminders, CPR preparation, and immediate 911 response
+- Added pool barriers, alarms, gate routines, neighborhood water mapping, and water-first wandering search guidance
+- Preserved the existing database, offline data, and backup compatibility
 
 ## v0.7.5 changes
 - Added an ASD Safety card to Caregiver Corner
