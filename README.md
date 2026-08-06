@@ -1,4 +1,16 @@
-# More than Measured v0.7.6
+# More than Measured v0.7.7
+
+## v0.7.7 changes
+- Added a Therapy & Support card to Caregiver Corner
+- Added detailed speech-language and occupational therapy walkthroughs with evaluations, sessions, possible benefits, and limitations
+- Added a neutral, in-depth ABA guide covering common models, goals, data collection, possible benefits, intensity up to 40 hours, evidence limits, and opportunity costs
+- Explained reinforcement and punishment terminology accurately, including why removing a toy is not negative reinforcement
+- Included concerns reported by autistic adults, including compliance, masking, harmless-stim suppression, autonomy, trauma, and excessive therapy demands
+- Added caregiver observation and participation guidance, informed-consent questions, child assent, provider red flags, and progress-review checkpoints
+- Added AAC, feeding, physical therapy, developmental/play-based support, mental-health therapy, and social-support overviews
+- Added realistic wait-list guidance and practical steps caregivers can take while waiting
+- Centered the caregiver as the child’s consistent support and partner without making the caregiver responsible for becoming a full-time therapist
+- Preserved the existing database, offline data, and backup compatibility
 
 ## v0.7.6 changes
 - Expanded ASD water safety based on caregiver feedback
