@@ -1,4 +1,16 @@
-# More than Measured v0.7.4
+# More than Measured v0.7.5
+
+## v0.7.5 changes
+- Added an ASD Safety card to Caregiver Corner
+- Added friendly, layered guidance for wandering prevention and immediate missing-child response
+- Covered AngelSense-style GPS trackers, Project Lifesaver, device limitations, privacy, charging, and emergency use
+- Added identification options and sample wording for nonspeaking or otherwise vulnerable children
+- Added special-needs car-seat guidance, certified technician referrals, and warnings about unapproved restraint accessories
+- Added autism-aware swim lessons, water-watcher supervision, pool barriers, life jackets, and CPR reminders
+- Added home, fire, medication, household, school, outing, internet, and growing-independence safety guidance
+- Added first-responder registry suggestions and a one-page emergency-profile checklist
+- Linked to current CDC, AAP, NHTSA, Red Cross, and Project Lifesaver resources
+- Preserved the existing database, offline data, and backup compatibility
 
 ## v0.7.4 changes
 - Added a Benefits & Financial Support card to Caregiver Corner

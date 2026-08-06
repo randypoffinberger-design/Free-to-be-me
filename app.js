@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.4", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.5", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -111,6 +111,7 @@ const routes = {
   education: renderEducationOptions,
   assessment: renderAssessmentInformation,
   benefits: renderBenefitsInformation,
+  safety: renderSafetyInformation,
   resources: renderResources,
   explore: renderExplore,
   caregiver: renderCaregiver,
@@ -1996,6 +1997,73 @@ function renderBenefitsInformation() {
   <div class="banner benefits-disclaimer"><strong>Important:</strong> This section provides general U.S. caregiver education, not legal, tax, benefits, or financial advice. Program rules change. Confirm current requirements with the administering agency and a qualified professional who can review your family’s circumstances.</div>`;
 }
 
+function renderSafetyInformation() {
+  const safetyLink = (url, title, description, tag = "") =>
+    `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span>${tag ? `<small>${esc(tag)}</small>` : ""}</a>`;
+  view.innerHTML = `<section class="hero"><h1>🛟 ASD Safety</h1><p>Practical layers of protection for wandering, travel, water, emergencies, and everyday life.</p></section>
+  <div class="banner safety-note"><strong>This is not about parenting through fear.</strong> Some autistic children have little awareness of traffic, water, strangers, heat, or getting lost—and some cannot reliably tell a helper their name or address. A few calm preparations can give the whole family more breathing room.</div>
+  <div class="banner safety-warning"><strong>Use layers:</strong> No tracker, alarm, identification item, swim lesson, or car seat can be the entire safety plan. Choose safeguards for this child’s actual abilities and update them as the child grows.</div>
+
+  <h2 class="section-title">A strong starting plan</h2>
+  <ol class="benefits-start card safety-start"><li><strong>Prevent when possible.</strong><span>Secure likely exits and hazards while preserving safe fire escape.</span></li><li><strong>Know what draws or overwhelms the child.</strong><span>Water, playgrounds, roads, favorite signs, animals, noise, demands, fear, or sensory overload may shape where they go.</span></li><li><strong>Make the child easier to locate and help.</strong><span>Use current photos, identification, trusted contacts, and an optional location device.</span></li><li><strong>Practice the response.</strong><span>Everyone should know who calls 911, where to search first, and what information to share.</span></li></ol>
+
+  <h2 class="section-title">Safety topics</h2>
+  <div class="education-sections safety-sections">
+    <details class="education-card" open><summary>🚪 Wandering and leaving a safe area</summary><div class="education-body">
+      <p>Wandering—sometimes called elopement—is more than an ordinary toddler dash. It means leaving a safe place or caregiver in a way that could lead to harm. It can happen quickly and is not proof that a caregiver was careless.</p>
+      <h3>Layers that may help</h3><ul><li>Door and window alarms, chimes, securely placed locks, gates, and pool barriers suited to the home and local fire code.</li><li>A visual stop sign, routine, or cue at exits—but never a visual cue as the only barrier.</li><li>Teaching “stop,” “wait,” responding to a name, showing an ID card, and returning to a trusted adult in small, positive steps.</li><li>Tell school, childcare, relatives, and respite workers what wandering looks like, likely destinations, triggers, and who must be notified.</li><li>Keep a current photo, height, weight, clothing description, communication needs, calming approaches, attractions, aversions, and medical information ready.</li></ul>
+      <h3>If the child is missing</h3><ul><li><strong>Call 911 immediately.</strong> Do not wait. Say the child is autistic or otherwise vulnerable, may not respond to their name, and may be drawn to water or traffic.</li><li>Search nearby water first when water is an attraction, while another adult checks other high-risk and favorite locations.</li><li>Give responders a recent photo and explain communication, sensory, approach, and safety needs.</li><li>At a store or attraction, immediately ask staff to begin their missing-child procedure, sometimes called Code Adam.</li></ul>
+      <div class="education-links">${safetyLink("https://www.cdc.gov/child-development/disability-safety/wandering.html", "CDC wandering guidance", "Planning, prevention, identification, safety skills, and first-responder preparation.", "Centers for Disease Control and Prevention")}${safetyLink("https://www.healthychildren.org/English/health-issues/conditions/Autism/Pages/Autism-Wandering-Tips-AAP.aspx", "AAP wandering safety tips", "Home, school, sleep, water, and emergency-planning ideas.", "American Academy of Pediatrics")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📍 AngelSense, GPS trackers, and locator programs</summary><div class="education-body">
+      <p>Wearable GPS/cellular products such as <strong>AngelSense</strong> and similar devices may provide location updates, geofences, alerts, and caregiver communication. Compare battery life, water resistance, attachment method, cellular coverage, subscription cost, school policy, privacy, and whether the child will tolerate wearing it.</p>
+      <p><strong>Project Lifesaver</strong> is different from an ordinary consumer GPS tracker. Participating public-safety agencies enroll eligible people and use a wearable radio-frequency transmitter and trained search teams. Availability, enrollment rules, equipment, and fees vary locally.</p>
+      <ul><li>Test the device where the family actually goes—not just at home.</li><li>Charge it on a routine and enable low-battery and removal alerts when offered.</li><li>Give access only to trusted caregivers and use a strong, unique account password.</li><li>Do not delay calling 911 while trying to locate a device signal yourself.</li><li>Batteries die, devices can be removed, signals can fail indoors, and cellular service can disappear.</li></ul>
+      <div class="banner"><strong>Product note:</strong> More than Measured does not endorse or receive payment from AngelSense or another tracker. It is named because caregivers commonly ask about it.</div>
+      <div class="education-links">${safetyLink("https://projectlifesaver.org/about-us/where-we-are/", "Find a Project Lifesaver program", "Check whether a participating public-safety agency serves your area.", "Project Lifesaver International")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🪪 Identification for nonspeaking or vulnerable children</summary><div class="education-body">
+      <p>An ID item can speak for a child who cannot reliably give their name, address, or caregiver’s number—especially when frightened or overwhelmed.</p>
+      <ul><li>Medical ID bracelet, silicone band, shoe tag, necklace, watch-band tag, or secure clothing label.</li><li>Communication card in a pocket, backpack, AAC case, school bag, or emergency pouch.</li><li>Vehicle seat-belt sleeve or backpack tag that tells a responder where to find emergency information.</li><li>Temporary ID band or written caregiver number for fairs, parks, travel, and crowded events.</li></ul>
+      <h3>Sample wording</h3><p><em>“I am autistic. I may not speak or answer questions. Please stay with me and call [caregiver name] at [number]. I may be frightened by sirens or touch. I communicate using [AAC, gestures, ASL, or words].”</em></p>
+      <p>Use the least public personal information that still helps. A caregiver phone number is often safer than printing a full home address. Keep it current and teach the child to show it when possible.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🚗 Car seats, harness escaping, and vehicle safety</summary><div class="education-body">
+      <p>Start with the seat that matches the child’s age, height, weight, developmental needs, and manufacturer limits. Keep a child rear-facing or harnessed as long as the approved seat allows, and have the installation checked.</p>
+      <p>If the child unbuckles, escapes the harness, has poor trunk or head control, or cannot safely use an ordinary seat, ask the clinician and a <strong>Child Passenger Safety Technician experienced with special healthcare needs</strong> for an individual evaluation. Specialized restraints may require a prescription, training, different installation, or funding approval.</p>
+      <ul><li>Do not add an aftermarket buckle guard, chest clip, padding, positioning piece, or restraint the car-seat or vehicle manufacturer has not approved.</li><li>Never use a device that could trap the child or prevent a rescuer from quickly releasing them.</li><li>Follow both the car-seat and vehicle manuals, use the top tether when required, register the seat for recalls, and recheck fit as the child grows.</li><li>Use child locks where appropriate, keep keys inaccessible, and teach that a parked vehicle is not a play space.</li></ul>
+      <div class="education-links">${safetyLink("https://www.nhtsa.gov/campaign/right-seat", "Car-seat finder and inspections", "Choose an appropriate restraint and find a certified inspection station.", "National Highway Traffic Safety Administration")}${safetyLink("https://www.nhtsa.gov/vehicle-safety/adapted-vehicles", "Transportation with special needs", "Passenger evaluations, specialized seating, and adapted vehicles.", "National Highway Traffic Safety Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🏊 Water safety and swim lessons</summary><div class="education-body">
+      <p>Water can be calming and strongly attractive, which makes water safety especially important for a child who may wander. Choose patient, individualized lessons with an instructor who welcomes the child’s communication and sensory needs. Practice entering only with permission, turning toward the wall, floating, reaching the edge, and getting out—sometimes while wearing ordinary clothes and shoes.</p>
+      <ul><li>Give one capable adult the job of close, constant “water watcher” supervision without phone distractions.</li><li>Use four-sided pool fencing with a self-closing, self-latching gate; add door, gate, or pool alarms as extra layers.</li><li>Empty small pools and containers after use, and put nearby ponds, creeks, pools, drainage areas, and wells in the wandering plan.</li><li>Use a properly fitted, U.S. Coast Guard-approved life jacket for boating and whenever conditions call for it.</li><li>Learn CPR and make sure every caregiver knows the water plan.</li></ul>
+      <p><strong>Swimming ability does not make a child drown-proof.</strong> Lessons, flotation devices, barriers, alarms, and supervision cover different gaps.</p>
+      <div class="education-links">${safetyLink("https://www.redcross.org/take-a-class/swimming/swim-lessons", "Find swim lessons", "Search for Learn-to-Swim providers for children and adults.", "American Red Cross")}${safetyLink("https://www.redcross.org/get-help/how-to-prepare-for-emergencies/types-of-emergencies/water-safety/swim-safety.html", "Water-safety guidance", "Supervision, water competency, life jackets, and safer swimming.", "American Red Cross")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🏠 Home, fire, medication, and household safety</summary><div class="education-body">
+      <ul><li>Anchor furniture and televisions; secure medications, cleaners, sharp objects, firearms, lighters, and button batteries.</li><li>Use appropriate window guards without blocking emergency escape.</li><li>Check smoke and carbon-monoxide alarms and consider visual, vibrating, or voice options when sound alone may not work.</li><li>Practice a short fire-escape routine. Tell firefighters if the child may hide, resist touch, run, or not respond to spoken directions.</li><li>Use visual labels or locks for high-risk spaces while keeping safe spaces easy to reach.</li><li>Prepare for power loss if AAC, medication refrigeration, feeding, monitoring, or sensory-regulation equipment needs electricity.</li></ul>
+      <p>Ask the local 911 center, police, sheriff, or fire department whether they offer a voluntary vulnerable-person registry, premise alert, or emergency profile. Names and privacy rules vary, so ask who can see it and how to update or remove it.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🏫 School, outings, internet, and growing independence</summary><div class="education-body">
+      <ul><li>Put wandering, transportation, communication, toileting, feeding, allergy, seizure, and emergency needs into the school safety plan, IEP, 504 plan, or healthcare plan when appropriate.</li><li>At outings, take a current photo on arrival, identify exits and water, assign one supervising adult, and establish a meeting point.</li><li>Teach personal information, safe adults, street and parking-lot safety, consent, private body parts, and how to ask for help at the child’s level.</li><li>Use device parental controls, limit public location sharing, and teach that online friends are strangers until a trusted adult verifies otherwise.</li><li>As independence grows, practice short routes, transportation, money, phone use, emergency contacts, and what to do when plans change.</li></ul>
+      <p>Safety teaching should build skill without punishing communication, stimming, or the need to escape overwhelming situations. If a child runs from noise, pain, demands, or sensory overload, reducing that trigger belongs in the prevention plan too.</p>
+    </div></details>
+
+    <details class="education-card"><summary>📋 One-page emergency profile checklist</summary><div class="education-body">
+      <p>Keep a current copy on each caregiver’s phone and give it to regular supervisors. Review it after a move, medication change, growth spurt, new school, or major communication change.</p>
+      <div class="safety-profile-list"><strong>Include:</strong><span>Current face and full-body photos</span><span>Legal name, nickname, age, height, and weight</span><span>Caregiver names and two phone numbers</span><span>Communication method and response to name</span><span>Likely destinations, water attraction, and wandering triggers</span><span>How to approach, comfort, and avoid escalating distress</span><span>Medical needs, allergies, seizure plan, and essential medication</span><span>Tracker details, if used, and who can access it</span></div>
+      <p><strong>Keep private details secure.</strong> Share the full profile with trusted caregivers and responders; put only the minimum necessary information on publicly visible identification.</p>
+    </div></details>
+  </div>
+  <div class="banner safety-disclaimer"><strong>Important:</strong> This is general U.S. safety education. It cannot replace individualized advice from the child’s clinician, therapist, certified child-passenger-safety technician, swim professional, school team, product manufacturer, or local responders. In an immediate emergency or when a vulnerable child is missing, call 911.</div>`;
+}
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -2009,6 +2077,7 @@ async function renderCaregiver() {
     <button id="caregiverEducation" class="card-button"><strong>🎓 Educational options</strong><small>Homeschooling, school choices, IEPs, 504 plans, resources, and letter templates.</small></button>
     <button id="caregiverAssessment" class="card-button"><strong>🧭 Autism assessment information</strong><small>When assessment can begin, how it works, what to bring, and what to expect.</small></button>
     <button id="caregiverBenefits" class="card-button"><strong>🤲 Benefits & financial support</strong><small>Paid caregiving, SSI and SSDI, Medicaid, tax help, respite, and overlooked resources.</small></button>
+    <button id="caregiverSafety" class="card-button"><strong>🛟 ASD safety</strong><small>Wandering, trackers, identification, car seats, water, home, school, and emergency planning.</small></button>
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
@@ -2019,6 +2088,7 @@ async function renderCaregiver() {
   $("#caregiverEducation").onclick = () => navigate("education");
   $("#caregiverAssessment").onclick = () => navigate("assessment");
   $("#caregiverBenefits").onclick = () => navigate("benefits");
+  $("#caregiverSafety").onclick = () => navigate("safety");
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
   document
