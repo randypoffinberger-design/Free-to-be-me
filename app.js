@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.1", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.2", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -108,6 +108,7 @@ const routes = {
   skills: renderSkills,
   potty: renderPottyTracker,
   pottyTips: renderPottyTips,
+  education: renderEducationOptions,
   resources: renderResources,
   explore: renderExplore,
   caregiver: renderCaregiver,
@@ -1687,6 +1688,146 @@ function renderPottyTips() {
   view.innerHTML = `<section class="hero"><h1>💡 Potty Training Tips & Tricks</h1><p>Gentle starting points that can be adapted to your child.</p></section><div class="banner" style="margin-top:16px">Potty training is a skill, not a test. Progress may be non-linear, and comfort and communication come first.</div><div class="tips-list">${tips.map(([title, text]) => `<details class="term-card"><summary>${esc(title)}</summary><p>${esc(text)}</p></details>`).join("")}</div>`;
 }
 
+const IEP_REQUEST_TEMPLATE = `[DATE]
+
+To: [PRINCIPAL, SPECIAL EDUCATION DIRECTOR, OR SCHOOL CONTACT]
+[SCHOOL OR DISTRICT NAME]
+[SCHOOL OR DISTRICT ADDRESS OR EMAIL]
+
+Subject: Request for an initial special education evaluation for [CHILD'S FULL NAME], date of birth [DATE OF BIRTH], grade [GRADE]
+
+Dear [NAME OR SCHOOL TEAM],
+
+I am the parent/guardian of [CHILD'S FULL NAME], who attends [SCHOOL NAME]. I am writing to request a full and individual initial evaluation under the Individuals with Disabilities Education Act (IDEA) to determine whether my child is eligible for special education and related services.
+
+I am concerned about [DESCRIBE LEARNING, COMMUNICATION, SENSORY, SOCIAL, BEHAVIORAL, MOTOR, ATTENDANCE, OR DAILY-LIVING CONCERNS]. Examples include [ADD SPECIFIC EXAMPLES, DATES, SCHOOLWORK, REPORTS, OR OBSERVATIONS].
+
+My child has been diagnosed with or is being evaluated for [OPTIONAL: DIAGNOSIS OR CONDITION]. Supports that have been tried include [LIST SUPPORTS, INTERVENTIONS, ACCOMMODATIONS, OR SERVICES], with the following results: [DESCRIBE WHAT HELPED OR WHAT REMAINS DIFFICULT].
+
+Please evaluate every area related to the suspected disability, including any relevant academic, communication, functional, social-emotional, sensory, motor, behavioral, assistive-technology, and related-service needs. Please do not delay this request while waiting for additional classroom interventions.
+
+Please send me the district's written consent form, evaluation procedures, applicable timeline, and a copy of my procedural safeguards. If the district refuses any part of this request, please provide prior written notice explaining the decision and the information used to make it.
+
+I would like to participate in all meetings and receive copies of evaluation reports before the eligibility meeting when possible. Please contact me in writing at [EMAIL OR MAILING ADDRESS] and at [PHONE NUMBER].
+
+Thank you for working with me to understand and support [CHILD'S FIRST NAME].
+
+Sincerely,
+[PARENT/GUARDIAN NAME]
+[ADDRESS]
+[EMAIL]
+[PHONE]`;
+
+const PLAN_504_REQUEST_TEMPLATE = `[DATE]
+
+To: [SCHOOL'S SECTION 504 COORDINATOR, PRINCIPAL, OR SCHOOL CONTACT]
+[SCHOOL OR DISTRICT NAME]
+[SCHOOL OR DISTRICT ADDRESS OR EMAIL]
+
+Subject: Request for a Section 504 evaluation for [CHILD'S FULL NAME], date of birth [DATE OF BIRTH], grade [GRADE]
+
+Dear [NAME OR 504 TEAM],
+
+I am the parent/guardian of [CHILD'S FULL NAME], who attends [SCHOOL NAME]. I am writing to request an evaluation under Section 504 of the Rehabilitation Act to determine whether my child has a disability and needs accommodations, aids, or services to have equal access to school.
+
+My child has or may have [DIAGNOSIS, CONDITION, OR SUSPECTED DISABILITY]. This affects school and major life activities in the following ways: [DESCRIBE LEARNING, COMMUNICATION, CONCENTRATION, THINKING, SENSORY, EATING, SLEEPING, WALKING, BATHROOM, BREATHING, OR OTHER IMPACTS]. Examples include [ADD SPECIFIC EXAMPLES, DATES, ATTENDANCE INFORMATION, SCHOOLWORK, OR OBSERVATIONS].
+
+Helpful supports may include [LIST POSSIBLE ACCOMMODATIONS OR SERVICES—FOR EXAMPLE, MOVEMENT BREAKS, A QUIET TESTING AREA, VISUAL DIRECTIONS, EXTRA PROCESSING TIME, COMMUNICATION SUPPORT, A SENSORY PLAN, OR HEALTH-RELATED SUPPORT]. I understand the school team will consider the individual evaluation information when deciding what is appropriate.
+
+Please let me know in writing what information or consent you need, the school's evaluation process and timeline, and the date of any meeting. Please also provide a copy of the district's Section 504 procedural safeguards. If the school refuses this request, please give me written notice explaining the decision and the information considered.
+
+I would like to participate in the evaluation and placement process. Please contact me in writing at [EMAIL OR MAILING ADDRESS] and at [PHONE NUMBER].
+
+Thank you for working with me to support [CHILD'S FIRST NAME]'s access to school.
+
+Sincerely,
+[PARENT/GUARDIAN NAME]
+[ADDRESS]
+[EMAIL]
+[PHONE]`;
+
+function educationLink(url, title, description, tag = "") {
+  return `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span>${tag ? `<small>${esc(tag)}</small>` : ""}</a>`;
+}
+
+async function copyEducationTemplate(textarea, button) {
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(textarea.value);
+    else {
+      textarea.focus();
+      textarea.select();
+      if (!document.execCommand("copy")) throw new Error("Copy unavailable");
+    }
+    const old = button.textContent;
+    button.textContent = "Copied!";
+    setTimeout(() => (button.textContent = old), 1500);
+  } catch {
+    alert("Copy was blocked by this browser. Select the letter text and use Copy instead.");
+  }
+}
+
+function renderEducationOptions() {
+  view.innerHTML = `<section class="hero"><h1>🎓 Educational Options</h1><p>Understand the paths available and choose what fits your child and family.</p></section>
+  <div class="banner education-note"><strong>A helpful starting point:</strong> There is no single best school setting for every autistic child. The right choice is the one that can support your child’s communication, regulation, safety, learning, and sense of belonging. Homeschool and private-school rules vary by state, so always confirm current requirements locally.</div>
+
+  <h2 class="section-title">Choosing a learning setting</h2>
+  <div class="education-sections">
+    <details class="education-card" open><summary>🏡 Homeschooling an autistic child</summary><div class="education-body">
+      <p>Homeschooling can offer a quieter environment, flexible pacing, shorter lessons, sensory breaks, interest-led learning, and the freedom to teach different subjects at different levels. It also places planning, recordkeeping, instruction, and much of the cost on the family.</p>
+      <h3>Questions worth asking</h3><ul><li>Does your child learn better one-to-one, through movement, visually, or in short predictable sessions?</li><li>How will you support communication, occupational therapy, speech, social connection, physical activity, and life skills?</li><li>What records, notices, subjects, attendance, assessments, or portfolio does your state require?</li><li>Is the program truly homeschooling, or a public virtual school with public-school rules and services?</li></ul>
+      <p>Start with your state’s education department. Federal special-education services available to independently homeschooled children can differ from those available in public school, and state rules matter.</p>
+      <div class="education-links">${educationLink("https://www.ed.gov/birth-grade-12-education/education-choice/state-regulation-of-private-and-home-schools", "State home and private-school rules", "Choose your state and review its requirements.", "U.S. Department of Education")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧩 Curriculum and teaching resources</summary><div class="education-body">
+      <p>“Autism-friendly” is not one teaching style. Look for flexible subject levels, clear visual directions, predictable routines, multiple ways to answer, adjustable pacing, and lessons that connect with your child’s interests. Try samples before paying when possible.</p>
+      <div class="education-links">
+        ${educationLink("https://www.time4learning.com/", "Time4Learning", "A paid PreK–12 general homeschool curriculum with adjustable grade levels and parent planning tools.", "Complete curriculum • Commercial")}
+        ${educationLink("https://www.n2y.com/unique-learning-system/accessible-content/", "Unique Learning System", "Standards-based differentiated academics and life-skills content for students with complex learning needs.", "Special education curriculum • Commercial")}
+        ${educationLink("https://starautismprogram.com/curriculum/star-program", "STAR Program", "A structured autism-focused program covering communication, academics, routines, play, and social skills.", "Autism curriculum • Commercial • ABA-based")}
+        ${educationLink("https://starautismprogram.com/curriculum/links-curriculum", "LINKS Curriculum", "School, community, vocational, and independence instruction for older learners.", "Older learners • Commercial • ABA-based")}
+        ${educationLink("https://afirm.fpg.unc.edu/afirm-modules", "AFIRM Modules", "Step-by-step modules and downloadable materials for evidence-based autism practices.", "Free teaching support • Not a full core curriculum")}
+        ${educationLink("https://autisminternetmodules.org/", "Autism Internet Modules", "Learning modules on communication, sensory needs, structured teaching, transitions, and other topics.", "Free learning resource • Not a full core curriculum")}
+      </div><p class="hint">These links are starting points, not endorsements. Methods that work well for one child may not fit another, and prices or access can change.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🏫 Private, alternative, and specialized schools</summary><div class="education-body">
+      <p>Options may include autism-specific private schools, therapeutic schools, microschools, hybrid programs, Montessori-style settings, public charter or magnet schools, and public virtual schools. A smaller or specialized setting is not automatically a better fit—visit, observe, and ask direct questions.</p>
+      <h3>What to check before enrolling</h3><ul><li>Staff training, class size, communication supports, sensory spaces, behavior approach, restraint and seclusion policies, and family communication.</li><li>Whether the school can provide speech, occupational therapy, AAC support, transportation, nursing, or other services your child needs.</li><li>Accreditation or state approval, tuition and fees, scholarships, refund rules, discipline policies, and how progress is measured.</li><li>Whether students earn a recognized diploma and how transitions back to public school or into adulthood are handled.</li></ul>
+      <p>If a family places a child in private school by choice, the child may not have the same individual entitlement to IDEA services they would have in public school. The local district still has child-find responsibilities, so ask the district how evaluation and any available services work before enrolling.</p>
+      <div class="education-links">${educationLink("https://nces.ed.gov/surveys/pss/privateschoolsearch/", "Search private schools", "Find private schools by location and program details; listing does not mean endorsement or accreditation.", "National Center for Education Statistics")}${educationLink("https://nces.ed.gov/ccd/schoolsearch/", "Search public schools", "Explore public, charter, magnet, virtual, alternative, and special-education schools.", "National Center for Education Statistics")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📘 Understanding an IEP</summary><div class="education-body">
+      <p>An Individualized Education Program, or IEP, is a written plan under IDEA for an eligible student who needs specially designed instruction. It is built by a team that includes the parent. An IEP can include present levels, measurable goals, accommodations, specialized instruction, related services such as speech or occupational therapy, assistive technology, behavior supports, transportation, and how progress will be reported.</p>
+      <p>A medical diagnosis does not automatically create an IEP, and good grades do not automatically rule one out. The school evaluates how the suspected disability affects educational needs, including functional needs. A parent can request an evaluation. Federal rules generally call for the initial evaluation within 60 days after parental consent unless the state uses its own timeline.</p>
+      <h3>Useful public-school terms</h3><ul><li><strong>Child Find:</strong> the school system’s duty to identify, locate, and evaluate children who may need special education.</li><li><strong>FAPE:</strong> a free appropriate public education designed around the child’s individual needs.</li><li><strong>LRE:</strong> learning with nondisabled peers as much as is appropriate for the individual child.</li><li><strong>Prior Written Notice:</strong> the school’s written explanation when it proposes or refuses certain actions.</li><li><strong>Procedural safeguards:</strong> the family’s notice of rights, including records, consent, complaints, mediation, and due process.</li><li><strong>Independent Educational Evaluation:</strong> in certain circumstances, a parent who disagrees with the school’s evaluation may request an outside evaluation at public expense.</li></ul>
+      <div class="education-links">${educationLink("https://sites.ed.gov/idea/parents-families/", "IDEA resources for parents and families", "Federal information about evaluations, IEPs, safeguards, and model forms.", "U.S. Department of Education")}${educationLink("https://www.parentcenterhub.org/find-your-center/", "Find your Parent Training and Information Center", "Locate a federally funded parent center for local guidance and training.", "Center for Parent Information and Resources")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📝 Understanding a 504 plan</summary><div class="education-body">
+      <p>A Section 504 plan helps a qualified student with a disability have equal access to school. It may include accommodations, aids, and services such as a quieter testing space, visual directions, breaks, health supports, communication access, extra processing time, or changes to how work is completed.</p>
+      <p>A 504 plan does not usually include the specially designed instruction and annual goals found in an IEP. Section 504 eligibility can be broader, and a student may qualify even when they do not need special education under IDEA. The school must use evaluation and placement procedures rather than relying on a diagnosis alone.</p>
+      <div class="education-links">${educationLink("https://www.ed.gov/laws-and-policy/individuals-disabilities/section-504/civil-rights-of-students-hidden-disabilities-and-section-504", "Section 504 and students with disabilities", "Federal explanation of evaluation, placement, services, and parent rights.", "U.S. Department of Education Office for Civil Rights")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧰 Other public-school supports to ask about</summary><div class="education-body"><ul><li>Speech-language, occupational therapy, physical therapy, counseling, nursing, transportation, orientation and mobility, or other related services when needed for education.</li><li>AAC and assistive-technology evaluation, devices, training, and access throughout the school day.</li><li>Visual schedules, sensory breaks, alternative seating, quiet spaces, communication supports, and staff training.</li><li>A Functional Behavioral Assessment and a positive Behavior Intervention Plan when behavior is interfering with learning or communicating an unmet need.</li><li>Extended School Year services when needed to provide FAPE—not simply because a child has a disability.</li><li>Transition planning for life after high school when the child reaches the age required by federal and state rules.</li><li>Your state’s Parent Training and Information Center, special-education complaint process, mediation, and Office for Civil Rights complaint information.</li></ul></div></details>
+  </div>
+
+  <h2 class="section-title">Letter templates</h2>
+  <div class="banner"><strong>Before sending:</strong> Replace every item in brackets, add specific examples, keep a dated copy, and send it in a way you can document. District forms and timelines vary. These templates provide general educational information and are not legal advice.</div>
+  <div class="education-templates">
+    <details class="education-card"><summary>📄 Request an IDEA special-education evaluation</summary><div class="education-body"><p>This asks the school to evaluate whether your child is eligible for an IEP. Edit the letter directly below.</p><textarea id="iepLetter" class="template-letter" aria-label="Editable IDEA evaluation request letter">${esc(IEP_REQUEST_TEMPLATE)}</textarea><div class="btn-row"><button id="copyIepLetter" class="btn" type="button">Copy letter</button><button id="downloadIepLetter" class="btn secondary" type="button">Download .txt</button></div></div></details>
+    <details class="education-card"><summary>📄 Request a Section 504 evaluation</summary><div class="education-body"><p>This asks the school to evaluate whether your child needs a 504 plan. Edit the letter directly below.</p><textarea id="plan504Letter" class="template-letter" aria-label="Editable Section 504 evaluation request letter">${esc(PLAN_504_REQUEST_TEMPLATE)}</textarea><div class="btn-row"><button id="copy504Letter" class="btn" type="button">Copy letter</button><button id="download504Letter" class="btn secondary" type="button">Download .txt</button></div></div></details>
+  </div>`;
+
+  const iep = $("#iepLetter"), plan504 = $("#plan504Letter");
+  $("#copyIepLetter").onclick = (event) => copyEducationTemplate(iep, event.currentTarget);
+  $("#copy504Letter").onclick = (event) => copyEducationTemplate(plan504, event.currentTarget);
+  $("#downloadIepLetter").onclick = () => downloadBlob(new Blob([iep.value], { type: "text/plain;charset=utf-8" }), "IEP-Evaluation-Request-Template.txt");
+  $("#download504Letter").onclick = () => downloadBlob(new Blob([plan504.value], { type: "text/plain;charset=utf-8" }), "Section-504-Evaluation-Request-Template.txt");
+}
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -1697,6 +1838,7 @@ async function renderCaregiver() {
   <div class="grid">
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
     <button id="caregiverTerms" class="card-button"><strong>📖 Common terms</strong><small>Plain-language explanations of autism and sensory terminology.</small></button>
+    <button id="caregiverEducation" class="card-button"><strong>🎓 Educational options</strong><small>Homeschooling, school choices, IEPs, 504 plans, resources, and letter templates.</small></button>
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
@@ -1704,6 +1846,7 @@ async function renderCaregiver() {
   </div>`;
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
+  $("#caregiverEducation").onclick = () => navigate("education");
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
   document

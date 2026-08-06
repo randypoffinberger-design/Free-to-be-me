@@ -1,4 +1,13 @@
-# More than Measured v0.7.1
+# More than Measured v0.7.2
+
+## v0.7.2 changes
+- Added an Educational Options card to Caregiver Corner
+- Added friendly overviews of homeschooling, curriculum selection, private and alternative schools, IEPs, Section 504 plans, and other public-school supports
+- Added current links to federal education guidance, school search tools, parent support, curricula, and autism teaching resources
+- Added editable IDEA evaluation-request and Section 504 evaluation-request letters
+- Added one-tap copy and downloadable text-file options for both letter templates
+- Clarified that home/private-school rules and service availability vary by state
+- Preserved the existing local database, offline data, and backup compatibility
 
 ## v0.7.1 changes
 - Rewrote the Common Terms guide in warmer, friendlier, plain language
