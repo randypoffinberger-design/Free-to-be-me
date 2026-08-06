@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.1", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.2", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -17,7 +17,9 @@ const DB_NAME = "ftbm-db",
 let db,
   deferredInstallPrompt = null,
   profileAgeTimer = null,
-  vocabSessionFilters = null;
+  vocabSessionFilters = null,
+  currentRoute = "",
+  routeStack = [];
 const $ = (s) => document.querySelector(s),
   view = $("#view"),
   modal = $("#modal"),
@@ -126,14 +128,24 @@ const routes = {
   about: renderAbout,
   settings: renderSettings,
 };
-function navigate(r) {
-  const route = routes[r] ? r : "home";
+async function navigate(r, options = {}) {
+  let route;
+  if (options.back) {
+    if (routeStack.length > 1) routeStack.pop();
+    else routeStack = ["home"];
+    route = routeStack[routeStack.length - 1] || "home";
+  } else {
+    route = routes[r] ? r : "home";
+    if (route !== currentRoute) routeStack.push(route);
+  }
   if (profileAgeTimer) {
     clearInterval(profileAgeTimer);
     profileAgeTimer = null;
   }
   document.body.classList.toggle("home-route", route === "home");
-  routes[route]();
+  currentRoute = route;
+  await routes[route]();
+  $("#backBtn").classList.toggle("hidden", route === "home");
   history.replaceState(null, "", `#${route}`);
   closeDrawer();
   view.focus();
@@ -1601,15 +1613,41 @@ function placeholder(t, i, c, items) {
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
 }
 
+const BIRTHDAY_MESSAGES=[
+  "Happy {birthday}, {name}! The world became brighter the day you arrived. Keep growing in your own wonderful way—you are loved exactly as you are.",
+  "Happy {birthday}, {name}! Today we celebrate your smile, your spirit, and every little thing that makes you unmistakably you.",
+  "To {name} on your {birthday}: may your day be filled with favorite things, comfortable moments, happy surprises, and people who understand your heart.",
+  "Happy {birthday}, {name}! You never need to be anyone other than yourself. You are seen, valued, celebrated, and deeply loved.",
+  "{name}, today is all about you! Happy {birthday} to a child whose journey is completely their own and worth celebrating every step of the way.",
+  "Happy {birthday}, {name}! Your way of seeing the world brings something beautiful that nobody else could bring.",
+  "To our amazing {name}: every new year with you gives us more reasons to smile, learn, and love. Happy {birthday}!",
+  "Happy {birthday}, {name}! May this year bring safe places, joyful discoveries, kind people, and plenty of time for the things you love most.",
+  "{name}, you are more than milestones, measurements, or expectations. You are an incredible person, and today we celebrate all of you. Happy {birthday}!",
+  "Happy {birthday} to {name}, whose personality, passions, laughter, and determination make every day more interesting and meaningful.",
+  "Today we celebrate the wonderful adventure of being {name}. Happy {birthday}—keep shining in the way only you can.",
+  "Happy {birthday}, {name}! You have already filled our lives with memories we could never measure and love we could never fully put into words.",
+  "To {name}: may your {birthday} feel comfortable, exciting in all the right ways, and full of the people and things that make you happiest.",
+  "Happy {birthday}, {name}! Your voice matters, your choices matter, your comfort matters, and your happiness matters. We love you endlessly.",
+  "Another year of learning who you are and loving every new part we discover. Happy {birthday}, {name}!",
+  "Happy {birthday} to one extraordinary kid! {name}, you make ordinary moments special simply by being part of them.",
+  "{name}, your joy is contagious, your interests are worth sharing, and your progress belongs to you. Have a beautiful {birthday}!",
+  "Happy {birthday}, {name}! May your new year be filled with patience when things are hard, confidence when you are ready, and celebration for every Win.",
+  "To {name} on your {birthday}: you are not behind, too much, or not enough. You are wonderfully yourself, right on your own path.",
+  "Happy {birthday}, {name}! We hope today gives you room to move, play, rest, laugh, explore, and celebrate exactly the way that feels best.",
+  "The best thing about today is celebrating someone as special as {name}. Happy {birthday} to a child who is loved beyond measure.",
+  "Happy {birthday}, {name}! Every year you teach us something new about courage, connection, wonder, and unconditional love.",
+  "{name}, your story is still beginning, and it is already filled with so many beautiful moments. Happy {birthday}!",
+  "Happy {birthday} to our remarkable {name}. We are proud of who you are today—not only of who you may become tomorrow.",
+  "Today the candles are for {name}! Happy {birthday} to someone whose unique journey makes our family’s world brighter.",
+];
+function birthdayOrdinal(value){const n=Number(value);if(!n)return "birthday";const suffix=n%10===1&&n%100!==11?"st":n%10===2&&n%100!==12?"nd":n%10===3&&n%100!==13?"rd":"th";return `${n}${suffix} birthday`;}
 function openBirthdayMessage(profiles) {
-  modalBody.innerHTML = `<h2>🎂 Special birthday message</h2><div class="form-grid"><div class="field"><label>Child</label><select id="birthdayProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Age turning <span class="hint">(optional)</span></label><input id="birthdayAge" type="number" min="1" max="120"></div><div class="field"><label>Something you want celebrated <span class="hint">(optional)</span></label><input id="birthdayCelebrate" placeholder="Their kindness, courage, sense of humor…"></div><button id="generateBirthday" class="btn" type="button">Generate message</button><div class="field"><label>Your message</label><textarea id="birthdayOutput" class="template-letter" style="min-height:220px"></textarea></div><button id="copyBirthday" class="btn secondary" type="button">Copy message</button></div>`;
+  modalBody.innerHTML = `<h2>🎂 Special birthday message</h2><div class="form-grid"><div class="field"><label>Child profile</label><select id="birthdayProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Name used in message</label><input id="birthdayName" value="${esc(profiles[0]?.name||"")}" placeholder="Child’s name"></div><div class="field"><label>Age turning <span class="hint">(optional)</span></label><input id="birthdayAge" type="number" min="1" max="120"></div><div class="field"><label>Something extra to celebrate <span class="hint">(optional)</span></label><input id="birthdayCelebrate" placeholder="Their kindness, courage, sense of humor…"></div><button id="generateBirthday" class="btn" type="button">Generate random message</button><div class="field"><label>Your message</label><textarea id="birthdayOutput" class="template-letter" style="min-height:220px"></textarea></div><div class="btn-row"><button id="anotherBirthday" class="btn secondary" type="button">Try another</button><button id="copyBirthday" class="btn secondary" type="button">Copy message</button></div></div>`;
   modal.showModal();
-  $("#generateBirthday").onclick = () => {
-    const p = profiles.find((x) => x.id === $("#birthdayProfile").value), age = $("#birthdayAge").value.trim(), celebrate = $("#birthdayCelebrate").value.trim();
-    const interest = p.specialInterest ? ` Your love of ${p.specialInterest} makes the world around you brighter and more interesting.` : "";
-    const focus = p.currentFocus ? ` We are so proud of the way you keep growing while working on ${p.currentFocus}.` : "";
-    $("#birthdayOutput").value = `Happy ${age ? `${age}${Number(age) % 10 === 1 && Number(age) % 100 !== 11 ? "st" : Number(age) % 10 === 2 && Number(age) % 100 !== 12 ? "nd" : Number(age) % 10 === 3 && Number(age) % 100 !== 13 ? "rd" : "th"} ` : ""}birthday, ${p.name}! You are more than anything the world could measure.${interest}${focus}${celebrate ? ` Today we celebrate your ${celebrate}.` : ""} Keep being wonderfully, completely you. You are deeply loved, exactly as you are.`;
-  };
+  let lastIndex=-1;
+  const generate=()=>{const p=profiles.find((x)=>x.id===$("#birthdayProfile").value),name=$("#birthdayName").value.trim()||p.name,age=birthdayOrdinal($("#birthdayAge").value.trim()),celebrate=$("#birthdayCelebrate").value.trim();let index;do index=Math.floor(Math.random()*BIRTHDAY_MESSAGES.length);while(index===lastIndex&&BIRTHDAY_MESSAGES.length>1);lastIndex=index;let message=BIRTHDAY_MESSAGES[index].replaceAll("{name}",name).replaceAll("{birthday}",age);if(p.specialInterest)message+=` Your love of ${p.specialInterest} makes your world even more special.`;if(p.currentFocus)message+=` We are proud of every step you take while working on ${p.currentFocus}.`;if(celebrate)message+=` Today we also celebrate your ${celebrate}.`;$("#birthdayOutput").value=message;};
+  $("#birthdayProfile").onchange=()=>{$("#birthdayName").value=profiles.find((x)=>x.id===$("#birthdayProfile").value)?.name||"";};
+  $("#generateBirthday").onclick=generate;$("#anotherBirthday").onclick=generate;
   $("#copyBirthday").onclick = async () => { const text = $("#birthdayOutput").value; if (!text) return alert("Generate or write a message first."); await navigator.clipboard.writeText(text); alert("Birthday message copied."); };
 }
 
@@ -1619,6 +1657,7 @@ async function renderFoodDiary() {
   let profileId = profiles[0].id, entries = [];
   const key = () => `foodDiary:${profileId}`;
   view.innerHTML = `<section class="hero"><h1>🍽️ Food Diary</h1><p>Record what feels safe today without turning food into a test.</p></section><div class="card tool-form"><div class="field"><label>Child</label><select id="foodProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Entry type</label><select id="foodKind"><option value="food">Food</option><option value="meal">Meal</option></select></div><div class="field"><label>Name</label><input id="foodName" placeholder="Chicken nugget or taco plate"></div><div class="field"><label>Category</label><select id="foodCategory"><option value="safe">Safe food</option><option value="sometimes">Occasionally eats</option><option value="not">Absolutely not</option></select></div><div class="field"><label>Date observed</label><input id="foodDate" type="date" value="${isoToday()}"></div></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="foodNotes" placeholder="Brand, texture, temperature, presentation, or what changed"></textarea></div><button id="saveFood" class="btn full" type="button">Add to diary</button></div><div class="btn-row"><button id="mealIdeas" class="btn secondary">Generate variety ideas</button></div><h2 class="section-title">Food and meal list</h2><div id="foodList" class="list"></div>`;
+  $("#foodKind").insertAdjacentHTML("beforeend", '<option value="snack">Snack</option>');
   const load = async () => { entries = await getSetting(key(), []); draw(); };
   const persist = () => setSetting(key(), entries);
   const labels = { safe: "Safe", sometimes: "Occasionally eats", not: "Absolutely not" };
@@ -1712,6 +1751,7 @@ async function renderSleepSanctuary() {
   const sleepCards = document.querySelectorAll(".sleep-sections > .education-card");
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("beforebegin", `<details class="education-card"><summary>🌙 Your family’s 45-minute routine, safely adapted</summary><div class="education-body"><h3>First 30 minutes: active play</h3><p>Running, jumping, climbing, pushing, pulling, carrying, or outdoor play may help some children settle. Other children become more alert, so move active play earlier when it delays sleep. Daylight and activity during the day also support a healthy sleep schedule.</p><h3>Final 15 minutes: lower stimulation</h3><p>Dim lights and choose a familiar calm activity: cuddling, a puzzle, coloring, drawing, blocks, quiet music, or a gentle show if that works in real family life. A warm bath, tolerated lotion, or gentle firm touch may be calming when the child enjoys it.</p><h3>Sound and night-lights</h3><p>A sound machine can mask unpredictable noise and become a familiar cue; it does not calm every nervous system. Keep it away from the child’s head and at the lowest useful volume. A dim projector or night-light may soothe one child and keep another awake. Avoid bright or rapidly moving patterns after settling begins.</p><h3>Temperature, pressure, and safe stimming</h3><p>Many children prefer a cooler room, but comfort is individual. Compression sheets, sleep socks, and cushioned products require correct sizing, free breathing and movement, and the ability to exit. If rocking or head banging occurs, ask the child’s clinician or occupational therapist about injury reduction that preserves safe regulation.</p><div class="banner"><strong>Do not improvise a sleep enclosure.</strong> Use only the mattress, padding, rails, and enclosure approved by the manufacturer for that exact sleep product. Added mattresses or makeshift barriers can create dangerous gaps. Medical-bed coverage requires individual medical necessity and varies by plan.</div><h3>Magnesium baths and lotions</h3><p>Magnesium flakes, lotions, and tallow products have not been established as reliable treatments for childhood insomnia, and skin absorption and product quality vary. If the child takes oral magnesium or magnesium-containing medicine, ask the clinician or pharmacist before adding any other magnesium product.</p></div></details>`);
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🧴 Magnesium: how it works, forms, and evidence</summary><div class="education-body"><p>Magnesium is essential for normal nerve and muscle function and participates in pathways involving neurotransmission and the body’s sleep-wake system. It is often described as calming because it helps regulate excitatory and inhibitory signaling, including pathways involving GABA, and is involved indirectly in melatonin biology. That biological role does <strong>not</strong> prove that extra magnesium acts as a sedative when a child already has enough.</p><div class="banner"><strong>What the sleep evidence says:</strong> Some studies in adults suggest possible modest sleep benefits, but results are conflicting and the studies are generally small or low quality. Good evidence has not established that magnesium supplements reliably lengthen deep sleep, prevent awakenings, or reduce anxiety or sensory overload in autistic children.</div><h3>Common forms caregivers may see</h3><ul><li><strong>Magnesium glycinate:</strong> magnesium bound to glycine. It is commonly marketed for sleep and is often better tolerated than forms with a stronger laxative effect, but it has not been proven to be the universally “best” sleep form for autistic children.</li><li><strong>Magnesium citrate:</strong> generally well absorbed and more likely to loosen stools. It may be used medically for constipation, but constipation treatment and sleep supplementation are different goals; diarrhea can cause dehydration or discomfort.</li><li><strong>Magnesium L-threonate:</strong> marketed for brain penetration and cognition. It is usually expensive, and evidence for pediatric sleep or autism-related benefits is insufficient.</li><li><strong>Magnesium sulfate/Epsom salts:</strong> a warm bath can be a soothing sensory routine, but clinically meaningful magnesium absorption through intact skin has not been established. Treat it as a bath preference—not an equivalent replacement for prescribed oral magnesium.</li></ul><h3>Before choosing any form</h3><ul><li>Ask what problem is being treated and whether deficiency, constipation, insomnia, pain, anxiety, or another issue needs evaluation.</li><li>Add up magnesium from supplements, antacids, laxatives, multivitamins, and prescribed products.</li><li>Review kidney disease, heart conditions, swallowing safety, diarrhea risk, and medicine interactions with the child’s clinician or pharmacist.</li><li>Use the clinician’s age-appropriate dose and timing; do not copy an adult product label or another child’s dose.</li></ul><div class="education-links"><a class="education-link" href="https://www.nccih.nih.gov/health/sleep-disorders-and-complementary-health-approaches" target="_blank" rel="noopener"><strong>Magnesium and sleep evidence</strong><span>NIH review of the limited and conflicting insomnia research.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium safety</strong><span>Age-based supplement limits, side effects, and interactions.</span><small>Open source ↗</small></a></div></div></details>`);
+  if (sleepCards[6]) sleepCards[6].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🛍️ Sleep products</summary><div class="education-body"><p>This section is ready for the sleep products your family recommends or wants to compare.</p><div class="empty"><div class="big">🌙</div><p>Sound machines, night-lights, projectors, bedding, compression products, room-temperature tools, and other sleep supports will be added here later.</p></div><div class="banner">Future product entries will include the intended use, age and safety considerations, sensory features, drawbacks, and a direct link. Products will not be presented as guaranteed sleep treatments.</div></div></details>`);
   if (!profiles.length) return;
   const routineList = $("#sleepRoutineList");
   const status = $("#sleepSaveStatus");
@@ -2866,6 +2906,7 @@ function setupDrawer() {
   $("#drawerVersion").textContent = APP.version;
   bindRouteButtons();
   $("#menuBtn").onclick = openDrawer;
+  $("#backBtn").onclick = () => navigate(null, { back: true });
   $("#homeBadge").onclick = () => navigate("home");
   $("#closeDrawer").onclick = closeDrawer;
   $("#scrim").onclick = closeDrawer;

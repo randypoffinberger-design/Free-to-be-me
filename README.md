@@ -1,4 +1,14 @@
-# More than Measured v0.8.1
+# More than Measured v0.8.2
+
+## v0.8.2 changes
+- Moved the drawer version into a dedicated footer beneath About so it cannot overlap navigation
+- Added a persistent Back button to every internal page with app-level route history
+- Expanded birthday generation to 25 randomized, editable messages
+- Birthday messages automatically use the selected profile name while allowing the displayed name to be changed
+- Added Try Another for quickly generating a different birthday message
+- Added Snack as a Food Diary entry type
+- Added a prepared Sleep Products section for future product recommendations and links
+- Preserved all existing family data, offline behavior, and backup compatibility
 
 ## v0.8.1 changes
 - Fixed the mobile bedtime-routine layout so longer labels such as Connection cannot overlap the description
