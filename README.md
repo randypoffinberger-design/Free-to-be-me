@@ -1,4 +1,16 @@
-# More than Measured v0.7.8
+# More than Measured v0.7.9
+
+## v0.7.9 changes
+- Opened Sleep Sanctuary from the illustrated homepage and navigation drawer
+- Added a friendly explanation of why sleep can be harder for some autistic children
+- Added a practical example bedtime routine
+- Added a per-child bedtime-routine builder with add, edit, reorder, delete, and example-template controls
+- Added guidance and authoritative links for improving the sleep environment
+- Added a balanced magnesium-versus-melatonin guide with supplement and medication safety reminders
+- Added medical and safety-bed information, selection questions, funding guidance, and non-affiliate manufacturer links
+- Added a per-child sensory and comfort preference worksheet for temperature, compression, textures, light, sound, movement, and notes
+- Included saved routines and preference worksheets in the existing complete backup and restore system
+- Preserved the established database and all existing family data
 
 ## v0.7.8 changes
 - Added Regression to the friendly Common Terms guide

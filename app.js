@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.8", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.9", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -113,6 +113,7 @@ const routes = {
   benefits: renderBenefitsInformation,
   safety: renderSafetyInformation,
   therapy: renderTherapyInformation,
+  sleep: renderSleepSanctuary,
   resources: renderResources,
   explore: renderExplore,
   caregiver: renderCaregiver,
@@ -145,7 +146,7 @@ async function renderHome() {
     <img src="assets/home/homepage.jpeg" alt="More than Measured — celebrating every child’s unique journey" width="864" height="1536">
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
     <button class="home-hotspot communication" data-go="speech" aria-label="Open Speech and Language Building"><span>Speech/Language Building</span></button>
-    <button class="home-hotspot sleep" data-feature="Sleep Sanctuary" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
+    <button class="home-hotspot sleep" data-go="sleep" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
     <button class="home-hotspot sensory" data-feature="Sensory Support" aria-label="Open Sensory Support"><span>Sensory Support</span></button>
     <button class="home-hotspot learning" data-go="skills" aria-label="Open Skill Building"><span>Skill Building</span></button>
     <button class="home-hotspot medical" data-feature="Health and Wellness" aria-label="Open Health and Wellness"><span>Health and Wellness</span></button>
@@ -1580,6 +1581,72 @@ function placeholder(t, i, c, items) {
     .querySelectorAll(".future-feature")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
 }
+
+const EXAMPLE_SLEEP_ROUTINE = [
+  ["6:45 PM", "Lower the lights, put screens away, and shift from active play to quiet activities."],
+  ["7:00 PM", "Offer a small snack if needed, use the bathroom, and give prescribed medicine exactly as directed."],
+  ["7:10 PM", "Take a bath or wash up. If water is energizing, move this step earlier or replace it with a warm washcloth."],
+  ["7:25 PM", "Put on pajamas and choose the comfort items that are safe for your child."],
+  ["7:30 PM", "Choose one calming activity: a book, quiet music, stretching, or a familiar sensory activity."],
+  ["7:45 PM", "Use the same short goodnight phrase, show the final visual-schedule step, and settle into bed."],
+];
+
+async function renderSleepSanctuary() {
+  const profiles = await getAll("profiles");
+  let profileId = profiles[0]?.id || "";
+  let routine = [];
+  let preferences = {};
+  const sleepSetting = (name) => `sleep:${name}:${profileId}`;
+  const profileOptions = profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  view.innerHTML = `<section class="hero sleep-hero"><h1>🌙 Sleep Sanctuary</h1><p>Gentle, practical tools for learning what helps your child rest. There is no single perfect bedtime—and sleep trouble is never a child or caregiver failure.</p></section>
+  <div class="banner sleep-note"><strong>Start with safety and possible causes.</strong> Loud snoring, pauses or gasping, unusual nighttime movements, pain, reflux, constipation, itching, seizures, restless legs, or a sudden sleep change deserve a conversation with the child’s healthcare professional.</div>
+
+  <h2 class="section-title">Understand sleep first</h2><div class="sleep-sections">
+  <details class="education-card" open><summary>🧠 Why can sleep be harder for autistic children?</summary><div class="education-body"><p>Autistic children can have sleep challenges for many overlapping reasons. Their internal sleep-wake timing may work differently; sensory input that fades into the background for someone else may remain impossible to ignore; and anxiety, transitions, communication differences, or a strong need for predictability can make settling harder.</p><ul><li><strong>Sensory differences:</strong> seams, temperature, light, household sounds, smells, or the feeling of bedding may be calming one night and overwhelming another.</li><li><strong>Body-clock differences:</strong> melatonin timing and circadian rhythms may not line up neatly with the family schedule.</li><li><strong>Difficulty shifting gears:</strong> stopping a preferred activity and moving through several bedtime steps can be a major transition.</li><li><strong>Communication and interoception:</strong> a child may not yet be able to explain pain, hunger, fear, needing the bathroom, or that their body does not feel sleepy.</li><li><strong>Co-occurring needs:</strong> anxiety, ADHD, reflux, constipation, eczema, seizures, sleep apnea, restless legs, medication effects, or other health issues can interfere with sleep.</li></ul><p>Not every autistic child has sleep problems, and one child may have more than one cause. A simple sleep log can help a clinician notice patterns instead of guessing.</p><div class="education-links"><a class="education-link" href="https://www.aan.com/Guidelines/home/GuidelineDetail/988" target="_blank" rel="noopener"><strong>Autism and sleep guideline</strong><span>American Academy of Neurology guidance for families and clinicians.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🕯️ Example bedtime routine</summary><div class="education-body"><p>Use the order as a starting point, not a rule. The exact clock time matters less than a predictable sequence that fits when your child is actually becoming sleepy.</p><ol class="sleep-example">${EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => `<li><strong>${time}</strong><span>${esc(text)}</span></li>`).join("")}</ol><p>Try a picture schedule, keep spoken directions short, and change one part at a time. If a “calming” activity wakes your child up, believe what their body is showing you and move or replace it.</p></div></details>
+
+  <details class="education-card" open><summary>🧩 Build your bedtime routine</summary><div class="education-body"><p>Create a separate routine for each child. Every change is saved to this device and included in a complete backup.</p>${profiles.length ? `<div class="field"><label>Child</label><select id="sleepProfile">${profileOptions}</select></div><div id="sleepRoutineList" class="sleep-routine-list"></div><div class="sleep-step-form"><div class="field"><label>Time (optional)</label><input id="sleepStepTime" placeholder="7:30 PM"></div><div class="field"><label>Routine step</label><input id="sleepStepText" placeholder="Read one familiar book"></div></div><div class="btn-row"><button id="addSleepStep" class="btn" type="button">Add step</button><button id="useSleepExample" class="btn secondary" type="button">Use example routine</button></div><p id="sleepSaveStatus" class="hint" role="status"></p>` : `<div class="empty"><div class="big">🌱</div><p>Create a child profile before building a saved routine.</p><button class="btn" data-go="child">Create profile</button></div>`}</div></details>
+
+  <details class="education-card"><summary>🛏️ Make the sleep environment work better</summary><div class="education-body"><p>A supportive room is usually dim, quiet, comfortable, and predictable—but your child’s sensory preferences matter more than a generic checklist.</p><ul><li>Keep wake time and the wind-down sequence as consistent as family life allows.</li><li>Dim lights and pause screens about an hour before bed; charge devices outside the sleeping area when possible.</li><li>Try blackout curtains, a night-light, a fan, or steady background sound based on the child’s response.</li><li>Check pajamas, sheets, tags, seams, mattress feel, and temperature instead of assuming behavior is “bedtime resistance.”</li><li>Use beds only as the manufacturer intends. Follow age-specific safe-sleep guidance, especially for babies and young children.</li></ul><div class="education-links"><a class="education-link" href="https://www.healthychildren.org/English/healthy-living/sleep/Pages/healthy-sleep-habits-how-many-hours-does-your-child-need.aspx" target="_blank" rel="noopener"><strong>Healthy sleep habits</strong><span>American Academy of Pediatrics guidance on routines, screens, activity, and bedrooms.</span><small>Open source ↗</small></a><a class="education-link" href="https://www.autismspeaks.org/tool-kit/atnair-p-strategies-improve-sleep-children-autism" target="_blank" rel="noopener"><strong>Autism sleep strategies toolkit</strong><span>A practical family toolkit from the Autism Treatment Network.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🧴 Magnesium vs. melatonin</summary><div class="education-body"><div class="sleep-compare"><div><h3>Melatonin</h3><p>Melatonin is a hormone involved in sleep timing. For some autistic children, clinician-guided melatonin can help after routines and contributing health issues have been addressed. Timing and product quality matter, and long-term safety information in children is limited.</p><ul><li>Talk with the child’s clinician before starting it; do not choose a dose from the internet or another child.</li><li>In the U.S. it is sold as a supplement, so the amount can differ from the label. Ask about a quality-verified product.</li><li>Treat gummies like medicine and lock them away. Possible effects include sleepiness, headache, dizziness, or irritability.</li></ul></div><div><h3>Magnesium</h3><p>Magnesium is an essential nutrient, but that does not make a supplement a proven treatment for childhood insomnia or autism-related sleep problems. A clinician may address a true deficiency; routine use for sleep has much less supporting evidence.</p><ul><li>Food sources and supplements are not interchangeable.</li><li>Supplements can cause diarrhea, nausea, and cramping, can interact with medicines, and can be dangerous in excess or with kidney problems.</li><li>Ask the child’s clinician or pharmacist before using it and keep supplements out of reach.</li></ul></div></div><div class="banner"><strong>Neither is the automatic first step.</strong> Current autism sleep guidance starts by checking medical and medication causes and using behavioral sleep strategies. A clinician can then help decide whether melatonin is appropriate.</div><div class="education-links"><a class="education-link" href="https://aasm.org/advocacy/position-statements/melatonin-use-in-children-and-adolescents-health-advisory/" target="_blank" rel="noopener"><strong>Melatonin health advisory</strong><span>American Academy of Sleep Medicine safety guidance.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium fact sheet</strong><span>NIH supplement safety, interactions, and age-based limits.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🏥 Medical and safety beds</summary><div class="education-body"><p>A medical or enclosed safety bed may be considered when ordinary beds and less restrictive safety changes do not adequately address a documented risk such as entrapment, falls, injury, or nighttime wandering. It is not simply a sensory purchase.</p><ul><li>Work with the prescribing clinician, occupational or physical therapist, and a durable-medical-equipment supplier to match the bed to the child’s actual risks.</li><li>Insurance or Medicaid may require a prescription, letter of medical necessity, safety history, measurements, and proof that less costly alternatives were considered. Denials can sometimes be appealed.</li><li>Ask about ventilation, gap and entrapment testing, emergency release, evacuation, monitoring, cleaning, warranty, growth limits, and whether enclosure is considered a restraint in your setting.</li><li>Never improvise a canopy, tent, rail, net, or restraint, and never modify the bed outside the manufacturer’s instructions.</li></ul><div class="banner"><strong>Product links are examples, not endorsements or affiliate links.</strong> Eligibility, contraindications, funding, and safe use must be reviewed for the individual child.</div><div class="education-links"><a class="education-link" href="https://cubbybeds.com/" target="_blank" rel="noopener"><strong>Cubby Bed</strong><span>Enclosed safety-bed information, specifications, and funding resources.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://safetysleeper.com/" target="_blank" rel="noopener"><strong>The Safety Sleeper</strong><span>Portable enclosed-bed models and funding information.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://sleepsafebed.com/" target="_blank" rel="noopener"><strong>SleepSafe Beds</strong><span>Fixed safety-bed models, accessories, and insurance guidance.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://bedsbygeorge.com/" target="_blank" rel="noopener"><strong>Beds by George</strong><span>Medical safety-bed models and funding documentation.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://www.fda.gov/medical-devices/general-hospital-devices-and-supplies/hospital-beds" target="_blank" rel="noopener"><strong>Hospital-bed safety</strong><span>FDA information about entrapment risks and safe bed use.</span><small>Open safety source ↗</small></a></div></div></details>
+
+  <details class="education-card" open><summary>💜 Discover your child’s preferences</summary><div class="education-body"><p>Observe rather than assume. Try one safe change for several nights when possible, note what happened, and invite the child’s choice or assent in whatever way they communicate.</p>${profiles.length ? `<div class="field"><label>Child</label><select id="sleepPrefProfile">${profileOptions}</select></div><div class="sleep-pref-grid"><div class="field"><label>Temperature</label><select id="sleepTemp"><option value="">Not sure yet</option><option>Cool</option><option>Neutral</option><option>Warm</option><option>Changes from night to night</option></select></div><div class="field"><label>Pressure or compression</label><select id="sleepPressure"><option value="">Not sure yet</option><option>No compression</option><option>Light tucked-in feeling</option><option>Firm pressure</option><option>Changes from night to night</option></select></div><div class="field"><label>Fabric and texture</label><input id="sleepTexture" placeholder="Smooth cotton, fleece, no seams…"></div><div class="field"><label>Light</label><select id="sleepLight"><option value="">Not sure yet</option><option>Very dark</option><option>Night-light</option><option>Door cracked</option><option>Hall light</option></select></div><div class="field"><label>Sound</label><input id="sleepSound" placeholder="Silence, fan, white noise, music…"></div><div class="field"><label>Movement before bed</label><input id="sleepMovement" placeholder="Rocking, swinging, stretching, none…"></div></div><div class="field"><label>What we noticed</label><textarea id="sleepNotes" placeholder="What helped, what did not, and signs your child was comfortable or uncomfortable"></textarea></div><button id="saveSleepPreferences" class="btn full" type="button">Save preferences</button><p id="sleepPrefStatus" class="hint" role="status"></p>` : `<div class="empty"><p>Create a child profile to save a preference worksheet.</p></div>`}<div class="banner"><strong>Weighted or compression products need extra care.</strong> They are not right for every child. Ask the child’s clinician or occupational therapist about individual risks, use only age-appropriate products as directed, and never use a product that prevents the child from moving, breathing freely, or removing it independently. Do not use weighted sleep products for infants.</div></div></details>
+  </div>`;
+
+  bindRouteButtons();
+  if (!profiles.length) return;
+  const routineList = $("#sleepRoutineList");
+  const status = $("#sleepSaveStatus");
+  const prefFields = { temperature: "#sleepTemp", pressure: "#sleepPressure", texture: "#sleepTexture", light: "#sleepLight", sound: "#sleepSound", movement: "#sleepMovement", notes: "#sleepNotes" };
+  const showSaved = (el, message) => { el.textContent = message; setTimeout(() => { if (el.textContent === message) el.textContent = ""; }, 2200); };
+  const saveRoutine = async () => { await setSetting(sleepSetting("routine"), routine); showSaved(status, "Routine saved on this device."); };
+  const drawRoutine = () => {
+    routineList.innerHTML = routine.length ? routine.map((step, index) => `<div class="sleep-routine-row"><div><strong>${esc(step.time || "Any time")}</strong><span>${esc(step.text)}</span></div><div class="sleep-row-actions"><button type="button" data-sleep-up="${index}" aria-label="Move up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-sleep-down="${index}" aria-label="Move down" ${index === routine.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-sleep-edit="${index}">Edit</button><button type="button" data-sleep-delete="${index}">Delete</button></div></div>`).join("") : `<div class="empty"><p>No routine steps saved yet.</p></div>`;
+    routineList.querySelectorAll("[data-sleep-up]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepUp); [routine[i - 1], routine[i]] = [routine[i], routine[i - 1]]; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-down]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepDown); [routine[i + 1], routine[i]] = [routine[i], routine[i + 1]]; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-edit]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepEdit); const text = prompt("Edit this routine step", routine[i].text); if (text === null || !text.trim()) return; const time = prompt("Edit the optional time", routine[i].time || "") ; if (time === null) return; routine[i] = { ...routine[i], text: text.trim(), time: time.trim() }; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-delete]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepDelete); if (!confirm(`Delete “${routine[i].text}”?`)) return; routine.splice(i, 1); await saveRoutine(); drawRoutine(); });
+  };
+  const loadChildSleep = async () => {
+    routine = await getSetting(sleepSetting("routine"), []);
+    preferences = await getSetting(sleepSetting("preferences"), {});
+    drawRoutine();
+    Object.entries(prefFields).forEach(([key, selector]) => { $(selector).value = preferences[key] || ""; });
+    $("#sleepProfile").value = profileId;
+    $("#sleepPrefProfile").value = profileId;
+  };
+  $("#sleepProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
+  $("#sleepPrefProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
+  $("#addSleepStep").onclick = async () => { const text = $("#sleepStepText").value.trim(); if (!text) return alert("Please enter a routine step."); routine.push({ id: uid(), time: $("#sleepStepTime").value.trim(), text }); $("#sleepStepTime").value = ""; $("#sleepStepText").value = ""; await saveRoutine(); drawRoutine(); };
+  $("#useSleepExample").onclick = async () => { if (routine.length && !confirm("Replace this child’s current routine with the example?")) return; routine = EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => ({ id: uid(), time, text })); await saveRoutine(); drawRoutine(); };
+  $("#saveSleepPreferences").onclick = async () => { preferences = Object.fromEntries(Object.entries(prefFields).map(([key, selector]) => [key, $(selector).value.trim()])); await setSetting(sleepSetting("preferences"), preferences); showSaved($("#sleepPrefStatus"), "Preferences saved on this device."); };
+  await loadChildSleep();
+}
+
 function renderResources() {
   placeholder(
     "Resources",
@@ -2640,6 +2707,7 @@ function setupDrawer() {
     ["🏠", "Home", "home"],
     ["🌱", "My Child", "child"],
     ["🗣️", "Speech & Language", "speech"],
+    ["🌙", "Sleep Sanctuary", "sleep"],
     ["📚", "Skill Building", "skills"],
     ["📚", "Resources", "resources"],
     ["🗺️", "Explore", "explore"],
