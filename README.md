@@ -1,4 +1,15 @@
-# More than Measured v0.7.2
+# More than Measured v0.7.3
+
+## v0.7.3 changes
+- Added an Autism Assessment Information card to Caregiver Corner
+- Explained developmental monitoring, screening, and diagnostic evaluation in friendly language
+- Added current age guidance for routine screening, early detection, and reliable diagnosis
+- Added realistic timing ranges for screening, full evaluation visits, feedback, reports, and referral waits
+- Added a complete before, during, and after assessment walkthrough
+- Added preparation lists, common evaluation components, provider types, follow-up questions, and second-opinion guidance
+- Clarified that no single tool diagnoses autism and that medical diagnosis and school eligibility are separate
+- Added direct links to CDC, NICHD, and pediatric hospital assessment guidance
+- Preserved the existing database, offline data, and backup compatibility
 
 ## v0.7.2 changes
 - Added an Educational Options card to Caregiver Corner

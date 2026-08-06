@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.2", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.3", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -109,6 +109,7 @@ const routes = {
   potty: renderPottyTracker,
   pottyTips: renderPottyTips,
   education: renderEducationOptions,
+  assessment: renderAssessmentInformation,
   resources: renderResources,
   explore: renderExplore,
   caregiver: renderCaregiver,
@@ -1828,6 +1829,88 @@ function renderEducationOptions() {
   $("#download504Letter").onclick = () => downloadBlob(new Blob([plan504.value], { type: "text/plain;charset=utf-8" }), "Section-504-Evaluation-Request-Template.txt");
 }
 
+function renderAssessmentInformation() {
+  const sourceLink = (url, title, description) =>
+    `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span></a>`;
+  view.innerHTML = `<section class="hero"><h1>🧭 Autism Assessment Information</h1><p>A friendly walkthrough of what the process may look like from first concern to written report.</p></section>
+  <div class="banner assessment-note"><strong>First, take a breath:</strong> An assessment is not a test your child has to pass. The goal is to understand how they communicate, learn, play, handle sensory input, and move through daily life—along with the support that may help them thrive.</div>
+
+  <div class="assessment-quick card">
+    <div><strong>18 & 24 months</strong><span>Routine autism screening ages</span></div>
+    <div><strong>Any age</strong><span>Assessment when concerns exist</span></div>
+    <div><strong>Several hours</strong><span>Common full-evaluation range</span></div>
+  </div>
+  <p class="hint assessment-range-note">These are general guideposts, not promises. The child’s age, needs, clinic, provider team, and required testing can change the timing.</p>
+
+  <h2 class="section-title">Understanding the process</h2>
+  <div class="education-sections assessment-sections">
+    <details class="education-card" open><summary>🌱 How early can an assessment be done?</summary><div class="education-body">
+      <p>You do not have to wait for a certain birthday to bring up a developmental concern. A pediatrician, early-intervention program, school system, or specialist can begin looking at a child’s development whenever a caregiver or professional is concerned.</p>
+      <ul><li>The American Academy of Pediatrics recommends general developmental screening at 9, 18, and 30 months.</li><li>Autism-specific screening is recommended at 18 and 24 months.</li><li>Autism can sometimes be detected at 18 months or younger.</li><li>By age 2, a diagnosis made by an experienced professional can be considered reliable.</li><li>Older children, teenagers, and adults can also be assessed. There is no upper age limit.</li></ul>
+      <p>A screening result does not diagnose autism. It helps decide whether a fuller evaluation would be useful. If you have concerns, you do not need to wait for the next routine screening age.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🔎 Screening and assessment are different</summary><div class="education-body">
+      <p><strong>Developmental monitoring</strong> is the everyday process of noticing how a child plays, learns, communicates, behaves, and moves.</p>
+      <p><strong>Screening</strong> is a short questionnaire or structured check that looks for signs a closer evaluation may be needed. A screening may take only a few minutes and is often completed during a regular appointment. It cannot confirm or rule out autism by itself.</p>
+      <p><strong>A diagnostic evaluation</strong> is a deeper look at developmental history, current behavior, communication, strengths, needs, and daily functioning. It uses information from caregivers plus direct professional observation. There is no blood test, brain scan, or single questionnaire that diagnoses autism.</p>
+    </div></details>
+
+    <details class="education-card"><summary>👥 Who may be involved?</summary><div class="education-body">
+      <p>The assessment may be completed by one experienced clinician or a team. Depending on the child and the clinic, that could include a developmental-behavioral pediatrician, child psychologist or neuropsychologist, pediatric neurologist, child psychiatrist, speech-language pathologist, occupational therapist, or another trained professional.</p>
+      <p>A larger team is not automatically better. What matters is that the clinician is qualified, considers more than one source of information, understands the child’s age and communication style, and explains how the conclusion was reached.</p>
+    </div></details>
+
+    <details class="education-card"><summary>📋 Before the appointment</summary><div class="education-body">
+      <p>The clinic may send intake forms and questionnaires for caregivers, teachers, childcare providers, or therapists. Complete them honestly based on an ordinary day—there is no need to make strengths look smaller or challenges look larger.</p>
+      <h3>Helpful things to gather</h3><ul><li>Birth, medical, developmental, and family history.</li><li>Previous evaluations, therapy reports, school records, IEP or 504 documents, and hearing or vision results.</li><li>A short timeline of milestones, concerns, changes, and any loss of previously used skills.</li><li>Examples from more than one setting, including videos when the clinic allows them.</li><li>A list of medications, diagnoses, allergies, and family questions.</li><li>The child’s usual AAC system, glasses, hearing devices, comfort item, snacks, drink, diapers or toileting supplies, and anything the clinic recommends.</li></ul>
+      <p>Tell the clinic ahead of time about communication needs, mobility, elopement risk, feeding needs, sensory triggers, interpreter needs, or accommodations that could make the visit safer and more comfortable.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🧸 What happens during the assessment?</summary><div class="education-body">
+      <p>For a young child, much of the appointment may look like play. For an older child or adult, it may include conversation, pictures, stories, puzzles, or other structured activities. The clinician is watching how the person communicates, shares attention, responds socially, plays or imagines, handles changes, and uses repetitive movements or interests.</p>
+      <p>The process may include:</p><ul><li>A detailed caregiver interview about early development and current daily life.</li><li>Direct observation using play- or conversation-based activities.</li><li>Autism-focused tools such as the ADOS-2, along with caregiver questionnaires or interviews. No single tool should decide the diagnosis alone.</li><li>Developmental, cognitive, learning, speech-language, motor, sensory, adaptive-living, attention, or emotional testing when appropriate.</li><li>Information from school, childcare, therapists, or other people who know the child.</li><li>A physical or neurological exam, hearing test, vision test, or discussion of genetic testing when clinically appropriate.</li></ul>
+      <p>Your child does not need to perform perfectly. Do not rehearse answers or try to stop natural communication, movement, or stimming. If your child becomes tired or overwhelmed, ask for a break.</p>
+    </div></details>
+
+    <details class="education-card"><summary>⏱️ How long does it take?</summary><div class="education-body">
+      <p>There is no dependable national average because clinics organize assessments differently.</p>
+      <ul><li><strong>Brief screening:</strong> commonly 30 minutes or less and often part of another visit.</li><li><strong>Diagnostic appointment:</strong> commonly about 1½ to 4 hours, although broader testing can take longer.</li><li><strong>Multiple-visit evaluation:</strong> the interview, child observation, additional testing, and feedback may be split across two or more appointments.</li><li><strong>Results:</strong> some clinicians discuss an initial conclusion the same day; a full written report may take days or several weeks.</li><li><strong>Waiting for the first appointment:</strong> this is separate from testing time and can vary greatly by location, insurance, and provider availability.</li></ul>
+      <p>Ask when scheduling: “How many visits should we expect, how long is each visit, when will feedback be given, and when should the written report be ready?”</p>
+    </div></details>
+
+    <details class="education-card"><summary>🧠 What the clinician is deciding</summary><div class="education-body">
+      <p>The clinician compares all of the information with accepted diagnostic criteria. They are looking for a lifelong pattern involving social communication and interaction along with restricted or repetitive behavior, interests, routines, or sensory experiences—and whether those differences affect everyday life.</p>
+      <p>They should also consider other explanations and co-occurring needs, such as language disorder, intellectual disability, ADHD, anxiety, hearing differences, learning disability, sleep problems, motor differences, trauma, or medical concerns. A child can be autistic and have one or more of these needs too.</p>
+      <p>The result may be an autism diagnosis, another diagnosis, no diagnosis, or a need for more information or follow-up over time. Not receiving an autism diagnosis does not mean the caregiver imagined the concerns or that the child does not need support.</p>
+    </div></details>
+
+    <details class="education-card"><summary>📄 Feedback and the written report</summary><div class="education-body">
+      <p>A good feedback visit should explain the conclusion in everyday language, describe the child’s strengths and support needs, answer questions, and provide practical next steps. Ask for a complete written report and review it for factual mistakes.</p>
+      <h3>Questions to ask</h3><ul><li>What information supported the conclusion?</li><li>Were any results uncertain or affected by fatigue, anxiety, language, culture, or the unfamiliar setting?</li><li>What strengths stood out?</li><li>What needs should be addressed first?</li><li>Are speech, occupational therapy, AAC, hearing, medical, genetic, school, or other evaluations recommended?</li><li>Who can help us understand services, insurance requirements, and follow-up?</li><li>When should the child be reevaluated, if at all?</li></ul>
+      <p>A medical autism diagnosis and school eligibility are related but separate. A school conducts its own educational evaluation to decide IDEA or Section 504 eligibility and school services.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🫶 While you are waiting</summary><div class="education-body">
+      <p>You do not need to wait for a final autism diagnosis to ask about help for a developmental concern.</p><ul><li>Talk with the child’s pediatrician and request developmental screening or referrals.</li><li>For a child under 3 in the United States, contact the state’s early-intervention program directly.</li><li>For a child age 3 or older, contact the local public-school system and request an educational evaluation—even if the child is not enrolled or not yet kindergarten age.</li><li>Address specific needs such as hearing, speech-language, feeding, motor, sleep, or safety concerns as referrals become available.</li><li>Keep notes about new skills, communication, sensory patterns, and concerns, but keep enjoying the child rather than turning every day into a test.</li></ul>
+    </div></details>
+
+    <details class="education-card"><summary>⚖️ When a second opinion may help</summary><div class="education-body">
+      <p>Consider asking questions or seeking another qualified opinion if the assessment relied on only one checklist, ignored caregiver or school information, did not fit the person’s language or culture, dismissed concerns only because of eye contact or good grades, or did not explain the decision clearly.</p>
+      <p>Insurance and program rules differ, so check coverage and referral requirements before arranging another private assessment. For disagreements with a school evaluation, the Educational Options section explains school rights and independent educational evaluations.</p>
+    </div></details>
+  </div>
+
+  <h2 class="section-title">Trusted starting points</h2>
+  <div class="education-links assessment-links">
+    ${sourceLink("https://www.cdc.gov/autism/diagnosis/index.html", "CDC: Screening for Autism", "The steps from developmental monitoring and screening to a formal evaluation.")}
+    ${sourceLink("https://www.cdc.gov/autism/about/index.html", "CDC: About Autism", "Age information, early identification, and how to contact early intervention or the school system.")}
+    ${sourceLink("https://www.nichd.nih.gov/health/topics/autism/conditioninfo/diagnose", "NICHD: How providers diagnose autism", "An overview of screening, caregiver interviews, and comprehensive assessment.")}
+    ${sourceLink("https://www.chop.edu/centers-programs/autism-integrated-care-program/your-childs-experience", "Children’s Hospital of Philadelphia: What to expect", "Examples of appointment length, providers, observation, and testing components.")}
+  </div>
+  <div class="banner assessment-disclaimer"><strong>Important:</strong> This guide offers general caregiver education. It cannot assess or diagnose a child, replace an individualized medical or developmental evaluation, or guarantee a clinic’s timing or process.</div>`;
+}
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -1839,6 +1922,7 @@ async function renderCaregiver() {
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
     <button id="caregiverTerms" class="card-button"><strong>📖 Common terms</strong><small>Plain-language explanations of autism and sensory terminology.</small></button>
     <button id="caregiverEducation" class="card-button"><strong>🎓 Educational options</strong><small>Homeschooling, school choices, IEPs, 504 plans, resources, and letter templates.</small></button>
+    <button id="caregiverAssessment" class="card-button"><strong>🧭 Autism assessment information</strong><small>When assessment can begin, how it works, what to bring, and what to expect.</small></button>
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
@@ -1847,6 +1931,7 @@ async function renderCaregiver() {
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
   $("#caregiverEducation").onclick = () => navigate("education");
+  $("#caregiverAssessment").onclick = () => navigate("assessment");
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
   document
