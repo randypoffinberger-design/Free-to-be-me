@@ -1,4 +1,14 @@
-# More than Measured v0.8.0
+# More than Measured v0.8.1
+
+## v0.8.1 changes
+- Fixed the mobile bedtime-routine layout so longer labels such as Connection cannot overlap the description
+- Expanded the magnesium guide with its nervous-system role, evidence boundaries, safety, and practical comparisons of glycinate, citrate, L-threonate, and magnesium sulfate/Epsom salts
+- Clarified that pediatric and autism-specific evidence does not establish guaranteed deep-sleep, awakening, anxiety, or sensory-overload benefits
+- Added detailed theme-park, zoo, aquarium, movie, museum, and recurring sensory-event directories
+- Added direct accessibility links and explanations of what each destination currently offers
+- Corrected federal Access Pass coverage for per-vehicle versus per-person fee sites
+- Added reminders to reconfirm certification, accommodations, schedules, access-pass rules, and sensory tools before travel
+- Preserved all v0.8.0 data and backup compatibility
 
 ## v0.8.0 changes
 - Opened every illustrated homepage section as a functional destination

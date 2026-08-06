@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.0", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.1", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -116,7 +116,7 @@ const routes = {
   sleep: renderSleepSanctuary,
   health: renderHealthWellness,
   sensory: renderSensorySupport,
-  fun: renderAsdFriendlyFun,
+  fun: renderAsdFriendlyFunExpanded,
   food: renderFoodDiary,
   lifeSkills: renderLifeSkills,
   resources: renderResources,
@@ -1711,6 +1711,7 @@ async function renderSleepSanctuary() {
   bindRouteButtons();
   const sleepCards = document.querySelectorAll(".sleep-sections > .education-card");
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("beforebegin", `<details class="education-card"><summary>🌙 Your family’s 45-minute routine, safely adapted</summary><div class="education-body"><h3>First 30 minutes: active play</h3><p>Running, jumping, climbing, pushing, pulling, carrying, or outdoor play may help some children settle. Other children become more alert, so move active play earlier when it delays sleep. Daylight and activity during the day also support a healthy sleep schedule.</p><h3>Final 15 minutes: lower stimulation</h3><p>Dim lights and choose a familiar calm activity: cuddling, a puzzle, coloring, drawing, blocks, quiet music, or a gentle show if that works in real family life. A warm bath, tolerated lotion, or gentle firm touch may be calming when the child enjoys it.</p><h3>Sound and night-lights</h3><p>A sound machine can mask unpredictable noise and become a familiar cue; it does not calm every nervous system. Keep it away from the child’s head and at the lowest useful volume. A dim projector or night-light may soothe one child and keep another awake. Avoid bright or rapidly moving patterns after settling begins.</p><h3>Temperature, pressure, and safe stimming</h3><p>Many children prefer a cooler room, but comfort is individual. Compression sheets, sleep socks, and cushioned products require correct sizing, free breathing and movement, and the ability to exit. If rocking or head banging occurs, ask the child’s clinician or occupational therapist about injury reduction that preserves safe regulation.</p><div class="banner"><strong>Do not improvise a sleep enclosure.</strong> Use only the mattress, padding, rails, and enclosure approved by the manufacturer for that exact sleep product. Added mattresses or makeshift barriers can create dangerous gaps. Medical-bed coverage requires individual medical necessity and varies by plan.</div><h3>Magnesium baths and lotions</h3><p>Magnesium flakes, lotions, and tallow products have not been established as reliable treatments for childhood insomnia, and skin absorption and product quality vary. If the child takes oral magnesium or magnesium-containing medicine, ask the clinician or pharmacist before adding any other magnesium product.</p></div></details>`);
+  if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🧴 Magnesium: how it works, forms, and evidence</summary><div class="education-body"><p>Magnesium is essential for normal nerve and muscle function and participates in pathways involving neurotransmission and the body’s sleep-wake system. It is often described as calming because it helps regulate excitatory and inhibitory signaling, including pathways involving GABA, and is involved indirectly in melatonin biology. That biological role does <strong>not</strong> prove that extra magnesium acts as a sedative when a child already has enough.</p><div class="banner"><strong>What the sleep evidence says:</strong> Some studies in adults suggest possible modest sleep benefits, but results are conflicting and the studies are generally small or low quality. Good evidence has not established that magnesium supplements reliably lengthen deep sleep, prevent awakenings, or reduce anxiety or sensory overload in autistic children.</div><h3>Common forms caregivers may see</h3><ul><li><strong>Magnesium glycinate:</strong> magnesium bound to glycine. It is commonly marketed for sleep and is often better tolerated than forms with a stronger laxative effect, but it has not been proven to be the universally “best” sleep form for autistic children.</li><li><strong>Magnesium citrate:</strong> generally well absorbed and more likely to loosen stools. It may be used medically for constipation, but constipation treatment and sleep supplementation are different goals; diarrhea can cause dehydration or discomfort.</li><li><strong>Magnesium L-threonate:</strong> marketed for brain penetration and cognition. It is usually expensive, and evidence for pediatric sleep or autism-related benefits is insufficient.</li><li><strong>Magnesium sulfate/Epsom salts:</strong> a warm bath can be a soothing sensory routine, but clinically meaningful magnesium absorption through intact skin has not been established. Treat it as a bath preference—not an equivalent replacement for prescribed oral magnesium.</li></ul><h3>Before choosing any form</h3><ul><li>Ask what problem is being treated and whether deficiency, constipation, insomnia, pain, anxiety, or another issue needs evaluation.</li><li>Add up magnesium from supplements, antacids, laxatives, multivitamins, and prescribed products.</li><li>Review kidney disease, heart conditions, swallowing safety, diarrhea risk, and medicine interactions with the child’s clinician or pharmacist.</li><li>Use the clinician’s age-appropriate dose and timing; do not copy an adult product label or another child’s dose.</li></ul><div class="education-links"><a class="education-link" href="https://www.nccih.nih.gov/health/sleep-disorders-and-complementary-health-approaches" target="_blank" rel="noopener"><strong>Magnesium and sleep evidence</strong><span>NIH review of the limited and conflicting insomnia research.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium safety</strong><span>Age-based supplement limits, side effects, and interactions.</span><small>Open source ↗</small></a></div></div></details>`);
   if (!profiles.length) return;
   const routineList = $("#sleepRoutineList");
   const status = $("#sleepSaveStatus");
@@ -1738,6 +1739,45 @@ async function renderSleepSanctuary() {
   $("#useSleepExample").onclick = async () => { if (routine.length && !confirm("Replace this child’s current routine with the example?")) return; routine = EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => ({ id: uid(), time, text })); await saveRoutine(); drawRoutine(); };
   $("#saveSleepPreferences").onclick = async () => { preferences = Object.fromEntries(Object.entries(prefFields).map(([key, selector]) => [key, $(selector).value.trim()])); await setSetting(sleepSetting("preferences"), preferences); showSaved($("#sleepPrefStatus"), "Preferences saved on this device."); };
   await loadChildSleep();
+}
+
+const FRIENDLY_PLACES={
+  "🎢 Theme parks":[
+    ["Sesame Place","Langhorne, PA & San Diego, CA","Certified Autism Center resources, sensory guides, quiet spaces, hearing protection, and ride-accessibility support.","https://sesameplace.com/philadelphia/help/autism-resources/"],
+    ["LEGOLAND Resorts","California, Florida & New York","Certified staff, attraction sensory guides, quiet or low-sensory spaces, and disability-access programs. Rules vary by resort.","https://www.legoland.com/new-york/plan-your-visit/know-before-you-go/special-situations-accessibility/certified-autism-center/"],
+    ["Dollywood","Pigeon Forge, TN","Calming room, accessibility guide, and Boarding Pass program based on individual needs and ride requirements—not unlimited front-of-line access.","https://www.dollywood.com/accessibility/"],
+    ["Morgan’s Wonderland","San Antonio, TX","Designed for guests of diverse abilities. The guest with a qualifying special need is admitted free; confirm current companion pricing.","https://morganswonderland.org/"],
+    ["SeaWorld parks","Orlando, San Antonio & San Diego","Ride Accessibility Program, sensory guides, and quiet-space resources vary by park; selected areas or parks hold CAC designation.","https://seaworld.com/orlando/help/guests-with-disabilities/"],
+    ["Six Flags parks","Nationwide","Sensory guides and the current Individual Accessibility Card process. Verify park-specific registration and ride rules.","https://www.sixflags.com/accessibility"],
+    ["American Dream","East Rutherford, NJ","Accessibility resources for indoor attractions including Nickelodeon Universe and DreamWorks Water Park; verify each attraction’s supports.","https://www.americandream.com/accessibility"]
+  ],
+  "🦏 Zoos":[
+    ["Cincinnati Zoo & Botanical Garden","Cincinnati, OH","Sensory map, quiet locations, and visit-planning resources.","https://cincinnatizoo.org/plan-your-visit/accessibility/"],
+    ["Santa Barbara Zoo","Santa Barbara, CA","Autism and sensory resources may include trained staff, sensory tools, and selected low-sensory programming.","https://www.sbzoo.org/accessibility"],
+    ["Fort Wayne Children’s Zoo","Fort Wayne, IN","Certified Autism Center training and sensory planning information.","https://kidszoo.org/visit/accessibility/"],
+    ["Zoo Miami","Miami, FL","Accessibility and sensory resources; confirm current sensory-bag availability.","https://www.zoomiami.org/accessibility"],
+    ["ABQ BioPark","Albuquerque, NM","Certified Autism Center resources across the zoo, aquarium, botanic garden, and related facilities.","https://www.cabq.gov/artsculture/biopark/biopark-connect/accessibility"]
+  ],
+  "🐠 Aquariums":[
+    ["Georgia Aquarium","Atlanta, GA","Certified and sensory-inclusive venue with morning low-sensory hours, quiet areas, sensory bags, and a sensory room.","https://www.georgiaaquarium.org/accessibility/"],
+    ["Ripley’s Aquarium","Myrtle Beach, SC","Certified Autism Center resources and selected sensory-friendly events with environmental adjustments.","https://www.ripleyaquariums.com/myrtlebeach/sensory-friendly/"],
+    ["OdySea Aquarium","Scottsdale, AZ","Certified Autism Center with a quiet room, sensory guide, and staff support.","https://www.odyseaaquarium.com/plan-your-visit/accessibility/"],
+    ["Aquarium of the Pacific","Long Beach, CA","Selected Autism Families Nights and accessibility resources; dates require current registration.","https://www.aquariumofpacific.org/events/info/autism_families_night/"],
+    ["Adventure Aquarium","Camden, NJ","Sensory and accessibility resources may include noise-reduction tools and weighted lap items; verify availability.","https://www.adventureaquarium.com/plan-your-visit/accessibility"],
+    ["National Aquarium","Baltimore, MD","KultureCity Sensory Inclusive resources including trained staff, sensory bags, and planning support.","https://aqua.org/visit/accessibility"]
+  ],
+  "🎉 Recurring programs":[
+    ["Chuck E. Cheese Sensory Sensitive Sundays","Participating locations","Selected Sunday hours with reduced sound and lighting and limited flashing effects. Participation and dates vary.","https://www.chuckecheese.com/sensory-sensitive-sundays/"],
+    ["AMC Sensory Friendly Films","Participating theaters","Lights raised, sound lowered, and movement or vocalizing welcomed at selected screenings.","https://www.amctheatres.com/programs/sensory-friendly-films"],
+    ["Regal My Way Matinee","Participating theaters","Selected family films with brighter lighting and reduced sound.","https://www.regmovies.com/promotions/my-way-matinee"],
+    ["Please Touch Museum","Philadelphia, PA","Accessibility resources and periodic sensory-friendly programming.","https://www.pleasetouchmuseum.org/accessibility/"],
+    ["Cayton Children’s Museum","Santa Monica, CA","Check current accessibility supports and sensory-friendly event schedule.","https://www.caytonmuseum.org/accessibility"]
+  ]
+};
+function renderAsdFriendlyFunExpanded(){
+  renderAsdFriendlyFun();
+  const cards=document.querySelectorAll(".education-card"), html=Object.entries(FRIENDLY_PLACES).map(([heading,places])=>`<h3>${heading}</h3><div class="friendly-place-list">${places.map(([name,location,description,url])=>`<a href="${url}" target="_blank" rel="noopener"><strong>${esc(name)}</strong><small>${esc(location)}</small><span>${esc(description)}</span></a>`).join("")}</div>`).join("");
+  if(cards[1])cards[1].insertAdjacentHTML("afterend",`<details class="education-card"><summary>🗺️ Autism-friendly places to explore</summary><div class="education-body"><p>Programs, certifications, admission rules, and event schedules change. Confirm accommodations before buying tickets. Certification usually means training and planning resources; it does not guarantee that every space will be quiet or fit every visitor.</p>${html}<div class="banner"><strong>Federal Access Pass detail:</strong> At per-vehicle sites the pass generally covers the pass holder and occupants of one noncommercial vehicle. At per-person sites it generally covers the pass holder plus up to three adults; children under 16 are ordinarily admitted free. Concessions, special permits, and every recreation fee are not automatically included.</div></div></details>`);
 }
 
 function renderResources() {
