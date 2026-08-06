@@ -1,4 +1,23 @@
-# More than Measured v0.7.9
+# More than Measured v0.8.0
+
+## v0.8.0 changes
+- Opened every illustrated homepage section as a functional destination
+- Added per-child special interests and Currently Working On to profiles
+- Added a food and meal diary with Safe, Occasionally Eats, and Absolutely Not categories
+- Added gentle variety suggestions built from the child’s accepted and occasional foods
+- Added customizable birthday-message generation
+- Added a complete per-child life-skills tracker with starter and custom skills
+- Added learning guidance, strengths-and-struggles snapshots, Medicaid incontinence-supply guidance, Imagination Library information, and skill-product categories
+- Added Sensory Support guides, a caregiver sensory-pattern check-in, SPD information, trigger explanations, and product categories
+- Added the National Parks Access Pass guide, certified and sensory-inclusive venue directories, local-event searching, cruise information, and sensory-friendly movie links
+- Added medical-necessity and appointment-preparation templates
+- Added caregiver-generated provider reports and after-appointment notes
+- Added routine and symptom-guided lab, MTHFR, gut-health, probiotic, prebiotic, vitamin, and parking-placard guidance
+- Opened ASL, AAC, flash-card, communication-app, quick-sign, and product-resource cards
+- Rebuilt the example sleep routine around active play followed by a 15-minute low-stimulation wind-down
+- Added careful sound-machine, night-light, compression, safe-stimming, magnesium-product, and medical-bed safety language
+- Kept child-specific records in the existing complete backup and restore system without requiring a database migration
+- Preserved all existing family data and offline app behavior
 
 ## v0.7.9 changes
 - Opened Sleep Sanctuary from the illustrated homepage and navigation drawer
