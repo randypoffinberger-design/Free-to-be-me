@@ -1,4 +1,17 @@
-# More than Measured v0.7.3
+# More than Measured v0.7.4
+
+## v0.7.4 changes
+- Added a Benefits & Financial Support card to Caregiver Corner
+- Added paid-family-caregiver, Medicaid self-direction, HCBS waiver, respite, and family-support guidance
+- Added a detailed SSI eligibility and application walkthrough for children
+- Explained SSI, SSDI, dependent benefits, and Disabled Adult Child benefits without treating them as interchangeable
+- Added Medicaid, CHIP, EPSDT, TEFRA/Katie Beckett, developmental-disability services, and waiting-list reminders
+- Added federal tax-credit, medical-deduction, FSA/HSA, and free tax-preparation information
+- Added current 2026 ABLE eligibility guidance and special-needs-planning cautions
+- Added FMLA, state paid-leave, employer benefit, food, housing, utility, and transportation resources
+- Added application organization, deadline, appeal, reporting, and scam-prevention tips
+- Linked directly to SSA, Medicaid, IRS, USAGov, Department of Labor, and Administration for Community Living resources
+- Preserved the existing database, offline data, and backup compatibility
 
 ## v0.7.3 changes
 - Added an Autism Assessment Information card to Caregiver Corner
