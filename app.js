@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.7.7", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.7.8", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -1409,12 +1409,12 @@ async function renderChild() {
     $("#addProfile").onclick = openProfileForm;
     return;
   }
-  view.innerHTML = `<div class="btn-row"><button id="addProfile" class="btn secondary">Add another child</button><button id="addAchievement" class="btn">Celebrate a new achievement</button></div>
+  view.innerHTML = `<div class="btn-row"><button id="addProfile" class="btn secondary">Add another child</button><button id="addAchievement" class="btn">Celebrate a new Win</button></div>
   <h2 class="section-title">Child profiles</h2>
   <div class="list">${p.map((x) => `<div class="profile-card card"><div class="avatar">${x.photoData ? `<img src="${x.photoData}" alt="${esc(x.name)} profile photo">` : esc(x.emoji || "🌟")}</div><div class="meta"><h3>${esc(x.name)}</h3><p class="profile-detail" data-profile-id="${x.id}">${esc(profileDetail(x, profileDisplay))}</p></div><button class="small-action edit-profile" data-id="${x.id}" type="button">Edit</button></div>`).join("")}</div>
   <h2 class="section-title">Progress tools</h2>
   <div class="grid">
-    <button id="viewAchievements" class="card-button"><span class="emoji">✨</span><strong>Achievements</strong><small>${a.length} saved. Tap to view.</small></button>
+    <button id="viewAchievements" class="card-button"><span class="emoji">✨</span><strong>Wins</strong><small>${a.length} saved. Tap to view or edit.</small></button>
     <button id="viewWords" class="card-button"><span class="emoji">🗣️</span><strong>Words & phrases</strong><small>${w.length} saved.</small></button>
     <button id="providerSummary" class="card-button"><span class="emoji">📄</span><strong>Provider summary</strong><small>Share progress over time.</small></button>
   </div>`;
@@ -1445,10 +1445,18 @@ function openAchievements(items, profiles) {
   const sorted = [...items].sort(
     (a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt),
   );
-  modalBody.innerHTML = `<h2>✨ Achievements</h2>
-  ${sorted.length ? `<div class="list">${sorted.map((x) => `<div class="list-item"><div style="font-size:1.7rem">🎉</div><div><strong>${esc(x.title)}</strong><div class="hint">${esc(names[x.profileId] || "Child")} • ${esc(x.category || "Achievement")} • ${fmtDate(x.date || x.createdAt)}</div>${x.notes ? `<p style="margin-bottom:0">${esc(x.notes)}</p>` : ""}</div></div>`).join("")}</div>` : `<div class="empty"><div class="big">🌱</div><p>No achievements have been saved yet.</p></div>`}
+  modalBody.innerHTML = `<h2>✨ Wins</h2>
+  ${sorted.length ? `<div class="list">${sorted.map((x) => `<div class="list-item win-item"><div style="font-size:1.7rem">🎉</div><div class="win-content"><strong>${esc(x.title)}</strong><div class="hint">${esc(names[x.profileId] || "Child")} • ${esc(x.category || "Win")} • ${fmtDate(x.date || x.createdAt)}</div>${x.notes ? `<p style="margin-bottom:0">${esc(x.notes)}</p>` : ""}</div><button class="small-action edit-win" data-id="${x.id}" type="button">Edit</button></div>`).join("")}</div>` : `<div class="empty"><div class="big">🌱</div><p>No Wins have been saved yet.</p></div>`}
   <button id="closeAchievements" class="btn full" type="button" style="margin-top:14px">Close</button>`;
   modal.showModal();
+  document.querySelectorAll(".edit-win").forEach(
+    (button) =>
+      (button.onclick = () =>
+        openAchievementForm(
+          profiles,
+          items.find((item) => item.id === button.dataset.id),
+        )),
+  );
   $("#closeAchievements").onclick = () => modal.close();
 }
 
@@ -1533,25 +1541,35 @@ function openProfileForm(item = null) {
     }
   };
 }
-function openAchievementForm(p) {
-  modalBody.innerHTML = `<h2>Celebrate an achievement</h2><div class="form-grid"><div class="field"><label>Child</label><select id="aProfile">${p.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>What happened?</label><input id="aTitle" placeholder="Used a new sentence"></div><div class="field"><label>Category</label><select id="aCategory"><option>Communication</option><option>Learning</option><option>Daily living</option><option>Motor skills</option><option>Sensory & regulation</option><option>Social connection</option><option>Other</option></select></div><div class="field"><label>Date</label><input id="aDate" type="date" value="${new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Notes</label><textarea id="aNotes" placeholder="What helped? What made this moment special?"></textarea></div><button id="saveAchievement" class="btn full" type="button">🎉 You did it! Save achievement</button></div>`;
+function openAchievementForm(p, item = null) {
+  const categories = [
+    "Communication",
+    "Learning",
+    "Daily living",
+    "Motor skills",
+    "Sensory & regulation",
+    "Social connection",
+    "Other",
+  ];
+  modalBody.innerHTML = `<h2>${item ? "Edit Win" : "Celebrate a new Win"}</h2><div class="form-grid"><div class="field"><label>Child</label><select id="aProfile">${p.map((x) => `<option value="${x.id}" ${item?.profileId === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>What happened?</label><input id="aTitle" value="${esc(item?.title || "")}" placeholder="Used a new sentence"></div><div class="field"><label>Category</label><select id="aCategory">${categories.map((category) => `<option ${item?.category === category ? "selected" : ""}>${esc(category)}</option>`).join("")}</select></div><div class="field"><label>Date</label><input id="aDate" type="date" value="${item?.date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Notes</label><textarea id="aNotes" placeholder="What helped? What made this moment special?">${esc(item?.notes || "")}</textarea></div><button id="saveAchievement" class="btn full" type="button">${item ? "Save changes" : "🎉 You did it! Save Win"}</button></div>`;
   modal.showModal();
   $("#saveAchievement").onclick = async () => {
     const t = $("#aTitle").value.trim();
-    if (!t) return alert("Please describe the achievement.");
+    if (!t) return alert("Please describe the Win.");
     await put("achievements", {
-      id: uid(),
+      ...item,
+      id: item?.id || uid(),
       profileId: $("#aProfile").value,
       title: t,
       category: $("#aCategory").value,
       date: $("#aDate").value,
       notes: $("#aNotes").value.trim(),
-      createdAt: nowISO(),
+      createdAt: item?.createdAt || nowISO(),
       updatedAt: nowISO(),
       syncStatus: "local",
     });
     modal.close();
-    alert("🎉 Achievement saved!");
+    alert(item ? "Win updated!" : "🎉 Win saved!");
     renderChild();
   };
 }
@@ -1617,6 +1635,7 @@ const CAREGIVER_TERMS = [
   ["Meltdown", "A meltdown happens when everything becomes too much and the person loses the ability to stay in control. Noise, feelings, demands, communication trouble, or a day full of small stresses can all build toward one. It is not manipulation or a choice; the most helpful response is usually safety, fewer words, less pressure, and time to recover."],
   ["Neurodiversity", "Neurodiversity is the idea that brains naturally work in different ways. People can think, learn, communicate, focus, and experience the world differently from one another. Those differences can include strengths and real disabilities at the same time, and everyone deserves the support that helps them live well."],
   ["Proprioception", "Proprioception is the body's sense of where it is and how its muscles and joints are moving. Pushing, pulling, carrying, climbing, jumping, or firm pressure can feel calming and organizing for some children. You may hear people call these activities ‘heavy work.’"],
+  ["Regression", "Regression means losing a skill that was already being used—such as words, gestures, play, social connection, toileting, movement, or a daily-living skill. It is different from having an off day, using a skill less during stress, or temporarily needing more help. Some autistic children experience developmental regression, often in the toddler years, but a new, sudden, or continuing loss of skills deserves prompt attention from the child’s healthcare professional. Write down what changed and when, and mention illness, pain, sleep, seizures, medication changes, stress, or other changes you noticed. Regression is not the child’s fault, and it does not erase who they are or everything they have learned."],
   ["Scripting", "Scripting is using remembered lines from shows, songs, books, or past conversations. A script may help a child communicate, play, understand what happened, or calm themselves. Even when the words came from somewhere else, the child may be using them to say something meaningful."],
   ["Sensory avoider", "A sensory avoider is someone who tries to get away from certain sounds, lights, textures, smells, tastes, touch, or movement because the input feels too strong or uncomfortable. Avoiding it is often their way of protecting themselves, not being difficult."],
   ["Sensory overload", "Sensory overload happens when the brain is receiving more sights, sounds, touch, movement, or other input than it can comfortably sort through. A child might cover their ears, run away, cry, become agitated, shut down, or have a meltdown. A quieter space and less pressure can help their system settle."],
@@ -2490,7 +2509,7 @@ function validateBackup(b) {
 async function previewRestore(file) {
   const b = JSON.parse(await file.text());
   validateBackup(b);
-  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Achievements:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
+  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Wins:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
   modal.showModal();
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");
@@ -2520,7 +2539,7 @@ async function renderBackup() {
     snaps = (await getAll("snapshots")).sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
-  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Your family data stays on this device unless you export it yourself.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, achievements, communication entries, potty-training records, caregiver tools, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
+  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Your family data stays on this device unless you export it yourself.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, Wins, communication entries, potty-training records, caregiver tools, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
   $("#exportBtn").onclick = exportBackup;
   $("#restoreBtn").onclick = () => $("#restoreInput").click();
   $("#checkpointBtn").onclick = async () => {

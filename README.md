@@ -1,4 +1,13 @@
-# More than Measured v0.7.7
+# More than Measured v0.7.8
+
+## v0.7.8 changes
+- Added Regression to the friendly Common Terms guide
+- Explained the difference between a true loss of an established skill and temporary difficulty during stress or an off day
+- Added a prompt to contact the child’s healthcare professional for new, sudden, or continuing skill loss
+- Renamed public-facing Growth Journey “Achievements” to “Wins” throughout the app
+- Made every saved Win editable, including child, title, category, date, and notes
+- Preserved each edited Win’s original ID and creation date so edits do not create duplicates
+- Kept the internal achievements data store unchanged for complete compatibility with existing records and older backups
 
 ## v0.7.7 changes
 - Added a Therapy & Support card to Caregiver Corner
