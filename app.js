@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.2", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.3", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -19,7 +19,8 @@ let db,
   profileAgeTimer = null,
   vocabSessionFilters = null,
   currentRoute = "",
-  routeStack = [];
+  routeStack = [],
+  birthdayGreetingsShown = false;
 const $ = (s) => document.querySelector(s),
   view = $("#view"),
   modal = $("#modal"),
@@ -174,6 +175,7 @@ async function renderHome() {
   document
     .querySelectorAll(".home-hotspot[data-feature]")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
+  await showBirthdayGreetingsIfNeeded();
 }
 
 function openWeeklyEncouragement() {
@@ -1444,7 +1446,7 @@ async function renderChild() {
     if (profile?.specialInterest) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Special interest:</strong> ${esc(profile.specialInterest)}</p>`);
     if (profile?.currentFocus) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Currently working on:</strong> ${esc(profile.currentFocus)}</p>`);
   });
-  view.insertAdjacentHTML("beforeend", `<h2 class="section-title">Growth tools</h2><div class="grid"><button class="card-button" data-go="food"><span class="emoji">🍽️</span><strong>Food diary</strong><small>Track foods and meals by comfort level, then build gentle variety ideas.</small></button><button id="birthdayMessage" class="card-button"><span class="emoji">🎂</span><strong>Birthday message</strong><small>Create a personalized celebration message.</small></button></div>`);
+  view.insertAdjacentHTML("beforeend", `<h2 class="section-title">Growth tools</h2><div class="grid"><button class="card-button" data-go="food"><span class="emoji">🍽️</span><strong>Food diary</strong><small>Track foods and meals by comfort level, then build gentle variety ideas.</small></button></div>`);
   $("#addProfile").onclick = openProfileForm;
   document
     .querySelectorAll(".edit-profile")
@@ -1457,7 +1459,6 @@ async function renderChild() {
   $("#viewAchievements").onclick = () => openAchievements(a, p);
   $("#viewWords").onclick = () => navigate("vocabulary");
   $("#providerSummary").onclick = () => underConstruction("Provider summary");
-  $("#birthdayMessage").onclick = () => openBirthdayMessage(p);
   bindRouteButtons();
   if (profileDisplay === "exact") {
     const updateAges = () =>
@@ -1614,41 +1615,68 @@ function placeholder(t, i, c, items) {
 }
 
 const BIRTHDAY_MESSAGES=[
-  "Happy {birthday}, {name}! The world became brighter the day you arrived. Keep growing in your own wonderful way—you are loved exactly as you are.",
-  "Happy {birthday}, {name}! Today we celebrate your smile, your spirit, and every little thing that makes you unmistakably you.",
-  "To {name} on your {birthday}: may your day be filled with favorite things, comfortable moments, happy surprises, and people who understand your heart.",
-  "Happy {birthday}, {name}! You never need to be anyone other than yourself. You are seen, valued, celebrated, and deeply loved.",
-  "{name}, today is all about you! Happy {birthday} to a child whose journey is completely their own and worth celebrating every step of the way.",
+  "Happy {birthday}, {name}! Your village is celebrating the wonderful, one-of-a-kind person you are today.",
+  "Happy {birthday}, {name}! May your day be filled with favorite things, comfortable moments, happy surprises, and plenty of reasons to smile.",
+  "Today your whole village cheers for you, {name}. Keep growing in your own wonderful way—you are loved exactly as you are.",
+  "Happy {birthday}, {name}! Your smile, your spirit, and all the little things that make you unmistakably you deserve a celebration.",
+  "{name}, today is all about you! Your unique journey is worth celebrating every step of the way.",
   "Happy {birthday}, {name}! Your way of seeing the world brings something beautiful that nobody else could bring.",
-  "To our amazing {name}: every new year with you gives us more reasons to smile, learn, and love. Happy {birthday}!",
-  "Happy {birthday}, {name}! May this year bring safe places, joyful discoveries, kind people, and plenty of time for the things you love most.",
-  "{name}, you are more than milestones, measurements, or expectations. You are an incredible person, and today we celebrate all of you. Happy {birthday}!",
-  "Happy {birthday} to {name}, whose personality, passions, laughter, and determination make every day more interesting and meaningful.",
+  "To the amazing {name}: another year means even more discoveries, memories, laughter, and Wins to celebrate. Happy {birthday}!",
+  "Happy {birthday}, {name}! May this year bring safe places, joyful discoveries, kind people, and plenty of time for what you love most.",
+  "{name}, you are more than milestones, measurements, or expectations. Your village celebrates all of you today. Happy {birthday}!",
+  "Happy {birthday}, {name}! Your personality, passions, laughter, and determination make the world more interesting and meaningful.",
   "Today we celebrate the wonderful adventure of being {name}. Happy {birthday}—keep shining in the way only you can.",
-  "Happy {birthday}, {name}! You have already filled our lives with memories we could never measure and love we could never fully put into words.",
+  "Happy {birthday}, {name}! You have already created more beautiful memories than anyone could ever measure.",
   "To {name}: may your {birthday} feel comfortable, exciting in all the right ways, and full of the people and things that make you happiest.",
-  "Happy {birthday}, {name}! Your voice matters, your choices matter, your comfort matters, and your happiness matters. We love you endlessly.",
-  "Another year of learning who you are and loving every new part we discover. Happy {birthday}, {name}!",
+  "Happy {birthday}, {name}! Your voice, choices, comfort, and happiness matter. Your village is always in your corner.",
+  "Another year of becoming even more wonderfully you. Happy {birthday}, {name}!",
   "Happy {birthday} to one extraordinary kid! {name}, you make ordinary moments special simply by being part of them.",
-  "{name}, your joy is contagious, your interests are worth sharing, and your progress belongs to you. Have a beautiful {birthday}!",
-  "Happy {birthday}, {name}! May your new year be filled with patience when things are hard, confidence when you are ready, and celebration for every Win.",
+  "{name}, your joy is worth sharing, your interests are worth celebrating, and your progress belongs to you. Have a beautiful {birthday}!",
+  "Happy {birthday}, {name}! May your new year bring patience when things are hard, confidence when you are ready, and celebration for every Win.",
   "To {name} on your {birthday}: you are not behind, too much, or not enough. You are wonderfully yourself, right on your own path.",
-  "Happy {birthday}, {name}! We hope today gives you room to move, play, rest, laugh, explore, and celebrate exactly the way that feels best.",
-  "The best thing about today is celebrating someone as special as {name}. Happy {birthday} to a child who is loved beyond measure.",
-  "Happy {birthday}, {name}! Every year you teach us something new about courage, connection, wonder, and unconditional love.",
+  "Happy {birthday}, {name}! May today give you room to move, play, rest, laugh, explore, and celebrate in the way that feels best.",
+  "The best thing about today is celebrating someone as special as {name}. Happy {birthday} to a child loved beyond measure.",
+  "Happy {birthday}, {name}! Your courage, curiosity, connection, and wonder give your village so many reasons to cheer.",
   "{name}, your story is still beginning, and it is already filled with so many beautiful moments. Happy {birthday}!",
-  "Happy {birthday} to our remarkable {name}. We are proud of who you are today—not only of who you may become tomorrow.",
-  "Today the candles are for {name}! Happy {birthday} to someone whose unique journey makes our family’s world brighter.",
+  "Happy {birthday}, {name}! Your village is proud of who you are today—not only of who you may become tomorrow.",
+  "Today the candles are for {name}! Happy {birthday} to someone whose unique journey makes the whole village brighter.",
 ];
 function birthdayOrdinal(value){const n=Number(value);if(!n)return "birthday";const suffix=n%10===1&&n%100!==11?"st":n%10===2&&n%100!==12?"nd":n%10===3&&n%100!==13?"rd":"th";return `${n}${suffix} birthday`;}
-function openBirthdayMessage(profiles) {
-  modalBody.innerHTML = `<h2>🎂 Special birthday message</h2><div class="form-grid"><div class="field"><label>Child profile</label><select id="birthdayProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Name used in message</label><input id="birthdayName" value="${esc(profiles[0]?.name||"")}" placeholder="Child’s name"></div><div class="field"><label>Age turning <span class="hint">(optional)</span></label><input id="birthdayAge" type="number" min="1" max="120"></div><div class="field"><label>Something extra to celebrate <span class="hint">(optional)</span></label><input id="birthdayCelebrate" placeholder="Their kindness, courage, sense of humor…"></div><button id="generateBirthday" class="btn" type="button">Generate random message</button><div class="field"><label>Your message</label><textarea id="birthdayOutput" class="template-letter" style="min-height:220px"></textarea></div><div class="btn-row"><button id="anotherBirthday" class="btn secondary" type="button">Try another</button><button id="copyBirthday" class="btn secondary" type="button">Copy message</button></div></div>`;
-  modal.showModal();
-  let lastIndex=-1;
-  const generate=()=>{const p=profiles.find((x)=>x.id===$("#birthdayProfile").value),name=$("#birthdayName").value.trim()||p.name,age=birthdayOrdinal($("#birthdayAge").value.trim()),celebrate=$("#birthdayCelebrate").value.trim();let index;do index=Math.floor(Math.random()*BIRTHDAY_MESSAGES.length);while(index===lastIndex&&BIRTHDAY_MESSAGES.length>1);lastIndex=index;let message=BIRTHDAY_MESSAGES[index].replaceAll("{name}",name).replaceAll("{birthday}",age);if(p.specialInterest)message+=` Your love of ${p.specialInterest} makes your world even more special.`;if(p.currentFocus)message+=` We are proud of every step you take while working on ${p.currentFocus}.`;if(celebrate)message+=` Today we also celebrate your ${celebrate}.`;$("#birthdayOutput").value=message;};
-  $("#birthdayProfile").onchange=()=>{$("#birthdayName").value=profiles.find((x)=>x.id===$("#birthdayProfile").value)?.name||"";};
-  $("#generateBirthday").onclick=generate;$("#anotherBirthday").onclick=generate;
-  $("#copyBirthday").onclick = async () => { const text = $("#birthdayOutput").value; if (!text) return alert("Generate or write a message first."); await navigator.clipboard.writeText(text); alert("Birthday message copied."); };
+function birthdayToday(profile, today = new Date()) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(profile.birthDate || "");
+  if (!match) return false;
+  return Number(match[2]) === today.getMonth() + 1 && Number(match[3]) === today.getDate();
+}
+function birthdayAge(profile, today = new Date()) {
+  const birthYear = Number((profile.birthDate || "").slice(0, 4));
+  return birthYear ? today.getFullYear() - birthYear : null;
+}
+async function showBirthdayGreetingsIfNeeded() {
+  if (birthdayGreetingsShown) return;
+  birthdayGreetingsShown = true;
+  const today = new Date();
+  const birthdayProfiles = (await getAll("profiles")).filter((profile) => birthdayToday(profile, today));
+  if (!birthdayProfiles.length) return;
+  const greetings = birthdayProfiles.map((profile) => {
+    const template = BIRTHDAY_MESSAGES[Math.floor(Math.random() * BIRTHDAY_MESSAGES.length)];
+    return {
+      profile,
+      message: template
+        .replaceAll("{name}", profile.name || "Birthday star")
+        .replaceAll("{birthday}", birthdayOrdinal(birthdayAge(profile, today))),
+    };
+  });
+  const showNext = (index) => {
+    const greeting = greetings[index];
+    if (!greeting) return;
+    modalBody.innerHTML = `<div class="birthday-greeting"><div class="birthday-confetti" aria-hidden="true">🎈 🎂 🎉</div><h2>Happy Birthday, ${esc(greeting.profile.name || "Birthday star")}!</h2><p>${esc(greeting.message)}</p><p class="birthday-signoff">With love,<br><strong>Your More than Measured village 💛</strong></p><button id="closeBirthdayGreeting" class="btn full" type="button">${index + 1 < greetings.length ? "Celebrate and continue" : "Celebrate!"}</button></div>`;
+    modal.showModal();
+    $("#closeBirthdayGreeting").onclick = () => {
+      modal.close();
+      showNext(index + 1);
+    };
+  };
+  showNext(0);
 }
 
 async function renderFoodDiary() {
@@ -2941,6 +2969,13 @@ async function init() {
   db = await openDB();
   setupDrawer();
   setupPWA();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      birthdayGreetingsShown = false;
+    } else if (currentRoute === "home" && !modal.open) {
+      showBirthdayGreetingsIfNeeded().catch(() => {});
+    }
+  });
   document
     .querySelectorAll(".nav-item")
     .forEach((b) => (b.onclick = () => navigate(b.dataset.route)));
@@ -2954,7 +2989,8 @@ async function init() {
     }
     e.target.value = "";
   };
-  navigate(location.hash.slice(1) || "home");
+  const hasBirthdayToday = (await getAll("profiles")).some((profile) => birthdayToday(profile));
+  await navigate(hasBirthdayToday ? "home" : location.hash.slice(1) || "home");
 }
 init().catch((err) => {
   view.innerHTML = `<div class="banner"><strong>Startup error:</strong> ${esc(err.message)}</div>`;

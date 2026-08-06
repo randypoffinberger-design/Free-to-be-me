@@ -1,4 +1,13 @@
-# More than Measured v0.8.2
+# More than Measured v0.8.3
+
+## v0.8.3 changes
+- Replaced the manual birthday-message generator with an automatic birthday greeting
+- Checks every child profile whenever the app is opened and the Home screen loads
+- Shows a randomized, age-aware message whenever the current month and day match the child’s birthday
+- Uses the child’s profile name automatically and signs each greeting from the More than Measured village
+- Supports separate greetings when more than one child shares the same birthday
+- Shows the greeting once each time the app is opened or brought back into view, without repeatedly interrupting ordinary Home navigation
+- Preserved all existing family data, offline behavior, and backup compatibility
 
 ## v0.8.2 changes
 - Moved the drawer version into a dedicated footer beneath About so it cannot overlap navigation
