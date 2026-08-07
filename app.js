@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.4", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.5", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -2464,6 +2464,68 @@ function renderTherapyInformation() {
   <div class="banner therapy-disclaimer"><strong>Important:</strong> This section provides general education, not an individualized therapy recommendation. Evidence and professional practice continue to change. Discuss goals, benefits, risks, alternatives, intensity, credentials, consent, and progress with qualified providers who have evaluated the child.</div>`;
 }
 
+async function openEmergencyContacts() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) return alert("Create a child profile first.");
+  let profileId = profiles[0].id, contacts = [];
+  const key = () => `emergencyContacts:${profileId}`;
+  const draw = async () => {
+    contacts = await getSetting(key(), []);
+    modalBody.innerHTML = `<h2>☎️ Emergency contacts</h2><p class="hint">Save more than one trusted contact for redundancy. Contacts are included in backups and can be added to the babysitter care sheet.</p><div class="field"><label>Child</label><select id="contactProfile">${profiles.map((p) => `<option value="${p.id}" ${p.id === profileId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Name</label><input id="contactName" autocomplete="name"></div><div class="field"><label>Relationship</label><input id="contactRelationship" placeholder="Parent, grandparent, neighbor…"></div><div class="field"><label>Primary phone</label><input id="contactPhone" type="tel" autocomplete="tel"></div><div class="field"><label>Alternate phone <span class="hint">(optional)</span></label><input id="contactAlternate" type="tel"></div></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><input id="contactNotes" placeholder="Call first, lives nearby, authorized pickup…"></div><button id="addEmergencyContact" class="btn full" type="button">Add contact</button><h3>Saved contacts (${contacts.length})</h3><div class="list">${contacts.length ? contacts.map((x, i) => `<div class="list-item"><div><strong>${esc(x.name)}</strong><div class="hint">${esc(x.relationship || "Relationship not entered")} • ${esc(x.phone)}</div>${x.alternatePhone ? `<div class="hint">Alternate: ${esc(x.alternatePhone)}</div>` : ""}${x.notes ? `<p>${esc(x.notes)}</p>` : ""}</div><button class="small-action danger-link delete-emergency-contact" data-index="${i}" type="button">Delete</button></div>`).join("") : `<div class="empty"><p>No emergency contacts saved yet. Two or more are recommended.</p></div>`}</div>`;
+    $("#contactProfile").onchange = async (e) => { profileId = e.target.value; await draw(); };
+    $("#addEmergencyContact").onclick = async () => { const name = $("#contactName").value.trim(), phone = $("#contactPhone").value.trim(); if (!name || !phone) return alert("Enter the contact’s name and primary phone number."); contacts.push({ id: uid(), name, relationship: $("#contactRelationship").value.trim(), phone, alternatePhone: $("#contactAlternate").value.trim(), notes: $("#contactNotes").value.trim() }); await setSetting(key(), contacts); await draw(); };
+    document.querySelectorAll(".delete-emergency-contact").forEach((button) => button.onclick = async () => { const i = Number(button.dataset.index), contact = contacts[i]; if (!confirm(`Delete ${contact.name} from emergency contacts?`)) return; contacts.splice(i, 1); await setSetting(key(), contacts); await draw(); });
+  };
+  await draw(); modal.showModal();
+}
+
+function careSheetLine(label, value) { return value ? `${label}: ${value}` : ""; }
+
+async function buildBabysitterCareSheet(profile) {
+  const id = profile.id;
+  const [contacts, notes, food, routine, sleep, materials, learning, words] = await Promise.all([getSetting(`emergencyContacts:${id}`, []), getSetting(`babysitterNotes:${id}`, {}), getSetting(`foodDiary:${id}`, []), getSetting(`sleep:routine:${id}`, []), getSetting(`sleep:preferences:${id}`, {}), getSetting(`materialPreferences:${id}`, {}), getSetting(`learningSnapshot:${id}`, {}), getAll("words")]);
+  const list = (items) => items.filter(Boolean).join(", ") || "None entered";
+  const foodNames = (category) => list(food.filter((x) => x.category === category).map((x) => x.name));
+  const reactions = food.filter((x) => x.response && x.response !== "none").map((x) => `${x.name} — ${x.response === "allergy" ? "KNOWN ALLERGY" : x.response === "reaction" ? "possible reaction" : "sensitivity/intolerance"}${x.reactionDetails ? `: ${x.reactionDetails}` : ""}`);
+  const aslWords = words.filter((x) => x.profileId === id && (x.entryType || "word") === "word" && x.asl).map((x) => x.word || x.text || x.title).filter(Boolean);
+  const contactText = contacts.length ? contacts.map((x, i) => `${i + 1}. ${x.name}${x.relationship ? ` (${x.relationship})` : ""}: ${x.phone}${x.alternatePhone ? `; alternate ${x.alternatePhone}` : ""}${x.notes ? ` — ${x.notes}` : ""}`).join("\n") : "No emergency contacts entered.";
+  const routineText = routine.length ? routine.map((x, i) => `${i + 1}. ${x.time ? `${x.time} — ` : ""}${x.text}`).join("\n") : "No bedtime routine entered.";
+  return [
+    `BABYSITTER CARE SHEET — ${String(profile.name || "CHILD").toUpperCase()}`,
+    `Prepared ${new Date().toLocaleString()}\nPlease review this sheet with the caregiver before they leave. In an immediate emergency, call 911 or the appropriate local emergency number first.`,
+    `EMERGENCY CONTACTS\n${contactText}${notes.homeAddress ? `\nChild/home address: ${notes.homeAddress}` : ""}${notes.preferredHospital ? `\nPreferred hospital: ${notes.preferredHospital}` : ""}${notes.pediatrician ? `\nPediatrician: ${notes.pediatrician}${notes.pediatricianPhone ? ` — ${notes.pediatricianPhone}` : ""}` : ""}`,
+    `MEDICAL & EMERGENCY\n${[careSheetLine("Medications and timing", notes.medications), careSheetLine("Medical/allergy notes", notes.medicalNotes), careSheetLine("Emergency plan", notes.emergencyPlan)].filter(Boolean).join("\n") || "No caregiver instructions entered. Confirm allergies, medicines, and emergency plans directly with the caregiver."}`,
+    `COMMUNICATION\n${[careSheetLine("How to communicate", notes.communication), aslWords.length ? `Saved ASL words: ${list(aslWords)}` : "", careSheetLine("What helps learning/understanding", learning.helps)].filter(Boolean).join("\n") || "No communication instructions entered."}`,
+    `FOOD & DRINK\nSafe: ${foodNames("safe")}\nOccasionally eats: ${foodNames("sometimes")}\nDo not offer / not accepted: ${foodNames("not")}\nAllergies, reactions, sensitivities: ${reactions.length ? reactions.join("; ") : "None entered"}${notes.foodInstructions ? `\nServing and meal instructions: ${notes.foodInstructions}` : ""}`,
+    `SLEEP\n${routineText}\n${[careSheetLine("Temperature", sleep.temperature), careSheetLine("Pressure/compression", sleep.pressure), careSheetLine("Texture", sleep.texture), careSheetLine("Light", sleep.light), careSheetLine("Sound", sleep.sound), careSheetLine("Movement", sleep.movement), careSheetLine("What we noticed", sleep.notes), careSheetLine("Extra sleep instructions", notes.sleepInstructions)].filter(Boolean).join("\n") || "No additional sleep preferences entered."}`,
+    `SENSORY, COMFORT & CLOTHING\n${[careSheetLine("Calming and comfort", notes.calming), careSheetLine("Sensory triggers/supports", notes.sensory), careSheetLine("Comfortable clothing", materials.comfortableClothing), careSheetLine("Avoid clothing", materials.difficultClothing), careSheetLine("Fit, seams, tags, fasteners", materials.clothingDetails), careSheetLine("Preferred bedding", materials.preferredBedding), careSheetLine("Avoid bedding", materials.avoidBedding), careSheetLine("Other material notes", materials.notes)].filter(Boolean).join("\n") || "No sensory or material preferences entered."}`,
+    `SAFETY & TOILETING\n${[careSheetLine("Safety, wandering, or supervision", notes.safety), careSheetLine("Toileting", notes.toileting)].filter(Boolean).join("\n") || "No safety or toileting instructions entered."}`,
+    `ABOUT ${String(profile.name || "THE CHILD").toUpperCase()}\n${[careSheetLine("Special interests", profile.specialInterest), careSheetLine("Currently working on", profile.currentFocus), careSheetLine("Strengths", learning.strengths), careSheetLine("Challenges to plan for", learning.struggles), careSheetLine("Schedule and other instructions", notes.other)].filter(Boolean).join("\n") || "No additional information entered."}`,
+    "Caregiver reminder: Review this message before sharing. Update it whenever contacts, allergies, medicines, routines, or safety needs change.",
+  ].join("\n\n");
+}
+
+async function openBabysitterCareSheet() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) return alert("Create a child profile first.");
+  let profileId = profiles[0].id;
+  const fields = [["homeAddress", "Child/home address", "Where emergency responders should go"], ["pediatrician", "Pediatrician or clinic", "Name or practice"], ["pediatricianPhone", "Pediatrician phone", "Phone number"], ["preferredHospital", "Preferred hospital", "Name and location"], ["medications", "Medications and timing", "Include exact caregiver-approved directions"], ["medicalNotes", "Medical and allergy notes", "Diagnoses, allergies, rescue medicine location…"], ["emergencyPlan", "Emergency plan", "What to do and when to call for help"], ["communication", "Communication instructions", "Speech, ASL, AAC, processing time, words or gestures…"], ["foodInstructions", "Food and drink instructions", "Serving, portions, brands, choking precautions…"], ["sleepInstructions", "Extra sleep instructions", "Wake rules, checks, safe sleep instructions…"], ["calming", "Calming and comfort", "Favorite items, activities, phrases, safe stims…"], ["sensory", "Sensory triggers and supports", "Noise, light, touch, crowds, headphones…"], ["safety", "Safety and supervision", "Wandering, doors, water, pets, car, sibling safety…"], ["toileting", "Toileting", "Schedule, cues, supplies, assistance, accidents…"], ["other", "Schedule and other instructions", "Meals, activities, screen rules, pickup details…"]];
+  const draw = async () => {
+    const profile = profiles.find((p) => p.id === profileId), notes = await getSetting(`babysitterNotes:${profileId}`, {}), contacts = await getSetting(`emergencyContacts:${profileId}`, []);
+    modalBody.innerHTML = `<h2>🧑‍🍼 Babysitter care sheet</h2><p class="hint">Build plain text that can be shared through Messages, Messenger, email, or copy and paste. The recipient needs no app or account.</p><div class="field"><label>Child</label><select id="babysitterProfile">${profiles.map((p) => `<option value="${p.id}" ${p.id === profileId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="banner"><strong>${contacts.length} emergency ${contacts.length === 1 ? "contact" : "contacts"} saved.</strong> ${contacts.length < 2 ? "Add at least two when possible so the babysitter has a backup." : "Redundant contacts are ready."}<br><button id="manageContactsFromSheet" class="small-action" type="button">Manage emergency contacts</button></div><details class="education-card"><summary>✏️ Care instructions to include</summary><div class="education-body"><p>Saved food, sleep, sensory, profile, and communication information is pulled in automatically. Use these fields for instructions a tracker cannot safely infer.</p><div class="form-grid">${fields.map(([key, label, placeholder]) => `<div class="field"><label>${label}</label><textarea id="babysitter-${key}" placeholder="${esc(placeholder)}">${esc(notes[key] || "")}</textarea></div>`).join("")}<button id="saveBabysitterNotes" class="btn full" type="button">Save care instructions</button></div></div></details><button id="generateBabysitterSheet" class="btn full" type="button">Generate or refresh care sheet</button><div class="field"><label>Review and edit before sharing</label><textarea id="babysitterSheetText" class="template-letter" placeholder="Generate the care sheet, then make any one-time edits here."></textarea></div><div class="btn-row"><button id="shareBabysitterSheet" class="btn" type="button">Share</button><button id="copyBabysitterSheet" class="btn secondary" type="button">Copy</button><button id="downloadBabysitterSheet" class="btn secondary" type="button">Download .txt</button></div><p class="hint">This sheet can contain sensitive health and contact information. Share it only with someone you trust.</p>`;
+    $("#babysitterProfile").onchange = async (e) => { profileId = e.target.value; await draw(); };
+    $("#manageContactsFromSheet").onclick = () => { modal.close(); openEmergencyContacts(); };
+    const saveNotes = async () => { const value = Object.fromEntries(fields.map(([key]) => [key, $(`#babysitter-${key}`).value.trim()])); value.updatedAt = nowISO(); await setSetting(`babysitterNotes:${profileId}`, value); };
+    $("#saveBabysitterNotes").onclick = async () => { await saveNotes(); alert("Care instructions saved."); };
+    $("#generateBabysitterSheet").onclick = async () => { await saveNotes(); $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile); };
+    $("#copyBabysitterSheet").onclick = async () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); await navigator.clipboard.writeText(text); alert("Care sheet copied."); };
+    $("#shareBabysitterSheet").onclick = async () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); if (navigator.share) { try { await navigator.share({ title: `${profile.name} — Babysitter Care Sheet`, text }); } catch (error) { if (error.name !== "AbortError") alert("Sharing was not available. Use Copy instead."); } } else { await navigator.clipboard.writeText(text); alert("Sharing is not available here, so the care sheet was copied."); } };
+    $("#downloadBabysitterSheet").onclick = () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); downloadBlob(new Blob([text], { type: "text/plain" }), `${profile.name.replace(/[^a-z0-9]+/gi, "-")}-Babysitter-Care-Sheet.txt`); };
+    $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile);
+  };
+  await draw(); modal.showModal();
+}
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -2472,6 +2534,8 @@ async function renderCaregiver() {
   view.innerHTML = `<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support, organization, and clear information for the caregiver.</p></section>
   <h2 class="section-title">Caregiver support</h2>
   <div class="grid">
+    <button id="caregiverBabysitter" class="card-button"><strong>🧑‍🍼 Babysitter care sheet</strong><small>Pull saved care details into editable text that can be shared without an app.</small></button>
+    <button id="caregiverEmergencyContacts" class="card-button"><strong>☎️ Emergency contacts</strong><small>Save multiple contacts per child for redundancy and care-sheet sharing.</small></button>
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
     <button id="caregiverTerms" class="card-button"><strong>📖 Common terms</strong><small>Plain-language explanations of autism and sensory terminology.</small></button>
     <button id="caregiverSigns" class="card-button"><strong>🧭 Signs of autism</strong><small>Social communication, repetition, routines, sensory differences, and when to ask for an evaluation.</small></button>
@@ -2486,6 +2550,8 @@ async function renderCaregiver() {
     <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
     <button class="card-button future-feature" data-feature="Support messaging"><strong>🤝 Support messaging</strong><small>A future premium support option with clear boundaries.</small></button>
   </div>`;
+  $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
+  $("#caregiverEmergencyContacts").onclick = openEmergencyContacts;
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
   $("#caregiverSigns").onclick = openAutismSignsGuide;

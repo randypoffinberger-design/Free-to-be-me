@@ -1,4 +1,14 @@
-# More than Measured v0.8.4
+# More than Measured v0.8.5
+
+## v0.8.5 changes
+- Added a Caregiver Corner babysitter care-sheet generator
+- Creates editable plain text that can be shared through Messages, Messenger, email, or copy and paste without requiring the recipient to install the app or create an account
+- Pulls relevant saved food, allergy/reaction, sleep routine, sleep preferences, sensory, clothing/bedding, communication, learning, and profile information for the selected child
+- Added caregiver-controlled medical, medication, emergency, communication, food, sleep, calming, sensory, safety, toileting, and schedule instructions
+- Added a per-child emergency-contact manager supporting multiple primary and alternate contacts for redundancy
+- Added Web Share, copy, and downloadable text-file options with a privacy reminder and editable review step
+- Included all new contacts and care instructions in the existing complete backup through the settings store
+- Preserved existing family data, offline behavior, and database compatibility
 
 ## v0.8.4 changes
 - Expanded MTHFR information with heterozygous, homozygous, and compound-heterozygous explanations
