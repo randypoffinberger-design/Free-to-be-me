@@ -1,4 +1,16 @@
-# More than Measured v0.8.3
+# More than Measured v0.8.4
+
+## v0.8.4 changes
+- Expanded MTHFR information with heterozygous, homozygous, and compound-heterozygous explanations
+- Added balanced guidance about food dyes, sugar, dairy, individual reactions, and elimination-diet safety
+- Added Caregiver Corner guides for signs of autism and aggressive behaviors
+- Expanded the ASL Quick Guide to nine organized groups with more than 80 everyday sign buttons
+- Added Food Diary types for condiments and drinks alongside foods, meals, and snacks
+- Added known allergy, possible reaction, and sensitivity/intolerance tracking with reaction details
+- Separated Food Diary results into Safe, Occasionally Eats, and Absolutely Not blocks
+- Added a saved per-child clothing and bedding material-preference section
+- Added guidance explaining appropriate uses of regular monthly child SSI and the stricter dedicated-account rules
+- Preserved existing records, complete backup compatibility, and offline behavior without a database migration
 
 ## v0.8.3 changes
 - Replaced the manual birthday-message generator with an automatic birthday greeting
