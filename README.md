@@ -1,4 +1,14 @@
-# More than Measured v0.8.5
+# More than Measured v0.8.6
+
+## v0.8.6 changes
+- Added a permanent per-child Daily Care & Safety profile under My Child
+- Centralized medical, emergency, communication, food, sleep, calming, sensory, supervision, toileting, and daily-schedule instructions for reuse across future care tools
+- Updated the babysitter care sheet to pull from Daily Care & Safety instead of owning a separate copy of those instructions
+- Automatically carries forward any instructions entered in the v0.8.5 babysitter sheet
+- Moved Food Dyes, Sugar & Dairy from Health & Wellness into the Food Diary
+- Added balanced A2 dairy information covering beta-casein, limited digestive evidence, lactose, cow’s-milk allergy, nutrition, and the lack of an autism-specific benefit
+- Added a Sensory Support guide explaining seams, tags, socks, denim, fit, texture, temperature, moisture, static, fragrance, and practical clothing accommodations
+- Preserved existing family data, complete backup compatibility, offline behavior, and database compatibility
 
 ## v0.8.5 changes
 - Added a Caregiver Corner babysitter care-sheet generator
