@@ -1,4 +1,11 @@
-# More than Measured v0.8.6
+# More than Measured v0.8.7
+
+## v0.8.7 changes
+- Replaced the Food Diary meal icon with a plate-and-fork symbol
+- Added a custom glass-bottle icon for condiments
+- Added a custom layered snack icon with a bowl in front of a small snack bag
+- Kept individual foods and drinks visually distinct
+- Preserved existing Food Diary entries, backups, and offline behavior
 
 ## v0.8.6 changes
 - Added a permanent per-child Daily Care & Safety profile under My Child
