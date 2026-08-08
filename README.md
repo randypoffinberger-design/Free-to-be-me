@@ -1,4 +1,10 @@
-# More than Measured v0.8.7
+# More than Measured v0.8.8
+
+## v0.8.8 changes
+- Changed individual Food entries to the plate-and-silverware icon
+- Added a distinct custom Meal icon containing a plate, bowl, and glass
+- Kept snack, condiment, and drink icons unchanged
+- Preserved existing Food Diary entries, backups, and offline behavior
 
 ## v0.8.7 changes
 - Replaced the Food Diary meal icon with a plate-and-fork symbol
