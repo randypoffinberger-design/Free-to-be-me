@@ -1,4 +1,9 @@
-# More than Measured™ v0.8.9
+# More than Measured™ v0.8.10
+
+## v0.8.10 changes
+- Changed the ™ marks from pale gray to a high-contrast dark navy
+- Increased the trademark mark’s weight and visibility on the homepage, standalone logo, header badge, and installed app icons
+- Preserved the watercolor artwork, existing family data, backup compatibility, and offline behavior
 
 ## v0.8.9 changes
 - Added ™ to the homepage wordmark, standalone MtM logo, install icons, and public-facing app branding
