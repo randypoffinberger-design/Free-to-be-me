@@ -1,4 +1,9 @@
-# More than Measured v0.8.8
+# More than Measured™ v0.8.9
+
+## v0.8.9 changes
+- Added ™ to the homepage wordmark, standalone MtM logo, install icons, and public-facing app branding
+- Added “by Serenity Valley Works” to the drawer, About page, Settings version card, and install metadata
+- Preserved existing family data, backup compatibility, and offline behavior
 
 ## v0.8.8 changes
 - Changed individual Food entries to the plate-and-silverware icon

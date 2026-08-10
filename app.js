@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.8", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.9", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -160,8 +160,8 @@ function bindRouteButtons() {
 }
 
 async function renderHome() {
-  view.innerHTML = `<section class="illustrated-home" aria-label="More than Measured home navigation">
-    <img src="assets/home/homepage.jpeg" alt="More than Measured — celebrating every child’s unique journey" width="864" height="1536">
+  view.innerHTML = `<section class="illustrated-home" aria-label="More than Measured trademark home navigation">
+    <img src="assets/home/homepage.jpeg" alt="More than Measured trademark — celebrating every child’s unique journey" width="864" height="1536">
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
     <button class="home-hotspot communication" data-go="speech" aria-label="Open Speech and Language Building"><span>Speech/Language Building</span></button>
     <button class="home-hotspot sleep" data-go="sleep" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
@@ -1707,7 +1707,7 @@ async function showBirthdayGreetingsIfNeeded() {
   const showNext = (index) => {
     const greeting = greetings[index];
     if (!greeting) return;
-    modalBody.innerHTML = `<div class="birthday-greeting"><div class="birthday-confetti" aria-hidden="true">🎈 🎂 🎉</div><h2>Happy Birthday, ${esc(greeting.profile.name || "Birthday star")}!</h2><p>${esc(greeting.message)}</p><p class="birthday-signoff">With love,<br><strong>Your More than Measured village 💛</strong></p><button id="closeBirthdayGreeting" class="btn full" type="button">${index + 1 < greetings.length ? "Celebrate and continue" : "Celebrate!"}</button></div>`;
+    modalBody.innerHTML = `<div class="birthday-greeting"><div class="birthday-confetti" aria-hidden="true">🎈 🎂 🎉</div><h2>Happy Birthday, ${esc(greeting.profile.name || "Birthday star")}!</h2><p>${esc(greeting.message)}</p><p class="birthday-signoff">With love,<br><strong>Your More than Measured™ village 💛</strong></p><button id="closeBirthdayGreeting" class="btn full" type="button">${index + 1 < greetings.length ? "Celebrate and continue" : "Celebrate!"}</button></div>`;
     modal.showModal();
     $("#closeBirthdayGreeting").onclick = () => {
       modal.close();
@@ -2993,6 +2993,16 @@ async function renderSettings() {
   ).join(
     "",
   )}</select></div><div class="field"><label>Exact date</label><input id="defaultVocabDate" type="date" value="${esc(d.exactDate || "")}"></div><fieldset class="filter-abilities"><legend>Abilities included</legend><label><input id="defaultSpeak" type="checkbox" ${d.speak !== false ? "checked" : ""}> Speak</label><label><input id="defaultIdentify" type="checkbox" ${d.identify !== false ? "checked" : ""}> Identify</label><label><input id="defaultAsl" type="checkbox" ${d.asl !== false ? "checked" : ""}> ASL</label></fieldset></div><button id="saveVocabDefaults" class="btn" type="button">Save filter defaults</button></div><div class="card settings-card"><h3>Version</h3><p>${APP.name} v${APP.version}</p><p class="hint">Database schema ${APP.schemaVersion}</p></div><div class="card settings-card"><h3>Data model</h3><p>Local-first IndexedDB with permanent IDs and timestamps, ready for optional cloud sync later.</p></div><div class="btn-row"><button class="btn secondary" data-go="backup">Open backup tools</button><button class="btn secondary" data-go="about">About & disclaimer</button></div>`;
+  const versionCard = [...document.querySelectorAll(".settings-card")].find(
+    (card) => card.querySelector("h3")?.textContent === "Version",
+  );
+  if (versionCard) {
+    versionCard.querySelector("p").textContent = `More than Measured™ v${APP.version}`;
+    versionCard.querySelector("h3").insertAdjacentHTML(
+      "afterend",
+      '<p class="hint">by Serenity Valley Works</p>',
+    );
+  }
   const exactOption = $('#profileDisplay option[value="exact"]');
   const defaultTypeField = document.createElement("div");
   defaultTypeField.className = "field";
@@ -3030,7 +3040,7 @@ async function renderSettings() {
   bindRouteButtons();
 }
 function renderAbout() {
-  view.innerHTML = `<section class="hero"><h1>About More than Measured</h1><p>A strengths-first autism caregiver village.</p></section><div class="card" style="margin-top:18px"><h3>Our purpose</h3><p>To help caregivers celebrate progress, understand how their child learns and communicates, and find practical support without judgment or comparison.</p></div><div class="card" style="margin-top:12px"><h3>Important disclaimer</h3><p>This app is for caregiver education, organization, and support. It does not diagnose, treat, or replace advice from qualified medical, developmental, educational, or legal professionals.</p></div>`;
+  view.innerHTML = `<section class="hero"><h1>About More than Measured™</h1><p>A strengths-first autism caregiver village by Serenity Valley Works.</p></section><div class="card" style="margin-top:18px"><h3>Our purpose</h3><p>To help caregivers celebrate progress, understand how their child learns and communicates, and find practical support without judgment or comparison.</p></div><div class="card" style="margin-top:12px"><h3>Created by Serenity Valley Works</h3><p>More than Measured™ is thoughtfully developed by Serenity Valley Works for caregivers and the children they support.</p></div><div class="card" style="margin-top:12px"><h3>Important disclaimer</h3><p>This app is for caregiver education, organization, and support. It does not diagnose, treat, or replace advice from qualified medical, developmental, educational, or legal professionals.</p></div>`;
 }
 
 function openDrawer() {

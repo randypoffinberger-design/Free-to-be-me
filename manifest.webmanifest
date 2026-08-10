@@ -1,7 +1,7 @@
 {
-  "name": "More than Measured",
-  "short_name": "More than Measured",
-  "description": "An autism caregiver village focused on strengths, growth, and support.",
+  "name": "More than Measured™",
+  "short_name": "MtM™",
+  "description": "More than Measured™ by Serenity Valley Works — an autism caregiver village focused on strengths, growth, and support.",
   "start_url": "./index.html#home",
   "scope": "./",
   "display": "standalone",
