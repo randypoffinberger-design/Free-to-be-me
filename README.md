@@ -1,4 +1,9 @@
-# More than Measured™ v0.8.11
+# More than Measured™ v0.8.12
+
+## v0.8.12 changes
+- Made the homepage hamburger button substantially more transparent so the illustration remains visible beneath it
+- Kept the dark menu symbol, subtle outline, blur, and shadow for legibility against the artwork
+- Preserved existing family data, backup compatibility, and offline behavior
 
 ## v0.8.11 changes
 - Hidden the MtM home badge while the illustrated Home page is open
