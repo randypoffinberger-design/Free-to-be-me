@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.10", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.11", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -147,6 +147,7 @@ async function navigate(r, options = {}) {
   currentRoute = route;
   await routes[route]();
   $("#backBtn").classList.toggle("hidden", route === "home");
+  $("#homeBadge").classList.toggle("hidden", route === "home");
   history.replaceState(null, "", `#${route}`);
   closeDrawer();
   view.focus();

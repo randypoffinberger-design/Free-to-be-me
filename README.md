@@ -1,4 +1,9 @@
-# More than Measured™ v0.8.10
+# More than Measured™ v0.8.11
+
+## v0.8.11 changes
+- Hidden the MtM home badge while the illustrated Home page is open
+- Kept the badge visible and clickable on every other page for quick return to Home
+- Preserved existing family data, backup compatibility, and offline behavior
 
 ## v0.8.10 changes
 - Changed the ™ marks from pale gray to a high-contrast dark navy
