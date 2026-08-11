@@ -1,4 +1,12 @@
-# More than Measured™ v0.8.18
+# More than Measured™ v0.8.19
+
+## v0.8.19 changes
+- Added a detailed vitamin B6 section to the routine and symptom-guided labs guide
+- Explained B6 functions, reasons a clinician may consider testing, and the PLP blood measurement
+- Distinguished a targeted B6 evaluation from routine autism testing or treatment
+- Added warnings about hidden B6 across multiple supplements and nerve damage from excessive supplemental intake
+- Added official NIH and MedlinePlus educational links
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.18 changes
 - Added Leading / hand leading to the Caregiver Corner Common Terms guide
