@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.17", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.18", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -2034,6 +2034,7 @@ const CAREGIVER_TERMS = [
   ["Gestalt language processing", "Some children seem to learn language in whole chunks—like a full phrase from a song or show—before they learn to mix and match individual words. This is often called gestalt language processing. Echolalia may be part of that journey, and the repeated phrase may carry a real message even if it sounds out of place to someone else."],
   ["Interoception", "Interoception is the sense that tells us what is happening inside our body—things like hunger, thirst, pain, temperature, a racing heart, or needing the bathroom. Some children notice these signals very strongly, very late, or only sometimes, so they may need help learning what each feeling means."],
   ["Joint attention", "Joint attention is simply two people sharing interest in the same thing. A child might look back and forth, point, make a sound, move their body, or bring you an object to share the moment. It does not have to involve eye contact to count."],
+  ["Leading / hand leading", "Leading or hand leading is when a child takes someone's hand, wrist, or arm and guides them toward a place, object, or action. It may be their way of saying ‘come with me,’ ‘I want that,’ ‘help me,’ ‘open this,’ or ‘do this with me’—especially when spoken words, signs, or an AAC device are not available quickly enough. Treat it as meaningful communication: follow safely when you can, name what you think they are asking for, and model a simple word, sign, picture, or AAC button without making them repeat it before receiving help. If the meaning is unclear, offer a couple of choices and watch where they look, reach, or lead next."],
   ["Masking", "Masking is when an autistic person hides or holds back natural behaviors to fit in or avoid negative reactions. They might force eye contact, copy other people, stay quiet about discomfort, or stop themselves from stimming. It can take a lot of energy and may leave someone anxious, exhausted, or burned out afterward."],
   ["Meltdown", "A meltdown happens when everything becomes too much and the person loses the ability to stay in control. Noise, feelings, demands, communication trouble, or a day full of small stresses can all build toward one. It is not manipulation or a choice; the most helpful response is usually safety, fewer words, less pressure, and time to recover."],
   ["Neurodiversity", "Neurodiversity is the idea that brains naturally work in different ways. People can think, learn, communicate, focus, and experience the world differently from one another. Those differences can include strengths and real disabilities at the same time, and everyone deserves the support that helps them live well."],

@@ -1,4 +1,10 @@
-# More than Measured™ v0.8.17
+# More than Measured™ v0.8.18
+
+## v0.8.18 changes
+- Added Leading / hand leading to the Caregiver Corner Common Terms guide
+- Explained the different needs a child may communicate by guiding a caregiver's hand
+- Added supportive ways to acknowledge the communication and model words, signs, pictures, or AAC without withholding help
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.17 changes
 - Replaced the West Virginia-only disability-parking link with a state selector
