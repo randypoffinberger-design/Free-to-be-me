@@ -1,4 +1,13 @@
-# More than Measured™ v0.8.20
+# More than Measured™ v0.8.21
+
+## v0.8.21 changes
+- Replaced the Caregiver Reflections under-construction card with a functional personal journal
+- Added automatic creation date and time to every reflection
+- Added optional titles and full-text search across titles and entry content
+- Added newest-first expandable history with original and edited timestamps
+- Added edit and protected delete controls while preserving the original creation time
+- Included reflections in complete backups and added a clear local-storage privacy reminder
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.20 changes
 - Added a categorized Life Skills suggestion dropdown with practical examples

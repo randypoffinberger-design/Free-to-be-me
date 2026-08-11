@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.20", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.21", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -2688,8 +2688,10 @@ async function openBabysitterCareSheet() {
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
+    notes = await getAll("notes"),
     activeTodos = todos.filter((item) => !item.completed).length,
-    upcoming = appointments.filter((item) => item.date >= isoToday()).length;
+    upcoming = appointments.filter((item) => item.date >= isoToday()).length,
+    reflectionCount = notes.filter((item) => item.kind === "caregiverReflection").length;
   view.innerHTML = `<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support, organization, and clear information for the caregiver.</p></section>
   <h2 class="section-title">Caregiver support</h2>
   <div class="grid">
@@ -2706,7 +2708,7 @@ async function renderCaregiver() {
     <button id="caregiverTherapy" class="card-button"><strong>🧩 Therapy & support</strong><small>ABA, speech, OT, AAC, other therapies, wait lists, benefits, concerns, and what to expect.</small></button>
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
-    <button class="card-button future-feature" data-feature="Reflection"><strong>📝 Reflection</strong><small>Private notes and observations.</small></button>
+    <button id="caregiverReflections" class="card-button"><strong>📝 Caregiver Reflections</strong><small>${reflectionCount} saved ${reflectionCount === 1 ? "entry" : "entries"} • searchable personal journal.</small></button>
     <button class="card-button future-feature" data-feature="Support messaging"><strong>🤝 Support messaging</strong><small>A future premium support option with clear boundaries.</small></button>
   </div>`;
   $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
@@ -2722,9 +2724,49 @@ async function renderCaregiver() {
   $("#caregiverTherapy").onclick = () => navigate("therapy");
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
+  $("#caregiverReflections").onclick = openCaregiverReflections;
   document
     .querySelectorAll(".future-feature")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
+}
+
+async function openCaregiverReflections() {
+  let entries = (await getAll("notes")).filter((item) => item.kind === "caregiverReflection"),
+    editingId = null,
+    search = "";
+  const formatReflectionTime = (value) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Date unavailable";
+  modalBody.innerHTML = `<h2>📝 Caregiver Reflections</h2><p class="hint">A place to write down thoughts, hard moments, questions, patterns, gratitude, and memories you may want to find later.</p><div class="banner"><strong>Privacy reminder:</strong> Entries stay in this browser's local app data and are included in complete backups. They are not encrypted with a separate journal password. Anyone with access to this device or an exported backup may be able to read them.</div><div class="card tool-form"><div class="field"><label>Title <span class="hint">(optional)</span></label><input id="reflectionTitle" maxlength="120" placeholder="A moment, question, pattern, or memory"></div><div class="field"><label>Reflection</label><textarea id="reflectionBody" placeholder="Write whatever you want to remember…"></textarea></div><p class="hint">The original date and time are added automatically when the entry is saved.</p><div class="btn-row"><button id="saveReflection" class="btn" type="button">Save reflection</button><button id="cancelReflectionEdit" class="btn secondary hidden" type="button">Cancel edit</button></div></div><div class="field"><label>Search saved reflections</label><input id="reflectionSearch" type="search" placeholder="Search titles or anything you wrote"></div><div id="reflectionResultsSummary" class="hint" aria-live="polite"></div><div id="reflectionList" class="list"></div>`;
+  const resetForm = () => { editingId = null; $("#reflectionTitle").value = ""; $("#reflectionBody").value = ""; $("#saveReflection").textContent = "Save reflection"; $("#cancelReflectionEdit").classList.add("hidden"); };
+  const draw = () => {
+    const term = search.trim().toLocaleLowerCase(), shown = [...entries].filter((item) => !term || `${item.title || ""}\n${item.body || ""}`.toLocaleLowerCase().includes(term)).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    $("#reflectionResultsSummary").textContent = term ? `${shown.length} of ${entries.length} reflections match “${search.trim()}”.` : `${entries.length} saved ${entries.length === 1 ? "reflection" : "reflections"}.`;
+    $("#reflectionList").innerHTML = shown.length ? shown.map((item) => `<details class="term-card"><summary><span>${esc(item.title || "Untitled reflection")}</span><span class="category-chip">${esc(formatReflectionTime(item.createdAt))}</span></summary><div class="education-body"><p style="white-space:pre-wrap">${esc(item.body)}</p><div class="hint">Written ${esc(formatReflectionTime(item.createdAt))}${item.updatedAt && item.updatedAt !== item.createdAt ? ` • Edited ${esc(formatReflectionTime(item.updatedAt))}` : ""}</div><div class="btn-row"><button class="small-action edit-reflection" data-id="${item.id}" type="button">Edit</button><button class="small-action danger-link delete-reflection" data-id="${item.id}" type="button">Delete</button></div></div></details>`).join("") : `<div class="empty card"><div class="big">📝</div><p>${term ? "No reflections match that search." : "No reflections saved yet."}</p></div>`;
+    document.querySelectorAll(".edit-reflection").forEach((button) => button.onclick = () => { const item = entries.find((entry) => entry.id === button.dataset.id); if (!item) return; editingId = item.id; $("#reflectionTitle").value = item.title || ""; $("#reflectionBody").value = item.body || ""; $("#saveReflection").textContent = "Update reflection"; $("#cancelReflectionEdit").classList.remove("hidden"); $("#reflectionTitle").focus(); });
+    document.querySelectorAll(".delete-reflection").forEach((button) => button.onclick = async () => { const item = entries.find((entry) => entry.id === button.dataset.id); if (!item || !confirm(`Delete “${item.title || "Untitled reflection"}”?`)) return; await createSnapshot(`Before deleting caregiver reflection ${item.title || item.id}`); await deleteItem("notes", item.id); entries = entries.filter((entry) => entry.id !== item.id); if (editingId === item.id) resetForm(); draw(); });
+  };
+  $("#reflectionSearch").oninput = (event) => { search = event.target.value; draw(); };
+  $("#cancelReflectionEdit").onclick = resetForm;
+  $("#saveReflection").onclick = async () => {
+    const title = $("#reflectionTitle").value.trim(), body = $("#reflectionBody").value.trim();
+    if (!body) return alert("Write a reflection before saving.");
+    const timestamp = nowISO();
+    if (editingId) {
+      const item = entries.find((entry) => entry.id === editingId);
+      if (!item) return;
+      item.title = title;
+      item.body = body;
+      item.updatedAt = timestamp;
+      await put("notes", item);
+    } else {
+      const item = { id: uid(), kind: "caregiverReflection", title, body, createdAt: timestamp, updatedAt: timestamp };
+      entries.push(item);
+      await put("notes", item);
+    }
+    resetForm();
+    draw();
+  };
+  draw();
+  modal.showModal();
 }
 
 function openAutismSignsGuide(){openInfoGuide("🧭 Signs of autism",`<p>Autism can look very different from one child to another. A checklist cannot diagnose a child, and one trait by itself does not mean autism. What matters is the overall developmental pattern, how early it began, and how it affects daily life.</p><h3>Social communication and connection</h3><ul><li>Responds to their name inconsistently or less than expected.</li><li>Uses fewer gestures, such as showing, waving, reaching, or pointing to share interest.</li><li>Shares enjoyment or attention in a different way; eye contact is only one possible signal and should not be forced.</li><li>Has delayed speech, loses previously used communication, repeats language, uses memorized scripts, or communicates mainly through movement, behavior, signs, pictures, or AAC.</li><li>Finds back-and-forth play, conversation, pretend play, or joining peers difficult or different.</li></ul><h3>Repetition, routines, interests, and sensory patterns</h3><ul><li>Repeats movements, sounds, phrases, play patterns, or ways of arranging objects.</li><li>Has strong focused interests or notices details other people miss.</li><li>Needs predictability or becomes very distressed by changes and transitions.</li><li>Seeks or avoids sounds, light, touch, movement, tastes, smells, pain, or temperature.</li><li>Has unusual eating, sleep, movement, attention, fear, or emotional-regulation patterns.</li></ul><h3>What to do when you are concerned</h3><p>Write down specific examples and when they started. Bring them to the child’s pediatrician and ask for developmental screening and, when appropriate, an autism evaluation. In the United States, families can also contact early intervention before age 3 or the local public-school system at age 3 and older. Support for communication, feeding, sleep, movement, or hearing does not have to wait for a final autism diagnosis.</p><div class="banner"><strong>Prompt medical attention:</strong> A new or continuing loss of words, movement, awareness, play, toileting, or other established skills should be discussed promptly with the child’s healthcare professional.</div><div class="education-links"><a class="education-link" href="https://www.cdc.gov/autism/signs-symptoms/index.html" target="_blank" rel="noopener"><strong>CDC signs and symptoms</strong><span>Examples across social communication, repetition, routines, sensory reactions, and development.</span><small>Official source ↗</small></a><a class="education-link" href="https://www.cdc.gov/autism/diagnosis/index.html" target="_blank" rel="noopener"><strong>CDC screening information</strong><span>How developmental monitoring, screening, and diagnostic evaluation differ.</span><small>Official source ↗</small></a></div>`);}
