@@ -1,4 +1,9 @@
-# More than Measured™ v0.8.12
+# More than Measured™ v0.8.13
+
+## v0.8.13 changes
+- Removed the homepage hamburger button’s circular background, border, blur, and box shadow entirely
+- Kept only the dark menu symbol with a faint light text shadow for visibility over the illustration
+- Preserved existing family data, backup compatibility, and offline behavior
 
 ## v0.8.12 changes
 - Made the homepage hamburger button substantially more transparent so the illustration remains visible beneath it
