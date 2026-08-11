@@ -1,4 +1,12 @@
-# More than Measured™ v0.8.19
+# More than Measured™ v0.8.20
+
+## v0.8.20 changes
+- Added a categorized Life Skills suggestion dropdown with practical examples
+- Expanded suggestions across self-care, dressing, eating, home routines, communication, regulation, safety, community, learning, and play
+- Added a short “what this can look like” explanation inside every suggested skill card
+- Kept custom skill creation for anything unique to the child or family
+- Reworked the starter button to add a focused core set instead of every suggestion
+- Preserved existing Life Skills entries, family data, backup compatibility, and offline app behavior
 
 ## v0.8.19 changes
 - Added a detailed vitamin B6 section to the routine and symptom-guided labs guide
