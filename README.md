@@ -1,4 +1,10 @@
-# More than Measured™ v0.8.15
+# More than Measured™ v0.8.16
+
+## v0.8.16 changes
+- Made the dialog exit button sticky so it remains visible while scrolling through the ASL Quick Guide
+- Added a subtle shadow behind the exit button so it remains distinct over guide content
+- Applied the always-available exit behavior consistently to other long app dialogs
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.15 changes
 - Kept the ASL Quick Guide open when a Lifeprint demonstration is selected
