@@ -1,4 +1,11 @@
-# More than Measured™ v0.8.22
+# More than Measured™ v0.8.23
+
+## v0.8.23 changes
+
+- Completed the Provider Summary tool in My Child and connected the Health & Wellness provider-report card to the same report builder.
+- Added child selection, a customizable reporting period, and optional report sections for profile priorities, communication, Wins, life skills, food, sleep and sensory preferences, toileting, and appointment information.
+- Communication totals remain all-time while dated progress sections follow the selected range.
+- Provider summaries can be reviewed and edited, shared through the device share sheet, copied, or downloaded as a text file.
 
 ## v0.8.22 changes
 - Replaced the Support Messaging under-construction action with a complete informational preview
