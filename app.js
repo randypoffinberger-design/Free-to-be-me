@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.21", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.22", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -2685,6 +2685,23 @@ async function openBabysitterCareSheet() {
   await draw(); modal.showModal();
 }
 
+const SUPPORT_MESSAGING_PLAN = {
+  status: "planned",
+  topics: [
+    ["app-help", "App help", "Using features, backups, account access, subscriptions, or reporting a problem."],
+    ["resource-navigation", "Resource navigation", "Finding the right section, official agency, school resource, benefit program, or next question to ask."],
+    ["caregiver-support", "Caregiver support", "A listening ear, practical organization, and help finding non-emergency support options."],
+    ["education-planning", "Education planning", "Understanding app resources related to assessments, IEPs, 504 plans, homeschooling, and school preparation."],
+    ["feedback", "Ideas and feedback", "Suggestions, corrections, accessibility concerns, and requests for future More than Measured features."]
+  ],
+  boundaries: [
+    "Not emergency, crisis, medical, legal, diagnostic, or therapy services",
+    "No guaranteed immediate reply; posted service hours and expected response times will appear before sending",
+    "Caregivers will choose what to share and will be reminded not to send information the support team does not need",
+    "Messages will go only to authorized support staff under documented privacy, retention, and escalation rules"
+  ]
+};
+
 async function renderCaregiver() {
   const appointments = await getAll("appointments"),
     todos = await getAll("todos"),
@@ -2709,7 +2726,7 @@ async function renderCaregiver() {
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button id="caregiverReflections" class="card-button"><strong>📝 Caregiver Reflections</strong><small>${reflectionCount} saved ${reflectionCount === 1 ? "entry" : "entries"} • searchable personal journal.</small></button>
-    <button class="card-button future-feature" data-feature="Support messaging"><strong>🤝 Support messaging</strong><small>A future premium support option with clear boundaries.</small></button>
+    <button id="caregiverSupportMessaging" class="card-button"><strong>🤝 Support messaging</strong><small>Preview the planned caregiver support service, topics, safeguards, and limits.</small></button>
   </div>`;
   $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
   $("#caregiverEmergencyContacts").onclick = openEmergencyContacts;
@@ -2725,9 +2742,15 @@ async function renderCaregiver() {
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
   $("#caregiverReflections").onclick = openCaregiverReflections;
+  $("#caregiverSupportMessaging").onclick = openSupportMessagingInfo;
   document
     .querySelectorAll(".future-feature")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
+}
+
+function openSupportMessagingInfo() {
+  modalBody.innerHTML = `<h2>🤝 Support messaging</h2><div class="banner"><strong>Planning preview — messaging is not connected yet.</strong><br>No employee is monitoring this page, and nothing entered elsewhere in the app is sent to a support team.</div><p>The future service is intended to give caregivers a clear place to ask non-urgent questions, get help navigating More than Measured resources, and share feedback with an authorized support person.</p><h3>Planned support topics</h3><div class="list">${SUPPORT_MESSAGING_PLAN.topics.map(([,label,description])=>`<div class="list-item"><div><strong>${esc(label)}</strong><p>${esc(description)}</p></div></div>`).join("")}</div><h3>How a future conversation should work</h3><ol><li>Sign in through a verified caregiver account and choose a support topic.</li><li>See service hours, the expected response window, privacy notice, and emergency limits <strong>before</strong> sending.</li><li>Create a request that receives a timestamp, status, and conversation number.</li><li>An authorized responder accepts the request, replies, and can provide links or escalate it to the correct support role.</li><li>The caregiver can return to the conversation, receive notifications, download or delete eligible data, and see when the request is closed.</li></ol><h3>Boundaries being built in now</h3><ul>${SUPPORT_MESSAGING_PLAN.boundaries.map((item)=>`<li>${esc(item)}</li>`).join("")}</ul><h3>What still has to exist before launch</h3><ul><li>Secure accounts, identity and household permissions, and server-side message storage.</li><li>An employee dashboard with assignment, unread, waiting, closed, and escalation states.</li><li>Encryption in transit and at rest, access logging, staff permissions, retention limits, deletion tools, backups, and breach procedures.</li><li>Notification controls that do not expose sensitive message text on a lock screen.</li><li>Written response standards, staff training, supervision, service hours, coverage, and a plan for messages received when the service is closed.</li><li>Terms, consent, privacy disclosures, subscription rules if applicable, and legal review before real caregiver information is collected.</li></ul><div class="banner"><strong>Need help now?</strong><br>If someone is in immediate danger or has a medical emergency, call 911 or go to the nearest emergency room. In the United States, call or text <strong>988</strong> or use <a href="https://988lifeline.org/" target="_blank" rel="noopener">988Lifeline.org</a> for suicide, mental-health, or substance-use crisis support. This future MtM service will not replace emergency or crisis care.</div><p class="hint">The topic IDs, status language, boundaries, and planned workflow on this page are structured so they can be reused when the account and server phase begins, without presenting a fake message box today.</p>`;
+  modal.showModal();
 }
 
 async function openCaregiverReflections() {

@@ -1,4 +1,13 @@
-# More than Measured™ v0.8.21
+# More than Measured™ v0.8.22
+
+## v0.8.22 changes
+- Replaced the Support Messaging under-construction action with a complete informational preview
+- Added reusable future support-topic IDs for app help, resource navigation, caregiver support, education planning, and feedback
+- Documented the planned caregiver conversation workflow, employee response workflow, statuses, and notifications
+- Added clear service boundaries and prevented the interface from implying that a message can currently be sent
+- Documented the account, server, privacy, security, staffing, retention, and legal requirements needed before launch
+- Added verified U.S. 911 and 988 crisis guidance while clearly separating future MtM support from emergency care
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.21 changes
 - Replaced the Caregiver Reflections under-construction card with a functional personal journal
