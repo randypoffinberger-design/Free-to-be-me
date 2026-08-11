@@ -1,4 +1,10 @@
-# More than Measured™ v0.8.13
+# More than Measured™ v0.8.14
+
+## v0.8.14 changes
+- Replaced every ASL Quick Guide Signing Savvy search with a direct Lifeprint/ASL University instruction-page link
+- Added concept-aware mappings so phrases such as All Done, Ouch, Get Dressed, and Read Book open the intended sign rather than a fingerspelling search
+- Added a clear notice that outside demonstrations require an internet connection
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.13 changes
 - Removed the homepage hamburger button’s circular background, border, blur, and box shadow entirely
