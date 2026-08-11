@@ -1,4 +1,12 @@
-# More than Measured™ v0.8.14
+# More than Measured™ v0.8.15
+
+## v0.8.15 changes
+- Kept the ASL Quick Guide open when a Lifeprint demonstration is selected
+- Preserved the guide’s exact scroll position while viewing an outside sign page
+- Returning from Lifeprint now resumes where the caregiver left off instead of reopening Speech & Language Building
+- Added Thirsty, Want, Toys, Share, Take Turns, Your Turn, My Turn, Sorry, Hi, and Bye to the ASL Quick Guide
+- Moved All Done into Communication Essentials and removed the duplicate More entry from Food & Drink
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.14 changes
 - Replaced every ASL Quick Guide Signing Savvy search with a direct Lifeprint/ASL University instruction-page link
