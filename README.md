@@ -1,4 +1,11 @@
-# More than Measured™ v0.8.16
+# More than Measured™ v0.8.17
+
+## v0.8.17 changes
+- Replaced the West Virginia-only disability-parking link with a state selector
+- Added official disability-parking information links for all 50 states and the District of Columbia
+- Displayed the selected state's motor-vehicle agency name before opening its official page
+- Added a reminder that eligibility and forms are state-specific and outside links require internet access
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.16 changes
 - Made the dialog exit button sticky so it remains visible while scrolling through the ASL Quick Guide

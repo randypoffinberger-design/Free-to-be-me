@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.16", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.8.17", schemaVersion: 3 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 3,
   STORE_NAMES = [
@@ -1770,6 +1770,75 @@ async function renderLifeSkills() {
   $("#lifeProfile").onchange=async(e)=>{profileId=e.target.value;await load();};$("#addLifeSkill").onclick=async()=>{const name=$("#newLifeSkill").value.trim();if(!name)return;add(name);$("#newLifeSkill").value="";await persist();draw();};$("#addStarterSkills").onclick=async()=>{STARTER_LIFE_SKILLS.forEach(add);await persist();draw();};await load();
 }
 
+const DISABILITY_PARKING_STATE_LINKS = [
+  ["AL", "Alabama", "Alabama Department of Revenue", "https://www.revenue.alabama.gov/motor-vehicle/disability-access-parking-placards/"],
+  ["AK", "Alaska", "Alaska Division of Motor Vehicles", "https://dmv.alaska.gov/vehicle-services/plates/disabled-parking-permits/"],
+  ["AZ", "Arizona", "Arizona Department of Transportation", "https://azdot.gov/mvd/services/vehicle-services/plates-and-placards/disability-symbol-disability-license-plate"],
+  ["AR", "Arkansas", "Arkansas Department of Finance and Administration", "https://www.dfa.arkansas.gov/office/motor-vehicle/disabled-placards/"],
+  ["CA", "California", "California Department of Motor Vehicles", "https://www.dmv.ca.gov/portal/vehicle-registration/license-plates-decals-and-placards/disabled-person-parking-placards-plates/"],
+  ["CO", "Colorado", "Colorado Division of Motor Vehicles", "https://dmv.colorado.gov/persons-disabilities"],
+  ["CT", "Connecticut", "Connecticut Department of Motor Vehicles", "https://portal.ct.gov/dmv/vehicle-services/disabled-parking-permits"],
+  ["DE", "Delaware", "Delaware Division of Motor Vehicles", "https://dmv.de.gov/VehicleServices/other/index.shtml?dc=ve_reg_placard"],
+  ["DC", "District of Columbia", "District of Columbia Department of Motor Vehicles", "https://dmv.dc.gov/service/parking-placards-disability-vehicles"],
+  ["FL", "Florida", "Florida Highway Safety and Motor Vehicles", "https://www.flhsmv.gov/motor-vehicles-tags-titles/disabled-person-parking-permits/"],
+  ["GA", "Georgia", "Georgia Department of Revenue", "https://dor.georgia.gov/disabled-persons-license-plates-and-parking-permits"],
+  ["HI", "Hawaii", "Hawaii Disability and Communication Access Board", "https://health.hawaii.gov/dcab/parking/"],
+  ["ID", "Idaho", "Idaho Transportation Department", "https://itd.idaho.gov/dmv/registrations-plates-titles/license-plates/"],
+  ["IL", "Illinois", "Illinois Secretary of State", "https://www.ilsos.gov/departments/vehicles/disabled_parking/home.html"],
+  ["IN", "Indiana", "Indiana Bureau of Motor Vehicles", "https://www.in.gov/bmv/registration-plates/vehicle-registrations/disability-plates-and-placards/"],
+  ["IA", "Iowa", "Iowa Department of Transportation", "https://iowadot.gov/mvd/vehicleregistration/Persons-with-disabilities"],
+  ["KS", "Kansas", "Kansas Department of Revenue", "https://www.ksrevenue.gov/dovdisabled.html"],
+  ["KY", "Kentucky", "Kentucky Transportation Cabinet", "https://drive.ky.gov/Vehicles/Pages/Disabled-Parking-Permits.aspx"],
+  ["LA", "Louisiana", "Louisiana Office of Motor Vehicles", "https://expresslane.dps.louisiana.gov/disabled-parking-placards/"],
+  ["ME", "Maine", "Maine Bureau of Motor Vehicles", "https://www.maine.gov/sos/bmv/registration/disability.html"],
+  ["MD", "Maryland", "Maryland Motor Vehicle Administration", "https://mva.maryland.gov/vehicles/Pages/Disability-Placards.aspx"],
+  ["MA", "Massachusetts", "Massachusetts Registry of Motor Vehicles", "https://www.mass.gov/how-to/apply-for-a-disability-placard-or-license-plate"],
+  ["MI", "Michigan", "Michigan Department of State", "https://www.michigan.gov/sos/vehicle/disabled-parking"],
+  ["MN", "Minnesota", "Minnesota Driver and Vehicle Services", "https://dps.mn.gov/divisions/dvs/Pages/disability-parking-certificates.aspx"],
+  ["MS", "Mississippi", "Mississippi Department of Revenue", "https://www.dor.ms.gov/tagstitles/disabled-parking-placards"],
+  ["MO", "Missouri", "Missouri Department of Revenue", "https://dor.mo.gov/motor-vehicle/disabled-plates-placards.html"],
+  ["MT", "Montana", "Montana Motor Vehicle Division", "https://mvdmt.gov/vehicle-registration/parking-permits/"],
+  ["NE", "Nebraska", "Nebraska Department of Motor Vehicles", "https://dmv.nebraska.gov/dvr/handicap-parking-permits"],
+  ["NV", "Nevada", "Nevada Department of Motor Vehicles", "https://dmv.nv.gov/platesdisabled.htm"],
+  ["NH", "New Hampshire", "New Hampshire Division of Motor Vehicles", "https://www.dmv.nh.gov/vehicles-boats-or-titles/disability-plates-placards"],
+  ["NJ", "New Jersey", "New Jersey Motor Vehicle Commission", "https://www.nj.gov/mvc/vehicles/disability.htm"],
+  ["NM", "New Mexico", "New Mexico Motor Vehicle Division", "https://www.mvd.newmexico.gov/vehicles/placards-and-plates/parking-placards/"],
+  ["NY", "New York", "New York Department of Motor Vehicles", "https://dmv.ny.gov/more-info/parking-people-disabilities"],
+  ["NC", "North Carolina", "North Carolina Division of Motor Vehicles", "https://www.ncdot.gov/dmv/title-registration/license-plates/Pages/disability-placards-plates.aspx"],
+  ["ND", "North Dakota", "North Dakota Department of Transportation", "https://www.dot.nd.gov/driver/vehicle/plates/parking-privileges"],
+  ["OH", "Ohio", "Ohio Bureau of Motor Vehicles", "https://www.bmv.ohio.gov/vr-sp-disability.aspx"],
+  ["OK", "Oklahoma", "Service Oklahoma", "https://oklahoma.gov/service/popular-services/handicap-parking-permits.html"],
+  ["OR", "Oregon", "Oregon Driver and Motor Vehicle Services", "https://www.oregon.gov/odot/dmv/pages/driverid/disparking.aspx"],
+  ["PA", "Pennsylvania", "Commonwealth of Pennsylvania", "https://www.pa.gov/services/dmv/apply-for-a-person-with-disability-parking-placard.html"],
+  ["RI", "Rhode Island", "Rhode Island Division of Motor Vehicles", "https://dmv.ri.gov/registrations-plates-titles/disabled-parking-placards"],
+  ["SC", "South Carolina", "South Carolina Department of Motor Vehicles", "https://www.scdmvonline.com/Vehicle-Owners/Disabled-Plates-Placards"],
+  ["SD", "South Dakota", "South Dakota Department of Revenue", "https://dor.sd.gov/individuals/motor-vehicle/cars-trucks-vans/disabled-person-parking-permits/"],
+  ["TN", "Tennessee", "Tennessee Department of Revenue", "https://www.tn.gov/revenue/title-and-registration/license-plates/disabled-plates-placards.html"],
+  ["TX", "Texas", "Texas Department of Motor Vehicles", "https://www.txdmv.gov/motorists/disabled-parking-placards-plates"],
+  ["UT", "Utah", "Utah Division of Motor Vehicles", "https://dmv.utah.gov/plates/disabled"],
+  ["VT", "Vermont", "Vermont Department of Motor Vehicles", "https://dmv.vermont.gov/registrations/license-plates/disabled-parking"],
+  ["VA", "Virginia", "Virginia Department of Motor Vehicles", "https://www.dmv.virginia.gov/vehicles/disabled-parking"],
+  ["WA", "Washington", "Washington Department of Licensing", "https://dol.wa.gov/vehicles-and-boats/vehicle-registration/license-plates/get-or-renew-disabled-parking-permits"],
+  ["WV", "West Virginia", "West Virginia Division of Motor Vehicles", "https://transportation.wv.gov/DMV/Pages/Person-with-a-Disability.aspx"],
+  ["WI", "Wisconsin", "Wisconsin Department of Transportation", "https://wisconsindot.gov/Pages/dmv/vehicles/dsbld-prkg/default.aspx"],
+  ["WY", "Wyoming", "Wyoming Department of Transportation", "https://www.dot.state.wy.us/home/driver_license_records/disabled-parking-placards.html"]
+];
+
+function openPlacardGuide() {
+  modalBody.innerHTML = `<h2>♿ Disability parking placards</h2><p>Parking placard rules are state-specific and often focus on walking or cardiopulmonary limitations. An autism diagnosis by itself may not qualify. Some states have separate communication-disability or safety-alert programs.</p><ol><li>Select the caregiver's state below and open its current official agency page.</li><li>Ask the child's clinician whether the child's functional limitation meets that state's exact legal criteria.</li><li>Describe function and safety accurately; do not assume elopement automatically fits a mobility definition.</li><li>Use a placard only when the eligible person is being transported and state rules permit it.</li></ol><div class="field"><label for="placardState"><strong>Select a state</strong></label><select id="placardState"><option value="">Choose a state…</option>${DISABILITY_PARKING_STATE_LINKS.map(([code, name]) => `<option value="${code}">${name}</option>`).join("")}</select></div><div id="placardStateResult" aria-live="polite"><div class="banner">Choose a state to display its official disability-parking page.</div></div><p class="hint">Official pages and forms can move or change. If a link is updated, search the named state agency's site for “disability parking placard.” Outside links require internet access.</p>`;
+  modal.showModal();
+  $("#placardState").onchange = (event) => {
+    const selected = DISABILITY_PARKING_STATE_LINKS.find(([code]) => code === event.target.value);
+    const result = $("#placardStateResult");
+    if (!selected) {
+      result.innerHTML = `<div class="banner">Choose a state to display its official disability-parking page.</div>`;
+      return;
+    }
+    const [, name, agency, url] = selected;
+    result.innerHTML = `<div class="education-links"><a class="education-link" href="${url}" target="_blank" rel="noopener"><strong>${esc(name)} disability-parking information</strong><span>${esc(agency)}</span><small>Open official state page ↗</small></a></div>`;
+  };
+}
+
 async function renderHealthWellness(){
   const profiles=await getAll("profiles");
   view.innerHTML=`<section class="hero"><h1>🩺 Health & Wellness</h1><p>Prepare, document, and ask better questions without treating autism itself as an illness to cure.</p></section><div class="banner sleep-note"><strong>General education only.</strong> Lab testing, supplements, medications, vaccine decisions, gastrointestinal treatment, and equipment must be individualized by qualified clinicians.</div><div class="grid section-grid"><button id="medicalLetter" class="card-button"><span class="emoji">📄</span><strong>Medical necessity letter</strong><small>Editable equipment and supply request template.</small></button><button id="apptPrep" class="card-button"><span class="emoji">📋</span><strong>Prepare for an appointment</strong><small>Build and save a doctor or therapy visit sheet.</small></button><button id="providerReport" class="card-button"><span class="emoji">📊</span><strong>Generate provider report</strong><small>Summarize profile, communication, Wins, life skills, food, and potty records.</small></button><button id="apptNotes" class="card-button"><span class="emoji">📝</span><strong>After-appointment notes</strong><small>Save instructions, decisions, referrals, and follow-up.</small></button><button id="labGuide" class="card-button"><span class="emoji">🧪</span><strong>Routine and symptom-guided labs</strong><small>What is routine, what is not, and questions to ask.</small></button><button id="mthfrGuide" class="card-button"><span class="emoji">🧬</span><strong>MTHFR explained</strong><small>Heterozygous, homozygous, compound variants, testing, folate, and homocysteine.</small></button><button id="foodClaimsGuide" class="card-button"><span class="emoji">🥛</span><strong>Food dyes, sugar & dairy</strong><small>What evidence says, individual reactions, and safer ways to investigate concerns.</small></button><button id="gutGuide" class="card-button"><span class="emoji">🫃</span><strong>Gut health</strong><small>Constipation, reflux, diarrhea, feeding, pain, and when to seek help.</small></button><button id="probioticGuide" class="card-button"><span class="emoji">🦠</span><strong>Probiotics & prebiotics</strong><small>What evidence can and cannot tell us.</small></button><button id="vitaminGuide" class="card-button"><span class="emoji">🍊</span><strong>Vitamins & selective eating</strong><small>Deficiency risk, food-first support, testing, and supplement safety.</small></button><button id="placardGuide" class="card-button"><span class="emoji">♿</span><strong>Disability parking placard</strong><small>Why autism alone may not meet mobility-based state rules.</small></button></div>`;
@@ -1781,7 +1850,7 @@ async function renderHealthWellness(){
   $("#gutGuide").onclick=()=>openInfoGuide("🫃 Gut health and autism",`<p>Constipation, reflux, diarrhea, abdominal pain, food restriction, and toileting difficulties can be more common in autistic children. Pain may appear as sleep changes, agitation, reduced eating, pressing the abdomen, posturing, or a sudden behavior change when a child cannot describe it directly.</p><ul><li>Track stool pattern, pain, appetite, fluids, foods, medicines, sleep, and behavior.</li><li>Do not assume every symptom is “just autism” or pursue an autism cure through detoxes, extreme diets, or unproven testing.</li><li>Ask about constipation even when stool occurs daily; retention can still be present.</li><li>Feeding therapy and a pediatric dietitian may help when texture, chewing, swallowing, growth, allergy, or nutrient concerns exist.</li></ul>`);
   $("#probioticGuide").onclick=()=>openInfoGuide("🦠 Probiotics and prebiotics",`<p>Probiotics are live microorganisms; prebiotics are fibers that feed certain gut microbes. Effects are strain- and condition-specific. Current evidence does not support choosing a probiotic to treat core autism features or behavior.</p><ul><li>Discuss the actual goal—such as a particular antibiotic-associated diarrhea risk or diagnosed GI condition—with the clinician.</li><li>Food sources can include yogurt with live cultures and tolerated fiber-rich foods.</li><li>Products vary and may cause gas or bloating. Serious infections are rare but are a concern for premature, severely ill, or immunocompromised children.</li></ul><p><a href="https://www.nccih.nih.gov/health/probiotics-usefulness-and-safety" target="_blank" rel="noopener">NIH probiotic safety and evidence ↗</a></p><div class="banner">There is no evidence-based “best probiotic for autistic kids” as a group.</div>`);
   $("#vitaminGuide").onclick=()=>openInfoGuide("🍊 Vitamins and selective eating",`<p>Autistic children do not have a separate universal vitamin requirement. Needs depend on age, diet, growth, medical conditions, and proven deficiencies. Selective eating can increase risk when whole food groups are absent.</p><ul><li>Bring a three-day food record and brand names to the pediatrician or pediatric dietitian.</li><li>Ask whether growth and diet suggest checking iron, vitamin D, B12, folate, or other nutrients.</li><li>Choose a supplement only for a defined purpose. More is not better; iron, vitamin A, vitamin D, zinc, and other nutrients can be harmful in excess.</li><li>Look for independent quality testing and review gummies as both medicine and a choking/cavity risk.</li></ul><p><a href="https://ods.od.nih.gov/factsheets/list-all/" target="_blank" rel="noopener">NIH vitamin and mineral fact sheets ↗</a></p>`);
-  $("#placardGuide").onclick=()=>openInfoGuide("♿ Disability parking placards",`<p>Parking placard rules are state-specific and often focus on walking or cardiopulmonary limitations. An autism diagnosis by itself may not qualify. Some states have other programs for communication disabilities or safety alerts.</p><ol><li>Open your state DMV’s current eligibility form.</li><li>Ask the child’s clinician whether the child’s functional limitation meets the exact legal criteria.</li><li>Describe function and safety accurately; do not assume elopement automatically fits a mobility definition.</li><li>Never use the placard unless the eligible person is being transported and state rules permit it.</li></ol><p><a href="https://transportation.wv.gov/DMV/Pages/Person-with-a-Disability.aspx" target="_blank" rel="noopener">West Virginia disability and communication forms ↗</a></p>`);
+  $("#placardGuide").onclick=openPlacardGuide;
 }
 
 function renderSensorySupport(){view.innerHTML=`<section class="hero"><h1>🫧 Sensory Support</h1><p>Understand what the nervous system may be asking for—and make participation safer and more comfortable.</p></section><div class="grid section-grid"><button id="sensoryNeeds" class="card-button"><span class="emoji">🧠</span><strong>Eight sensory systems</strong><small>Seeking, avoiding, noticing late, and changing needs.</small></button><button id="sensoryCheck" class="card-button"><span class="emoji">🧭</span><strong>Sensory pattern check-in</strong><small>A caregiver reflection—not a diagnostic assessment.</small></button><button id="spdGuide" class="card-button"><span class="emoji">🧩</span><strong>SPD and autism</strong><small>How sensory processing differences overlap with ASD.</small></button><button id="triggerGuide" class="card-button"><span class="emoji">✂️</span><strong>Common sensory triggers</strong><small>Water, clothing, haircuts, grass, nails, teeth, hair, and more.</small></button><button id="materialPreferences" class="card-button"><span class="emoji">🧵</span><strong>Clothing & bedding materials</strong><small>Save comfortable fabrics, difficult textures, seams, tags, fit, and bedding preferences.</small></button><button id="fabricGuide" class="card-button"><span class="emoji">👕</span><strong>Why clothing and fabrics can feel different</strong><small>Seams, tags, denim, socks, fit, temperature, and practical alternatives.</small></button><button id="sensoryProducts" class="card-button"><span class="emoji">🛍️</span><strong>Sensory products</strong><small>Categories, safety questions, and why observation comes first.</small></button></div>`;

@@ -1,9 +1,9 @@
-const CACHE='ftbm-v0.8.16';
+const CACHE='ftbm-v0.8.17';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.8.16',
-  './app.js?v=0.8.16',
+  './styles.css?v=0.8.17',
+  './app.js?v=0.8.17',
   './assets/home/homepage.jpeg'
 ];
 const OPTIONAL_ASSETS=[
