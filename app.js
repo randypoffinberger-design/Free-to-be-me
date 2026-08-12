@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.2-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.3-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -66,18 +66,16 @@ function openImageViewer(src, alt) {
   imageViewerImage.src = src;
   imageViewerImage.alt = alt || "Enlarged image";
   setImageViewerScale(1);
-  imageViewer.hidden = false;
-  imageViewer.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
+  if (!imageViewer.open) imageViewer.showModal();
   $("#closeImageViewer").focus();
 }
 function closeImageViewer() {
-  imageViewer.hidden = true;
-  imageViewer.setAttribute("aria-hidden", "true");
-  imageViewerImage.removeAttribute("src");
-  document.body.style.overflow = "";
-  $("#oralScreeningChart")?.focus();
+  if (imageViewer.open) imageViewer.close();
 }
+imageViewer.addEventListener("close", () => {
+  imageViewerImage.removeAttribute("src");
+  $("#oralScreeningChart")?.focus();
+});
 $("#closeImageViewer").onclick = closeImageViewer;
 $("#imageZoomIn").onclick = () => setImageViewerScale(imageViewerScale + .5);
 $("#imageZoomOut").onclick = () => setImageViewerScale(imageViewerScale - .5);
@@ -97,7 +95,7 @@ imageViewerViewport.addEventListener("touchend", (event) => {
   if (event.touches.length < 2) imageViewerPinchStart = 0;
 }, { passive: true });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !imageViewer.hidden) closeImageViewer();
+  if (event.key === "Escape" && imageViewer.open) closeImageViewer();
 });
 
 function openDB() {

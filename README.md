@@ -1,4 +1,9 @@
-# More than Measured™ v0.9.2 Sync Alpha
+# More than Measured™ v0.9.3 Sync Alpha
+
+## v0.9.3 Sync Alpha changes
+- Changed the chart viewer to a native modal dialog so it opens above the existing Oral Ties dialog on iOS
+- Closing the chart viewer now reveals the still-open Oral Ties guide at the same scroll position
+- Removed the two-step behavior where the guide's X had to be pressed before the zoomable viewer appeared
 
 ## v0.9.2 Sync Alpha changes
 - Replaced the oral-screening chart's external-window link with an in-app image viewer
