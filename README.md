@@ -1,4 +1,11 @@
-# More than Measured™ v0.8.28
+# More than Measured™ v0.8.29
+
+## v0.8.29 changes
+- Added the supplied Oral Dysfunction Screening Tool chart to the Oral Ties guide, with tap-to-open full-size viewing
+- Clarified that the chart organizes concerns but does not diagnose oral dysfunction and that many listed signs have other causes
+- Emphasized full feeding observation by a lactation professional with oral-function experience and assessment by a pediatric frenulum specialist
+- Clarified the pediatrician's important medical role while noting that a routine exam without feeding observation may miss functional concerns
+- Included feeding-specialized SLP and occupational-therapy roles where appropriate
 
 ## v0.8.28 changes
 - Restored the complete stylesheet after discovering that the prior working copy ended midway through a mobile media rule
