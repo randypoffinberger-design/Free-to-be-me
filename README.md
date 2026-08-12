@@ -1,11 +1,13 @@
-# More than Measured™ v0.8.23
+# More than Measured™ v0.8.24
 
-## v0.8.23 changes
-
-- Completed the Provider Summary tool in My Child and connected the Health & Wellness provider-report card to the same report builder.
-- Added child selection, a customizable reporting period, and optional report sections for profile priorities, communication, Wins, life skills, food, sleep and sensory preferences, toileting, and appointment information.
-- Communication totals remain all-time while dated progress sections follow the selected range.
-- Provider summaries can be reviewed and edited, shared through the device share sheet, copied, or downloaded as a text file.
+## v0.8.24 changes
+- Added a practical guide to reading active-form and “methylated” B-complex Supplement Facts labels
+- Added label names for L-methylfolate/L-5-MTHF/Metafolin, methylcobalamin/adenosylcobalamin, P5P/PLP, and R5P/FMN
+- Clarified that not every active coenzyme form is literally methylated despite common marketing language
+- Corrected blanket “avoid” claims: common MTHFR variants do not automatically require avoiding folic acid, cyanocobalamin, pyridoxine HCl, or ordinary riboflavin
+- Added dose-stacking, vitamin B6 nerve-toxicity, medication-interaction, and laboratory follow-up safeguards
+- Added official NIH vitamin B12 and B6 references
+- Preserved existing family data, backup compatibility, and offline app behavior
 
 ## v0.8.22 changes
 - Replaced the Support Messaging under-construction action with a complete informational preview
