@@ -1,4 +1,9 @@
-# More than Measured™ v0.8.26
+# More than Measured™ v0.8.27
+
+## v0.8.27 changes
+- Added a fixed lightweight visual icon beside every Common Terms entry
+- Styled term icons like compact profile symbols without adding image files or editing controls
+- Preserved the existing lazy-loaded image and short-clip fields for gradual future media additions
 
 ## v0.8.26 changes
 - Added qualified oral-hygiene and articulation information to the Oral Ties guide
