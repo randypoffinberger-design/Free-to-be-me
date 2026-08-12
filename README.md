@@ -1,11 +1,19 @@
-# More than Measured™ v0.8.29
+# More than Measured™ v0.9.1 Sync Alpha
 
-## v0.8.29 changes
-- Added the supplied Oral Dysfunction Screening Tool chart to the Oral Ties guide, with tap-to-open full-size viewing
-- Clarified that the chart organizes concerns but does not diagnose oral dysfunction and that many listed signs have other causes
-- Emphasized full feeding observation by a lactation professional with oral-function experience and assessment by a pediatric frenulum specialist
-- Clarified the pediatrician's important medical role while noting that a routine exam without feeding observation may miss functional concerns
-- Included feeding-specialized SLP and occupational-therapy roles where appropriate
+## v0.9.1 Sync Alpha changes
+- Added the supplied Oral Dysfunction Screening Tool chart to the Oral Ties guide with full-size viewing and offline caching
+- Clarified the roles of oral-function-trained lactation professionals, pediatric frenulum specialists, pediatricians, feeding-specialized SLPs, and occupational therapists
+- Renamed the Health & Wellness card to “MTHFR Methylated Supplement Comparison” so its connection to the MTHFR guide is clear
+- Preserved the v0.9.0 accounts, family linking, synchronization client, schema version 4, and server package
+
+## v0.9.0 Sync Alpha changes
+- Added optional secure accounts, household memberships, caregiver/viewer roles, and expiring invitation codes
+- Added an Accounts & Sync center with server configuration, existing-data migration, status, and manual synchronization
+- Added local outbox, revision metadata, conflict, recoverable-delete, and account-state IndexedDB stores without changing existing family record IDs
+- Added all-store synchronization for profiles, Wins, speech and language, notes, appointments, to-dos, potty logs, and child-specific settings
+- Added conflict choices to keep either version, preserve both, or merge individual fields
+- Kept all screens reading from IndexedDB so server downtime never replaces the local data source
+- Preserved the v0.8.28 backup sections and compatibility
 
 ## v0.8.28 changes
 - Restored the complete stylesheet after discovering that the prior working copy ended midway through a mobile media rule

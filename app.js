@@ -1,8 +1,8 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.8.29", schemaVersion: 3 };
+const APP = { name: "More than Measured", version: "0.9.1-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
-  DB_VERSION = 3,
+  DB_VERSION = 4,
   STORE_NAMES = [
     "profiles",
     "achievements",
@@ -14,6 +14,7 @@ const DB_NAME = "ftbm-db",
     "settings",
     "snapshots",
   ];
+const SYNC_STORE_NAMES = ["syncOutbox", "syncMeta", "syncConflicts", "deletedRecords", "accountState"];
 let db,
   deferredInstallPrompt = null,
   profileAgeTimer = null,
@@ -52,7 +53,7 @@ function openDB() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const d = req.result;
-      for (const n of STORE_NAMES)
+      for (const n of [...STORE_NAMES, ...SYNC_STORE_NAMES])
         if (!d.objectStoreNames.contains(n))
           d.createObjectStore(n, { keyPath: "id" });
     };
@@ -70,7 +71,9 @@ const getAll = (s) =>
 const put = (s, v) =>
   new Promise((res, rej) => {
     const r = tx(s, "readwrite").put(v);
-    r.onsuccess = () => res(v);
+    r.onsuccess = async () => {
+      try { await window.MTMSync?.onLocalPut(s, v); res(v); } catch (e) { rej(e); }
+    };
     r.onerror = () => rej(r.error);
   });
 const clearStore = (s) =>
@@ -81,9 +84,15 @@ const clearStore = (s) =>
   });
 const deleteItem = (s, id) =>
   new Promise((res, rej) => {
-    const r = tx(s, "readwrite").delete(id);
-    r.onsuccess = () => res();
-    r.onerror = () => rej(r.error);
+    const lookup = tx(s).get(id);
+    lookup.onerror = () => rej(lookup.error);
+    lookup.onsuccess = () => {
+      const r = tx(s, "readwrite").delete(id);
+      r.onsuccess = async () => {
+        try { await window.MTMSync?.onLocalDelete(s, id, lookup.result); res(); } catch (e) { rej(e); }
+      };
+      r.onerror = () => rej(r.error);
+    };
   });
 async function getSetting(k, f = null) {
   const a = await getAll("settings");
@@ -128,6 +137,7 @@ const routes = {
   backup: renderBackup,
   about: renderAbout,
   settings: renderSettings,
+  sync: renderSyncCenter,
 };
 async function navigate(r, options = {}) {
   let route;
@@ -1900,7 +1910,7 @@ function openPlacardGuide() {
 async function renderHealthWellness(){
   const profiles=await getAll("profiles");
   view.innerHTML=`<section class="hero"><h1>🩺 Health & Wellness</h1><p>Prepare, document, and ask better questions without treating autism itself as an illness to cure.</p></section><div class="banner sleep-note"><strong>General education only.</strong> Lab testing, supplements, medications, vaccine decisions, gastrointestinal treatment, and equipment must be individualized by qualified clinicians.</div><div class="grid section-grid"><button id="medicalLetter" class="card-button"><span class="emoji">📄</span><strong>Medical necessity letter</strong><small>Editable equipment and supply request template.</small></button><button id="apptPrep" class="card-button"><span class="emoji">📋</span><strong>Prepare for an appointment</strong><small>Build and save a doctor or therapy visit sheet.</small></button><button id="providerReport" class="card-button"><span class="emoji">📊</span><strong>Generate provider report</strong><small>Summarize profile, communication, Wins, life skills, food, and potty records.</small></button><button id="apptNotes" class="card-button"><span class="emoji">📝</span><strong>After-appointment notes</strong><small>Save instructions, decisions, referrals, and follow-up.</small></button><button id="labGuide" class="card-button"><span class="emoji">🧪</span><strong>Routine and symptom-guided labs</strong><small>What is routine, what is not, and questions to ask.</small></button><button id="mthfrGuide" class="card-button"><span class="emoji">🧬</span><strong>MTHFR explained</strong><small>Heterozygous, homozygous, compound variants, testing, folate, and homocysteine.</small></button><button id="foodClaimsGuide" class="card-button"><span class="emoji">🥛</span><strong>Food dyes, sugar & dairy</strong><small>What evidence says, individual reactions, and safer ways to investigate concerns.</small></button><button id="gutGuide" class="card-button"><span class="emoji">🫃</span><strong>Gut health</strong><small>Constipation, reflux, diarrhea, feeding, pain, and when to seek help.</small></button><button id="probioticGuide" class="card-button"><span class="emoji">🦠</span><strong>Probiotics & prebiotics</strong><small>What evidence can and cannot tell us.</small></button><button id="vitaminGuide" class="card-button"><span class="emoji">🍊</span><strong>Vitamins & selective eating</strong><small>Deficiency risk, food-first support, testing, and supplement safety.</small></button><button id="placardGuide" class="card-button"><span class="emoji">♿</span><strong>Disability parking placard</strong><small>Why autism alone may not meet mobility-based state rules.</small></button></div>`;
-  $("#mthfrGuide").insertAdjacentHTML("afterend",`<button id="methylProductsGuide" class="card-button"><span class="emoji">🥄</span><strong>Methylated supplement comparison</strong><small>Powders, liquids, chewables, label checks, and pediatric safety.</small></button>`);
+  $("#mthfrGuide").insertAdjacentHTML("afterend",`<button id="methylProductsGuide" class="card-button"><span class="emoji">🥄</span><strong>MTHFR Methylated Supplement Comparison</strong><small>Powders, liquids, chewables, label checks, and pediatric safety.</small></button>`);
   queueMicrotask(()=>$("#foodClaimsGuide")?.remove());
   $("#medicalLetter").onclick=()=>openMedicalNecessityLetter(profiles);$("#apptPrep").onclick=()=>openAppointmentPrep(profiles);$("#providerReport").onclick=()=>openProviderReport(profiles);$("#apptNotes").onclick=()=>openAppointmentNotes(profiles);$("#methylProductsGuide").onclick=openMethylatedProductsGuide;
   $("#labGuide").onclick=()=>openInfoGuide("🧪 Routine and symptom-guided labs",`<p>There is no single “autism lab panel.” Autistic children generally need the same preventive care as other children, plus testing guided by diet, symptoms, growth, medications, family history, and examination.</p><h3>Often considered when clinically indicated</h3><ul><li>CBC and iron studies when intake is limited, fatigue or pallor is present, or restless sleep is suspected.</li><li>Lead testing based on age, housing, exposure, local requirements, or developmental risk.</li><li>Vitamin D, B12, folate, vitamin B6, zinc, metabolic testing, thyroid testing, celiac screening, or other studies only when history or examination supports them.</li><li>Medication monitoring specific to the medicine being used.</li></ul><h3>Vitamin B6 (pyridoxine / PLP)</h3><p>Vitamin B6 helps the body use protein and carbohydrates, make hemoglobin, support immune function, and make chemicals used by the nervous system. It is important for health, but a B6 level is <strong>not</strong> an autism test, and B6 has not been established as a treatment for autism itself.</p><h4>When might a clinician consider testing?</h4><p>B6 testing is not routinely needed for every child. A clinician may consider it when a child has a very restricted diet, poor absorption, certain medicines or medical conditions, unexplained anemia, skin or mouth changes, numbness or tingling, weakness, confusion, or seizures alongside other concerning findings. Those symptoms can have many causes, so they should not be used to diagnose a B6 problem at home.</p><h4>What test is used?</h4><p>A blood test may measure <strong>pyridoxal 5'-phosphate (PLP)</strong>, the main active form of B6. Some laboratories use other blood or urine measurements. Results need to be interpreted using that laboratory's reference range, the child's age, symptoms, diet, medicines, supplements, and the reason the test was ordered. Homocysteine can be affected by B6, folate, and B12, but it cannot identify which vitamin is responsible by itself.</p><h4>Low versus high B6</h4><ul><li><strong>Low B6:</strong> The next step is to look for the reason—such as limited intake, malabsorption, illness, or a medicine effect—rather than simply choosing a large dose.</li><li><strong>High intake:</strong> Food sources do not usually cause toxicity, but repeated high-dose supplements can cause sensory nerve damage, including burning, tingling, numbness, pain, or trouble with balance and coordination.</li><li>Count B6 from every multivitamin, B-complex, magnesium blend, fortified drink, gummy, and separate supplement before adding more. “Activated” P5P products still contain vitamin B6 and are not automatically risk-free.</li></ul><div class="banner"><strong>Do not use high-dose B6 as a trial.</strong> A child's clinician or pharmacist should review the child's age, result, diet, medicines, and total supplement intake before recommending a product or dose. New weakness, walking trouble, persistent numbness or burning, or a first or prolonged seizure needs prompt medical evaluation.</div><div class="education-links"><a class="education-link" href="https://ods.od.nih.gov/factsheets/VitaminB6-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH vitamin B6 fact sheet</strong><span>Functions, food sources, deficiency, interactions, intake levels, and toxicity.</span><small>Official source ↗</small></a><a class="education-link" href="https://medlineplus.gov/lab-tests/vitamin-b-test/" target="_blank" rel="noopener"><strong>MedlinePlus vitamin B testing</strong><span>Why B-vitamin tests may be ordered and what testing involves.</span><small>Official source ↗</small></a></div><p>Genetic testing may be offered as part of etiologic evaluation, but it does not confirm or rule out autism. Ask what question each test is meant to answer and how the result would change care.</p><div class="banner">Seek urgent care for severe dehydration, breathing difficulty, a first or prolonged seizure, black or bloody stool, severe abdominal pain, or a sudden loss of consciousness.</div>`);
@@ -3301,6 +3311,7 @@ function setupDrawer() {
     ["💛", "Caregiver Corner", "caregiver"],
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],
+    ["🔄", "Accounts & Sync", "sync"],
     ["ℹ️", "About", "about"],
   ];
   $("#drawerNav").innerHTML = links
