@@ -1,9 +1,9 @@
-const CACHE='ftbm-v0.8.27';
+const CACHE='ftbm-v0.8.28';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.8.27',
-  './app.js?v=0.8.27',
+  './styles.css?v=0.8.28',
+  './app.js?v=0.8.28',
   './assets/home/homepage.jpeg',
   './assets/guides/oral-ties-guide.png'
 ];

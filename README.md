@@ -1,4 +1,10 @@
-# More than Measured™ v0.8.27
+# More than Measured™ v0.8.28
+
+## v0.8.28 changes
+- Restored the complete stylesheet after discovering that the prior working copy ended midway through a mobile media rule
+- Restored the illustrated homepage sizing, hotspot placement, responsive layouts, drawer footer, modal, tracker, education, and section-specific styles that followed the truncation point
+- Added an explicit image-width safeguard so the locked homepage cannot render wider than its viewport
+- Preserved the v0.8.27 Common Terms icons and the oral-ties illustration styling
 
 ## v0.8.27 changes
 - Added a fixed lightweight visual icon beside every Common Terms entry
