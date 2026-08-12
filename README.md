@@ -1,4 +1,10 @@
-# More than Measured™ v0.8.24
+# More than Measured™ v0.8.25
+
+## v0.8.25 changes
+- Expanded the Speech/Language app guide with AAC, communication, speech-practice, vocabulary, and learning-app examples grouped by purpose
+- Added an Oral Ties guide with an original function-focused illustration, feeding signs, multidisciplinary evaluation, treatment options, evidence limits, safety guidance, and caregiver questions
+- Added a Health & Wellness comparison guide for methylated and active-form powders, liquids, chewables, and gummies
+- Added safeguards for changing formulas, age-specific directions, dose stacking, unsupported autism-treatment claims, B6 exposure, and reported reactions
 
 ## v0.8.24 changes
 - Added a practical guide to reading active-form and “methylated” B-complex Supplement Facts labels
