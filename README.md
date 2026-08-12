@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.1 Sync Alpha
+# More than Measured™ v0.9.2 Sync Alpha
+
+## v0.9.2 Sync Alpha changes
+- Replaced the oral-screening chart's external-window link with an in-app image viewer
+- Added a fixed Close button, Fit/zoom controls, pinch zoom, and drag/scroll navigation
+- Preserved the Oral Ties guide and its scroll position when the enlarged chart closes
+- Prevented iOS standalone mode from reopening an incomplete image window instead of the PWA
 
 ## v0.9.1 Sync Alpha changes
 - Added the supplied Oral Dysfunction Screening Tool chart to the Oral Ties guide with full-size viewing and offline caching

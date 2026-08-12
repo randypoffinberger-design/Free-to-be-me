@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=0.9.1" />
+  <link rel="stylesheet" href="styles.css?v=0.9.2" />
   <title>More than Measured™</title>
 </head>
 <body>
@@ -40,8 +40,23 @@
     </form>
   </dialog>
 
+  <section id="imageViewer" class="image-viewer" aria-label="Image viewer" aria-hidden="true" hidden>
+    <div class="image-viewer-toolbar">
+      <button id="closeImageViewer" class="image-viewer-close" type="button">✕ Close</button>
+      <div class="image-viewer-controls" aria-label="Zoom controls">
+        <button id="imageZoomOut" type="button" aria-label="Zoom out">−</button>
+        <button id="imageZoomReset" type="button">Fit</button>
+        <button id="imageZoomIn" type="button" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+    <p class="image-viewer-hint">Pinch or use the controls to zoom. Drag or scroll to move around the chart.</p>
+    <div id="imageViewerViewport" class="image-viewer-viewport">
+      <img id="imageViewerImage" alt="" />
+    </div>
+  </section>
+
   <input id="restoreInput" type="file" accept=".ftbmbackup,.json,application/json" hidden />
-  <script src="sync.js?v=0.9.1" defer></script>
-  <script src="app.js?v=0.9.1" defer></script>
+  <script src="sync.js?v=0.9.2" defer></script>
+  <script src="app.js?v=0.9.2" defer></script>
 </body>
 </html>

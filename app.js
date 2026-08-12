@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.1-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.2-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -25,7 +25,10 @@ let db,
 const $ = (s) => document.querySelector(s),
   view = $("#view"),
   modal = $("#modal"),
-  modalBody = $("#modalBody");
+  modalBody = $("#modalBody"),
+  imageViewer = $("#imageViewer"),
+  imageViewerViewport = $("#imageViewerViewport"),
+  imageViewerImage = $("#imageViewerImage");
 const uid = () =>
   crypto.randomUUID
     ? crypto.randomUUID()
@@ -47,6 +50,55 @@ const fmtDate = (v) =>
         day: "numeric",
       }).format(new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T12:00:00` : v))
     : "";
+
+let imageViewerScale = 1,
+  imageViewerPinchStart = 0,
+  imageViewerPinchScale = 1;
+function setImageViewerScale(nextScale) {
+  imageViewerScale = Math.min(4, Math.max(1, nextScale));
+  imageViewerImage.style.width = `${imageViewerScale * 100}%`;
+  if (imageViewerScale === 1) {
+    imageViewerViewport.scrollTop = 0;
+    imageViewerViewport.scrollLeft = 0;
+  }
+}
+function openImageViewer(src, alt) {
+  imageViewerImage.src = src;
+  imageViewerImage.alt = alt || "Enlarged image";
+  setImageViewerScale(1);
+  imageViewer.hidden = false;
+  imageViewer.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  $("#closeImageViewer").focus();
+}
+function closeImageViewer() {
+  imageViewer.hidden = true;
+  imageViewer.setAttribute("aria-hidden", "true");
+  imageViewerImage.removeAttribute("src");
+  document.body.style.overflow = "";
+  $("#oralScreeningChart")?.focus();
+}
+$("#closeImageViewer").onclick = closeImageViewer;
+$("#imageZoomIn").onclick = () => setImageViewerScale(imageViewerScale + .5);
+$("#imageZoomOut").onclick = () => setImageViewerScale(imageViewerScale - .5);
+$("#imageZoomReset").onclick = () => setImageViewerScale(1);
+imageViewerViewport.addEventListener("touchstart", (event) => {
+  if (event.touches.length !== 2) return;
+  imageViewerPinchStart = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+  imageViewerPinchScale = imageViewerScale;
+}, { passive: true });
+imageViewerViewport.addEventListener("touchmove", (event) => {
+  if (event.touches.length !== 2 || !imageViewerPinchStart) return;
+  event.preventDefault();
+  const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+  setImageViewerScale(imageViewerPinchScale * distance / imageViewerPinchStart);
+}, { passive: false });
+imageViewerViewport.addEventListener("touchend", (event) => {
+  if (event.touches.length < 2) imageViewerPinchStart = 0;
+}, { passive: true });
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !imageViewer.hidden) closeImageViewer();
+});
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -481,7 +533,8 @@ function openSpeechAppsGuide(){
 function openOralTiesGuide(){
   queueMicrotask(()=>{
     const heading=[...modalBody.querySelectorAll("h3")].find((item)=>item.textContent==="What a useful evaluation looks like");
-    heading?.insertAdjacentHTML("beforebegin",`<h3>Oral hygiene and speech</h3><ul><li><strong>Oral hygiene:</strong> Restricted tongue movement may make it harder for some children to move food debris or lick certain tooth surfaces clean. This can complicate oral hygiene, but tongue-tie alone has not been proven to cause tooth decay or gum inflammation. Regular brushing, flossing when appropriate, and dental care remain important.</li><li><strong>Speech:</strong> Some children with genuinely restricted tongue movement may have difficulty producing particular sounds. Many children compensate without difficulty, and current evidence does not show that tongue-tie generally causes speech disorders or that releasing it prevents long-term speech therapy. An SLP should evaluate the child's actual articulation and tongue function.</li></ul><h3>Oral dysfunction screening tool</h3><a href="assets/guides/oral-dysfunction-screening-tool.jpeg" target="_blank" rel="noopener" aria-label="Open the oral dysfunction screening chart at full size"><img class="guide-illustration" src="assets/guides/oral-dysfunction-screening-tool.jpeg" alt="Oral Dysfunction Screening Tool symptom checklist supplied by Integrative Lactation Care"></a><p class="hint">Tap the chart to open it at full size. This supplied screening chart can help organize observations, but its symptom count is not a diagnosis. Many listed signs have other possible causes.</p>`);
+    heading?.insertAdjacentHTML("beforebegin",`<h3>Oral hygiene and speech</h3><ul><li><strong>Oral hygiene:</strong> Restricted tongue movement may make it harder for some children to move food debris or lick certain tooth surfaces clean. This can complicate oral hygiene, but tongue-tie alone has not been proven to cause tooth decay or gum inflammation. Regular brushing, flossing when appropriate, and dental care remain important.</li><li><strong>Speech:</strong> Some children with genuinely restricted tongue movement may have difficulty producing particular sounds. Many children compensate without difficulty, and current evidence does not show that tongue-tie generally causes speech disorders or that releasing it prevents long-term speech therapy. An SLP should evaluate the child's actual articulation and tongue function.</li></ul><h3>Oral dysfunction screening tool</h3><button id="oralScreeningChart" class="image-viewer-trigger" type="button" aria-label="Enlarge the oral dysfunction screening chart"><img class="guide-illustration" src="assets/guides/oral-dysfunction-screening-tool.jpeg" alt="Oral Dysfunction Screening Tool symptom checklist supplied by Integrative Lactation Care"></button><p class="hint">Tap the chart to enlarge it without leaving the app. This supplied screening chart can help organize observations, but its symptom count is not a diagnosis. Many listed signs have other possible causes.</p>`);
+    $("#oralScreeningChart")?.addEventListener("click",()=>openImageViewer("assets/guides/oral-dysfunction-screening-tool.jpeg","Oral Dysfunction Screening Tool symptom checklist supplied by Integrative Lactation Care"));
     const evaluationList=heading?.nextElementSibling;
     if(evaluationList?.tagName==="UL") evaluationList.innerHTML=`<li><strong>Start with feeding function.</strong> An IBCLC or other appropriately credentialed lactation professional with specific oral-function experience should observe an entire breast/chest or bottle feed and assess latch, milk transfer, swallowing, positioning, and caregiver pain.</li><li><strong>Use a clinician experienced in pediatric frenula.</strong> A pediatric dentist, ENT, oral surgeon, or other appropriately trained clinician can evaluate anatomy together with function and determine whether a procedure should even be considered. Ask about their specific training and how often they perform these evaluations.</li><li><strong>Keep the child's pediatrician involved.</strong> Pediatricians are important for growth, hydration, overall health, and ruling out other causes. Training in oral-motor and feeding dysfunction varies, however, and a routine mouth exam that does not include an observed feed can miss a functional concern.</li><li><strong>Add feeding or speech expertise when needed.</strong> A feeding-specialized SLP or occupational therapist may assess oral-motor skills, feeding, and swallowing within their scope. For an older child's speech concerns, an SLP should evaluate actual articulation and tongue function before surgery is considered.</li><li>The team should consider tongue lift, extension, side-to-side movement, coordination, and the child's real-world function—not only a photo, appearance, or tie “grade.”</li>`;
   });
