@@ -1,4 +1,8 @@
-# More than Measured™ v0.8.25
+# More than Measured™ v0.8.26
+
+## v0.8.26 changes
+- Added qualified oral-hygiene and articulation information to the Oral Ties guide
+- Clarified that restricted movement may complicate cleaning or particular speech sounds without presenting tongue-tie as a proven general cause of tooth decay, gum inflammation, or speech disorders
 
 ## v0.8.25 changes
 - Expanded the Speech/Language app guide with AAC, communication, speech-practice, vocabulary, and learning-app examples grouped by purpose
