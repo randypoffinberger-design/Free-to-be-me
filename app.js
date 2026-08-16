@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.7-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.8-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -194,7 +194,6 @@ const routes = {
   food: renderFoodDiary,
   lifeSkills: renderLifeSkills,
   resources: renderResources,
-  explore: renderExplore,
   caregiver: renderCaregiver,
   backup: renderBackup,
   about: renderAbout,
@@ -1603,7 +1602,7 @@ async function renderChild() {
   $("#addAchievement").onclick = () => openAchievementForm(p);
   $("#viewAchievements").onclick = () => openAchievements(a, p);
   $("#viewWords").onclick = () => navigate("vocabulary");
-  $("#providerSummary").onclick = () => underConstruction("Provider summary");
+  $("#providerSummary").onclick = () => openProviderReport(p);
   bindRouteButtons();
   if (profileDisplay === "exact") {
     const updateAges = () =>
@@ -1750,13 +1749,6 @@ function openAchievementForm(p, item = null) {
     alert(item ? "Win updated!" : "🎉 Win saved!");
     renderChild();
   };
-}
-
-function placeholder(t, i, c, items) {
-  view.innerHTML = `<section class="hero"><h1>${i} ${t}</h1><p>${c}</p></section><h2 class="section-title">Planned sections</h2><div class="grid">${items.map((x) => `<button class="card-button future-feature" data-feature="${esc(x[0].replace(/^[^ ]+ /, ""))}"><strong>${x[0]}</strong><small>${x[1]}</small></button>`).join("")}</div><div class="banner" style="margin-top:18px">This section is included in the app structure now and will be activated in a later version.</div>`;
-  document
-    .querySelectorAll(".future-feature")
-    .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
 }
 
 const BIRTHDAY_MESSAGES=[
@@ -2018,7 +2010,7 @@ $("#sensoryCheck").onclick=openSensoryCheckIn;$("#spdGuide").onclick=()=>openInf
 $("#triggerGuide").onclick=()=>openInfoGuide("✂️ Why everyday activities can feel huge",`<ul><li><strong>Water:</strong> temperature, pressure, echo, splashing, unpredictability—or wonderfully consistent full-body input.</li><li><strong>Clothing:</strong> seams, tags, waist pressure, fabric, static, heat, or a change from familiar clothing.</li><li><strong>Haircuts:</strong> buzzing near the ears, falling hair, cape pressure, mirrors, strangers, touch, and not knowing when it ends.</li><li><strong>Grass and materials:</strong> sharp, damp, itchy, unstable, sticky, or visually overwhelming sensations.</li><li><strong>Nail cutting:</strong> hand restraint, pressure, vibration, fear of pain, and the sound or sight of clipping.</li><li><strong>Teeth brushing:</strong> taste, foam, gag reflex, bristle feel, mouth pain, and motor planning.</li><li><strong>Hair brushing:</strong> scalp pain, pulling, static, sound, and loss of control.</li></ul><h3>What helps</h3><p>Rule out pain first. Offer choices, preview the steps, use visual timers, practice on a doll, allow breaks, change tools or setting, and stop when distress shows that the plan needs to change. Gradual exposure should build safety and control, not force endurance.</p>`);
 $("#fabricGuide").onclick=()=>openInfoGuide("👕 Clothing, fabrics, and sensory comfort",`<p>Clothing touches the body for hours. For a child whose nervous system notices touch very strongly, a sock seam, tag, stiff waistband, wrinkle, or rough fiber may stay impossible to tune out. It can feel distracting, itchy, painful, hot, restrictive, or unpredictable—not merely annoying.</p><h3>Why one material may work and another may not</h3><ul><li><strong>Seams and tags:</strong> raised stitching, toe seams, labels, embroidery backs, and appliqués can create repeated pressure or scratching.</li><li><strong>Texture:</strong> soft cotton or smooth jersey may feel predictable, while wool, lace, stiff denim, sequins, or coarse synthetic fibers may feel sharp or abrasive. Another child may actively prefer textured or fuzzy fabric.</li><li><strong>Fit and pressure:</strong> one child may prefer loose clothing that barely touches the skin; another may feel more secure in snug stretch fabric. Tight cuffs, collars, waistbands, and elastic can also become painful.</li><li><strong>Heat, moisture, and static:</strong> fabric weight, breathability, sweat, wet cuffs, static electricity, and temperature changes can turn tolerable clothing into intolerable clothing.</li><li><strong>Movement and sound:</strong> denim can resist bending; coats can restrict shoulders; fabrics can swish, crackle, bunch, twist, or pull.</li><li><strong>Smell:</strong> detergent, fabric softener, new-clothing chemicals, fragrance, or damp fabric may be the actual problem.</li></ul><h3>Practical things to try</h3><ul><li>Choose tagless labels, flat seams, seamless socks, soft waistbands, and simple fasteners when the child prefers them.</li><li>Try socks inside out, remove a tag carefully at its stitching, cover a rough spot, or layer a tolerated shirt beneath a uniform.</li><li>Wash new clothes before wearing and use a detergent and rinse routine the child tolerates.</li><li>Offer choices between two acceptable items and let the child feel fabric before buying when possible.</li><li>Buy duplicates of comfortable basics and note the exact brand, model, fabric blend, and size.</li><li>Do not assume cotton, bamboo, fleece, compression, or “sensory-friendly” branding will suit every child. The child’s response is the test.</li><li>Check for eczema, rash, injury, tight sizing, ingrown nails, blisters, temperature problems, or other pain before treating refusal as behavioral.</li></ul><div class="banner"><strong>Comfort is functional support.</strong> Accommodating a harmless clothing need can preserve energy for communication, school, play, and daily life. The goal is not to force the child to tolerate pain.</div><div class="education-links"><a class="education-link" href="https://www.autism.org.uk/learn/knowledge-hub/professional-practice/running-an-autism-friendly-product-focus-group-a-c" target="_blank" rel="noopener"><strong>Autistic-led clothing feedback</strong><span>National Autistic Society findings about seams, labels, fit, texture, and individual variation.</span><small>Open source ↗</small></a></div>`);
 $("#materialPreferences").onclick=openMaterialPreferences;
-$("#sensoryProducts").onclick=()=>openProductGuide("Sensory support",["Hearing protection with an appropriate noise-reduction rating","Sunglasses, hats, blackout curtains, and dimmable lighting","Chew tools designed for the child’s age and chewing strength","Swings and movement equipment installed to rated structural supports","Crash pads, body socks, resistance bands, and supervised heavy-work tools","Seamless clothing and grooming-tool alternatives","Visual timers, sensory bags, and calm-space supplies"]);}
+$("#sensoryProducts").onclick=()=>openInfoGuide("🛍️ Sensory products",`<p>These caregiver-supplied shopping options may be useful for children who prefer soft, stretchy, breathable, or predictable clothing. They are not endorsements or guaranteed to suit every sensory profile. Confirm the current material blend, seams, tags, fit, care instructions, seller, return policy, and size chart.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/collections/kids" target="_blank" rel="noopener"><strong>Comfrt kids collection</strong><span>Kids’ matching sets and soft loungewear options. Review fabric weight, warmth, fit, cuffs, seams, and sizing with the child’s preferences in mind.</span><small>Open collection ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609" target="_blank" rel="noopener"><strong>PatPat baby bamboo-viscose pajamas</strong><span>A snug-fit, two-way-zip baby pajama listing with footed and footless options. Confirm age, fit, zipper protection, fabric content, and current seller details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928" target="_blank" rel="noopener"><strong>PatPat toddler bamboo-viscose pajama set</strong><span>A snug-fit short-sleeve top and pants set listed for toddler sizes. Check the current size chart, waistband, seams, graphics, and material details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118" target="_blank" rel="noopener"><strong>WIBACKER two-piece bamboo-viscose pajamas</strong><span>A snug-fit two-piece toddler pajama listing. Verify current sizing, fabric blend, construction, seller, and care directions before ordering.</span><small>Open Walmart product page ↗</small></a></div><div class="banner"><strong>The child’s response is the test.</strong> “Bamboo,” “soft,” “snug,” or “sensory-friendly” wording does not guarantee comfort. Stop using clothing that causes overheating, restricted movement, skin irritation, pain, or distress.</div>`);}
 
 async function openMaterialPreferences(){const profiles=await getAll("profiles");if(!profiles.length)return alert("Create a child profile first.");let profileId=profiles[0].id;const draw=async()=>{const value=await getSetting(`materialPreferences:${profileId}`,{});modalBody.innerHTML=`<h2>🧵 Clothing & bedding preferences</h2><p class="hint">Texture preferences can change with temperature, illness, stress, fit, and the child’s control over the situation. Record observations rather than forcing tolerance.</p><div class="form-grid"><div class="field"><label>Child</label><select id="materialProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Comfortable clothing materials</label><textarea id="comfortableClothing" placeholder="Soft cotton, fleece, smooth athletic fabric…">${esc(value.comfortableClothing||"")}</textarea></div><div class="field"><label>Difficult clothing materials</label><textarea id="difficultClothing" placeholder="Wool, denim, lace, stiff collars…">${esc(value.difficultClothing||"")}</textarea></div><div class="field"><label>Fit, seams, tags, and fasteners</label><textarea id="clothingDetails" placeholder="Loose or snug, tagless, flat seams, elastic waist, no buttons…">${esc(value.clothingDetails||"")}</textarea></div><div class="field"><label>Preferred bedding</label><textarea id="preferredBedding" placeholder="Jersey sheets, cool blanket, smooth pillowcase…">${esc(value.preferredBedding||"")}</textarea></div><div class="field"><label>Bedding to avoid</label><textarea id="avoidBedding" placeholder="Flannel, scratchy blankets, top sheet, heavy comforter…">${esc(value.avoidBedding||"")}</textarea></div><div class="field"><label>Temperature, pressure, and other notes</label><textarea id="materialNotes" placeholder="Sleeps cool, dislikes wrinkles, seeks compression…">${esc(value.notes||"")}</textarea></div><button id="saveMaterialPreferences" class="btn full">Save preferences</button></div>`;$("#materialProfile").onchange=async(e)=>{profileId=e.target.value;await draw();};$("#saveMaterialPreferences").onclick=async()=>{await setSetting(`materialPreferences:${profileId}`,{comfortableClothing:$("#comfortableClothing").value.trim(),difficultClothing:$("#difficultClothing").value.trim(),clothingDetails:$("#clothingDetails").value.trim(),preferredBedding:$("#preferredBedding").value.trim(),avoidBedding:$("#avoidBedding").value.trim(),notes:$("#materialNotes").value.trim(),updatedAt:nowISO()});alert("Material preferences saved.");};};await draw();modal.showModal();}
 
@@ -2073,7 +2065,7 @@ async function renderSleepSanctuary() {
   const sleepCards = document.querySelectorAll(".sleep-sections > .education-card");
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("beforebegin", `<details class="education-card"><summary>🌙 Your family’s 45-minute routine, safely adapted</summary><div class="education-body"><h3>First 30 minutes: active play</h3><p>Running, jumping, climbing, pushing, pulling, carrying, or outdoor play may help some children settle. Other children become more alert, so move active play earlier when it delays sleep. Daylight and activity during the day also support a healthy sleep schedule.</p><h3>Final 15 minutes: lower stimulation</h3><p>Dim lights and choose a familiar calm activity: cuddling, a puzzle, coloring, drawing, blocks, quiet music, or a gentle show if that works in real family life. A warm bath, tolerated lotion, or gentle firm touch may be calming when the child enjoys it.</p><h3>Sound and night-lights</h3><p>A sound machine can mask unpredictable noise and become a familiar cue; it does not calm every nervous system. Keep it away from the child’s head and at the lowest useful volume. A dim projector or night-light may soothe one child and keep another awake. Avoid bright or rapidly moving patterns after settling begins.</p><h3>Temperature, pressure, and safe stimming</h3><p>Many children prefer a cooler room, but comfort is individual. Compression sheets, sleep socks, and cushioned products require correct sizing, free breathing and movement, and the ability to exit. If rocking or head banging occurs, ask the child’s clinician or occupational therapist about injury reduction that preserves safe regulation.</p><div class="banner"><strong>Do not improvise a sleep enclosure.</strong> Use only the mattress, padding, rails, and enclosure approved by the manufacturer for that exact sleep product. Added mattresses or makeshift barriers can create dangerous gaps. Medical-bed coverage requires individual medical necessity and varies by plan.</div><h3>Magnesium baths and lotions</h3><p>Magnesium flakes, lotions, and tallow products have not been established as reliable treatments for childhood insomnia, and skin absorption and product quality vary. If the child takes oral magnesium or magnesium-containing medicine, ask the clinician or pharmacist before adding any other magnesium product.</p></div></details>`);
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🧴 Magnesium: how it works, forms, and evidence</summary><div class="education-body"><p>Magnesium is essential for normal nerve and muscle function and participates in pathways involving neurotransmission and the body’s sleep-wake system. It is often described as calming because it helps regulate excitatory and inhibitory signaling, including pathways involving GABA, and is involved indirectly in melatonin biology. That biological role does <strong>not</strong> prove that extra magnesium acts as a sedative when a child already has enough.</p><div class="banner"><strong>What the sleep evidence says:</strong> Some studies in adults suggest possible modest sleep benefits, but results are conflicting and the studies are generally small or low quality. Good evidence has not established that magnesium supplements reliably lengthen deep sleep, prevent awakenings, or reduce anxiety or sensory overload in autistic children.</div><h3>Common forms caregivers may see</h3><ul><li><strong>Magnesium glycinate:</strong> magnesium bound to glycine. It is commonly marketed for sleep and is often better tolerated than forms with a stronger laxative effect, but it has not been proven to be the universally “best” sleep form for autistic children.</li><li><strong>Magnesium citrate:</strong> generally well absorbed and more likely to loosen stools. It may be used medically for constipation, but constipation treatment and sleep supplementation are different goals; diarrhea can cause dehydration or discomfort.</li><li><strong>Magnesium L-threonate:</strong> marketed for brain penetration and cognition. It is usually expensive, and evidence for pediatric sleep or autism-related benefits is insufficient.</li><li><strong>Magnesium sulfate/Epsom salts:</strong> a warm bath can be a soothing sensory routine, but clinically meaningful magnesium absorption through intact skin has not been established. Treat it as a bath preference—not an equivalent replacement for prescribed oral magnesium.</li></ul><h3>Before choosing any form</h3><ul><li>Ask what problem is being treated and whether deficiency, constipation, insomnia, pain, anxiety, or another issue needs evaluation.</li><li>Add up magnesium from supplements, antacids, laxatives, multivitamins, and prescribed products.</li><li>Review kidney disease, heart conditions, swallowing safety, diarrhea risk, and medicine interactions with the child’s clinician or pharmacist.</li><li>Use the clinician’s age-appropriate dose and timing; do not copy an adult product label or another child’s dose.</li></ul><div class="education-links"><a class="education-link" href="https://www.nccih.nih.gov/health/sleep-disorders-and-complementary-health-approaches" target="_blank" rel="noopener"><strong>Magnesium and sleep evidence</strong><span>NIH review of the limited and conflicting insomnia research.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium safety</strong><span>Age-based supplement limits, side effects, and interactions.</span><small>Open source ↗</small></a></div></div></details>`);
-  if (sleepCards[6]) sleepCards[6].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🛍️ Sleep products</summary><div class="education-body"><p>This section is ready for the sleep products your family recommends or wants to compare.</p><div class="empty"><div class="big">🌙</div><p>Sound machines, night-lights, projectors, bedding, compression products, room-temperature tools, and other sleep supports will be added here later.</p></div><div class="banner">Future product entries will include the intended use, age and safety considerations, sensory features, drawbacks, and a direct link. Products will not be presented as guaranteed sleep treatments.</div></div></details>`);
+  if (sleepCards[6]) sleepCards[6].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🛍️ Sleep products</summary><div class="education-body"><p>Caregiver-supplied options to consider around the child’s individual sleep and sensory preferences. Check current specifications, price, availability, return terms, and safety information before purchasing.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/products/the-dreamer-blanket" target="_blank" rel="noopener"><strong>Comfrt Dreamer Blanket</strong><span>A plush, stretch blanket available in several sizes. Check the listed weight and dimensions carefully; this is not presented as a medical or pediatric weighted-sleep product.</span><small>Open product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042" target="_blank" rel="noopener"><strong>Galaxy star-and-moon projector</strong><span>A remote-controlled projector with multiple lighting effects, timer functions, and a Bluetooth speaker. Use low brightness and slow or still effects if motion or light is alerting.</span><small>Open Walmart product page ↗</small></a></div><div class="banner"><strong>Sleep safety:</strong> Products are not guaranteed treatments. Avoid loose or heavy bedding when it is not developmentally appropriate, follow safe-sleep guidance for the child’s age, and make sure the child can move, breathe, regulate temperature, and exit freely.</div></div></details>`);
   if (!profiles.length) return;
   const routineList = $("#sleepRoutineList");
   const status = $("#sleepSaveStatus");
@@ -2143,40 +2135,17 @@ function renderAsdFriendlyFunExpanded(){
 }
 
 function renderResources() {
-  placeholder(
-    "Resources",
-    "📚",
-    "Practical information organized for overwhelmed caregivers.",
-    [
-      ["🗣️ Communication", "ASL, AAC, speech, and visual supports."],
-      ["🧸 Sensory", "Tools, toys, regulation, and room supports."],
-      ["🌙 Sleep", "Routines, tracking, and sleep environment ideas."],
-      [
-        "🏥 Medical advocacy",
-        "Equipment information and necessity-letter templates.",
-      ],
-      [
-        "🧬 Health education",
-        "Careful, sourced explanations for labs and genetics.",
-      ],
-      ["🎓 Learning", "Discovering how your child learns best."],
-    ],
-  );
-}
-function renderExplore() {
-  placeholder(
-    "Explore",
-    "🗺️",
-    "A future guide to autism-friendly family fun.",
-    [
-      ["🎡 Family activities", "Sensory-friendly events and destinations."],
-      ["🔇 Sensory details", "Noise, crowds, lighting, and quiet spaces."],
-      [
-        "📍 Location search",
-        "Find nearby options when online services are added.",
-      ],
-    ],
-  );
+  view.innerHTML = `<section class="hero"><h1>📚 Resources</h1><p>Open the app’s practical guides and tools from one place.</p></section><div class="grid section-grid">
+    <button class="card-button" data-go="speech"><span class="emoji">🗣️</span><strong>Communication</strong><small>Speech tracking, ASL, AAC, apps, oral ties, and visual supports.</small></button>
+    <button class="card-button" data-go="sensory"><span class="emoji">🫧</span><strong>Sensory support</strong><small>Sensory systems, patterns, triggers, clothing, and regulation tools.</small></button>
+    <button class="card-button" data-go="sleep"><span class="emoji">🌙</span><strong>Sleep</strong><small>Routines, preferences, sleep environments, magnesium, beds, and products.</small></button>
+    <button class="card-button" data-go="health"><span class="emoji">🏥</span><strong>Medical advocacy & health</strong><small>Appointment tools, provider reports, medical letters, labs, and health education.</small></button>
+    <button class="card-button" data-go="education"><span class="emoji">🎓</span><strong>Educational options</strong><small>IEPs, 504 plans, homeschooling, school choices, and letter templates.</small></button>
+    <button class="card-button" data-go="skills"><span class="emoji">📚</span><strong>Learning & skill building</strong><small>Strengths-first learning, daily living skills, potty training, and practical supports.</small></button>
+    <button class="card-button" data-go="fun"><span class="emoji">🎡</span><strong>ASD Friendly Fun</strong><small>Accessible destinations, sensory-friendly programs, films, cruises, and national parks.</small></button>
+    <button class="card-button" data-go="caregiver"><span class="emoji">💛</span><strong>Caregiver resources</strong><small>Education, benefits, safety, therapy, terms, planning, and caregiver tools.</small></button>
+  </div>`;
+  bindRouteButtons();
 }
 // Each entry already has a place for future media. Empty sources create no
 // image or video elements, so this browser build carries no media overhead.
@@ -2858,7 +2827,6 @@ async function renderCaregiver() {
     <button id="caregiverCalendar" class="card-button"><strong>📅 Calendar</strong><small>${upcoming} upcoming ${upcoming === 1 ? "appointment" : "appointments"}.</small></button>
     <button id="caregiverTodos" class="card-button"><strong>✅ To-do list</strong><small>${activeTodos} active ${activeTodos === 1 ? "task" : "tasks"}.</small></button>
     <button id="caregiverReflections" class="card-button"><strong>📝 Caregiver Reflections</strong><small>${reflectionCount} saved ${reflectionCount === 1 ? "entry" : "entries"} • searchable personal journal.</small></button>
-    <button id="caregiverSupportMessaging" class="card-button"><strong>🤝 Support messaging</strong><small>Preview the planned caregiver support service, topics, safeguards, and limits.</small></button>
   </div>`;
   $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
   $("#caregiverEmergencyContacts").onclick = openEmergencyContacts;
@@ -2875,7 +2843,6 @@ async function renderCaregiver() {
   $("#caregiverCalendar").onclick = openCaregiverCalendar;
   $("#caregiverTodos").onclick = () => openTodoList("active");
   $("#caregiverReflections").onclick = openCaregiverReflections;
-  $("#caregiverSupportMessaging").onclick = openSupportMessagingInfo;
   document
     .querySelectorAll(".future-feature")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));

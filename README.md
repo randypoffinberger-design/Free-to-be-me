@@ -1,4 +1,12 @@
-# More than Measured™ v0.9.7 Sync Alpha
+# More than Measured™ v0.9.8 Sync Alpha
+
+## v0.9.8 Sync Alpha changes
+
+- Added two caregiver-supplied Sleep Products links and four caregiver-supplied Sensory Products links with neutral descriptions and safety reminders.
+- Replaced the Resources placeholder with working links to communication, sensory, sleep, health, education, skill-building, ASD Friendly Fun, and caregiver sections.
+- Connected My Child's Provider Summary card to the existing provider-report builder.
+- Hid Support Messaging from Caregiver Corner while preserving its prepared future implementation in the code.
+- Removed the obsolete Explore route and placeholder, which ASD Friendly Fun has replaced.
 
 ## v0.9.7 Sync Alpha changes
 
