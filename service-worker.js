@@ -1,13 +1,29 @@
-const CACHE='ftbm-v0.9.5-sync-alpha';
+const CACHE='ftbm-v0.9.6-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.9.5',
-  './sync.js?v=0.9.5',
-  './app.js?v=0.9.5',
+  './styles.css?v=0.9.6',
+  './sync.js?v=0.9.6',
+  './app.js?v=0.9.6',
   './assets/home/homepage.jpeg',
   './assets/guides/oral-ties-guide.png',
-  './assets/guides/oral-dysfunction-screening-tool.jpeg'
+  './assets/guides/oral-dysfunction-screening-tool.jpeg',
+  './assets/visual-guides/autism-can-look-different.webp',
+  './assets/visual-guides/behavior-is-communication.webp',
+  './assets/visual-guides/child-ssi-money.webp',
+  './assets/visual-guides/communication-growth.webp',
+  './assets/visual-guides/distress-at-home.webp',
+  './assets/visual-guides/distress-unsafe.webp',
+  './assets/visual-guides/nurture-confidence.webp',
+  './assets/visual-guides/sensory-differences.webp',
+  './assets/visual-guides/sensory-inputs-regulation.webp',
+  './assets/visual-guides/sensory-regulation-strategies.webp',
+  './assets/visual-guides/stimming-examples.webp',
+  './assets/visual-guides/supporting-autistic-children.webp',
+  './assets/visual-guides/supporting-emotional-regulation.webp',
+  './assets/visual-guides/things-autistic-children-want-known.webp',
+  './assets/visual-guides/understanding-autistic-meltdowns.webp',
+  './assets/visual-guides/waiting-taking-turns.webp'
 ];
 const OPTIONAL_ASSETS=[
   './manifest.webmanifest',

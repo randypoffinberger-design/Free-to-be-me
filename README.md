@@ -1,4 +1,12 @@
-# More than Measured™ v0.9.5 Sync Alpha
+# More than Measured™ v0.9.6 Sync Alpha
+
+## v0.9.6 Sync Alpha changes
+
+- Reviewed 22 supplied image files and removed exact copies plus repeated-topic revisions
+- Added 16 distinct visual guides to their relevant Caregiver Corner, Sensory Support, Skill Building, Speech & Language, Common Terms, Benefits, Signs of Autism, and Aggressive Behaviors cards
+- Converted the guides to compact WebP assets, reducing about 50 MB of selected PNG source images to about 3.3 MB while retaining full-size zoom readability
+- Added lazy-loading thumbnails and consistent in-app tap, pinch, zoom, and return-to-card behavior
+- Cached every visual guide for offline use
 
 ## v0.9.5 Sync Alpha changes
 
