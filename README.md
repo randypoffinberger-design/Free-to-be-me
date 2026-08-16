@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.3 Sync Alpha
+# More than Measured™ v0.9.4 Sync Alpha
+
+## v0.9.4 Sync Alpha changes
+- Added the missing Triquetra Kids L-Methylfolate 5-MTHF + Methyl B12 liquid product
+- Replaced broad or non-working liquid supplement links with verified direct manufacturer product pages
+- Added a plain-language comparison showing which active B-vitamin forms each current liquid label includes or omits
+- Reworked Oral Ties guidance to distinguish treatment of a demonstrated current functional restriction from unsupported preventive release for possible future problems
+- Added clearer examples of when release may be considered and which specialists should evaluate speech, feeding, dental, jaw, or sleep concerns
 
 ## v0.9.3 Sync Alpha changes
 - Changed the chart viewer to a native modal dialog so it opens above the existing Oral Ties dialog on iOS
