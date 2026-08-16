@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.4-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.5-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -1981,7 +1981,7 @@ function openMethylatedProductsGuide(){
     ["Unflavored powders","Simple Spectrum Nutritional Support","Unflavored multi-nutrient powder marketed for children with autism or sensory needs. Its current label lists active folate and B6 forms plus magnesium; it contains many ingredients, so check every dose and avoid stacking.","https://simplespectrumsupplement.com/products/simple-spectrum-nutritional-support-supplement"],
     ["Unflavored powders","EllaOla Toddler or Kids Essential Multivitamin","Single-serve unflavored powder with separate age-based toddler and 4+ formulas. Verify the current folate/B12 forms, full nutrient amounts, and age directions on the label.","https://ellaola.com/collections/multivitamins"],
     ["Unflavored powders","You+Yours Tasteless B Complex","A concentrated B-complex powder advertised as tasteless. Confirm current availability, ingredient forms, scoop size, and pediatric directions directly with the manufacturer before use.","https://youandyourshealth.com/"],
-    ["Liquid options","Triquetra Kids L-Methylfolate 5-MTHF + Methyl B12","The product Sheree identified as missing. The current manufacturer page prominently lists liquid L-methylfolate (active B9) with methylcobalamin (active B12), in berry and unflavored options. Verify the current Supplement Facts and age-based serving before use.","https://triquetrahealth.com/products/kids-methylfolate-plus-b12-cofactor"],
+    ["Liquid options","Triquetra Kids L-Methylfolate 5-MTHF + Methyl B12","This liquid option contains L-methylfolate (active B9) with methylcobalamin (active B12) and is available in berry and unflavored varieties. Verify the current Supplement Facts and age-based serving before use.","https://triquetrahealth.com/products/kids-methylfolate-plus-b12-cofactor"],
     ["Liquid options","JoySpring MethylBee","The current direct product page lists 5-MTHF, methyl B12, and P5P (active B6) for children age 3+. It is not a complete multivitamin and the current page does not list active B2 as a featured ingredient.","https://joyspringvitamins.com/products/joyspring-methylated-vitamins-for-kids"],
     ["Liquid options","MaryRuth's Organic Toddler Multivitamin Liquid Drops","This is a broader toddler multivitamin, not a complete methylated B-complex. Its current label lists methylcobalamin B12 but no folate; B6 is pyridoxine HCl and B2 is ordinary riboflavin. Use the direct product page and exact current label.","https://www.maryruthorganics.com/products/organic-toddler-multivitamin-liquid-drops"],
     ["Chewables and gummies","SmartyPants Kids or Toddler Multi & Omegas","Gummy formulas vary by age and product. Check serving size—often more than one gummy—added sugars, choking risk, and nutrients already supplied elsewhere.","https://www.smartypantsvitamins.com/collections/kids"],

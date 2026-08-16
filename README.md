@@ -1,4 +1,8 @@
-# More than Measured™ v0.9.4 Sync Alpha
+# More than Measured™ v0.9.5 Sync Alpha
+
+## v0.9.5 Sync Alpha changes
+
+- Removed a caregiver's name from the user-facing methylated supplement comparison and replaced it with neutral product information.
 
 ## v0.9.4 Sync Alpha changes
 - Added the missing Triquetra Kids L-Methylfolate 5-MTHF + Methyl B12 liquid product
