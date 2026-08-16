@@ -1,4 +1,8 @@
-# More than Measured™ v0.9.6 Sync Alpha
+# More than Measured™ v0.9.7 Sync Alpha
+
+## v0.9.7 Sync Alpha changes
+
+- Replaced the portrait Supporting Emotional Regulation guide with the requested 1536×1024 landscape version in Caregiver Corner → Regulation & Confidence.
 
 ## v0.9.6 Sync Alpha changes
 
