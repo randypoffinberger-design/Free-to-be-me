@@ -1,10 +1,10 @@
-const CACHE='ftbm-v0.9.10-sync-alpha';
+const CACHE='ftbm-v0.9.11-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.9.10',
-  './sync.js?v=0.9.10',
-  './app.js?v=0.9.10',
+  './styles.css?v=0.9.11',
+  './sync.js?v=0.9.11',
+  './app.js?v=0.9.11',
   './assets/home/homepage.jpeg',
   './assets/guides/oral-ties-guide.png',
   './assets/guides/oral-dysfunction-screening-tool.jpeg',

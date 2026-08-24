@@ -1,4 +1,9 @@
-# More than Measured™ v0.9.10 Sync Alpha
+# More than Measured™ v0.9.11 Sync Alpha
+
+## v0.9.11 Sync Alpha changes
+
+- Restored the full ASD-relevant design details for all 15 outdoor playgrounds, including elopement safeguards, sightlines, sensory surfacing, quieter materials, vestibular play, communication supports, predictable zones, and de-escalation spaces.
+- Added a planning reminder that fencing, gates, equipment, and quiet areas can change and should be confirmed when essential to a child's safety or regulation.
 
 ## v0.9.10 Sync Alpha changes
 
