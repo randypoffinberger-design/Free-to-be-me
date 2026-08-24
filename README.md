@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.9 Sync Alpha
+# More than Measured™ v0.9.10 Sync Alpha
+
+## v0.9.10 Sync Alpha changes
+
+- Expanded Educational Options with nine linked structured, online, specialized, and subject-specific learning programs.
+- Distinguished complete curricula, accredited schools, individual-class marketplaces, downloadable teaching resources, and focused interventions.
+- Added practical comparison criteria for pacing, visual structure, interests, participation methods, parent controls, cost, accessibility, and accreditation.
 
 ## v0.9.9 Sync Alpha changes
 

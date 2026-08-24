@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.9-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.10-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2372,16 +2372,38 @@ function renderEducationOptions() {
       <div class="education-links">${educationLink("https://www.ed.gov/birth-grade-12-education/education-choice/state-regulation-of-private-and-home-schools", "State home and private-school rules", "Choose your state and review its requirements.", "U.S. Department of Education")}</div>
     </div></details>
 
-    <details class="education-card"><summary>🧩 Curriculum and teaching resources</summary><div class="education-body">
-      <p>“Autism-friendly” is not one teaching style. Look for flexible subject levels, clear visual directions, predictable routines, multiple ways to answer, adjustable pacing, and lessons that connect with your child’s interests. Try samples before paying when possible.</p>
+    <details class="education-card"><summary>🧩 Structured, online, and specialized programs</summary><div class="education-body">
+      <p>These options are not interchangeable. Some provide a complete curriculum or accredited online school, while others offer individual classes, downloadable materials, or a focused learning intervention. “Autism-friendly” is not one teaching style, and a certification or program label does not guarantee a good fit for every child.</p>
+
+      <h3>Structured and online programs</h3>
       <div class="education-links">
-        ${educationLink("https://www.time4learning.com/", "Time4Learning", "A paid PreK–12 general homeschool curriculum with adjustable grade levels and parent planning tools.", "Complete curriculum • Commercial")}
+        ${educationLink("https://www.time4learning.com/", "Time4Learning", "A self-paced PreK–12 general homeschool curriculum with multimedia lessons and parent planning and reporting tools. Families can adjust pacing and course placement; it is a curriculum provider rather than an accredited school.", "General homeschool curriculum • Self-paced • Commercial")}
+        ${educationLink("https://miacademy.co/homeschool-curriculum/homeschooling-your-way/special-needs/certified-autism-resource/", "Miacademy and MiaPrep", "Flexible online curriculum spanning elementary through high school platforms, with interactive lessons, adjustable pacing, and optional moderated community features. The platforms are recognized by IBCCES as Certified Autism Resources.", "Online curriculum • Self-paced • Certified Autism Resource")}
+        ${educationLink("https://web.teachtown.com/parents/teachtown-basics-for-parents/", "TeachTown Basics", "Computer-delivered and parent-led ABA instruction for learners with moderate to severe disabilities, including autism. It targets adaptive, cognitive, language, math, and social-emotional skills and is an intervention rather than a complete general curriculum.", "Structured intervention • Developmentally ages 2–7 • ABA-based")}
+        ${educationLink("https://outschool.com/online-classes/neurodivergent-homeschool", "Outschool", "A marketplace for live small-group classes, one-to-one tutoring, social groups, and self-paced classes, including options designed for neurodivergent learners. Instructor experience and accommodations vary by class.", "Individual classes • Live, 1:1, or self-paced • Not a complete school")}
+        ${educationLink("https://www.acellusacademy.com/online-homeschool-program/", "Acellus Academy", "An accredited K–12 online school with self-paced courses, year-round enrollment, core subjects, electives, and high-school diploma pathways. It is not specifically an autism program, so families should evaluate sensory, communication, and support fit.", "Accredited online school • K–12 • Self-paced")}
+        ${educationLink("https://brilliantmicroschools.org/", "Brilliant Microschools", "An accredited K–12 online private school for students who learn differently, offering small live classes, certified teachers, structured routines, flexible pacing, and personalized learning pathways.", "Accredited online school • K–12 • Small live classes")}
+      </div>
+
+      <h3>Specialized and subject-specific curricula</h3>
+      <div class="education-links">
+        ${educationLink("https://shop.theautismhelper.com/pages/curriculum", "The Autism Helper Curriculum", "Visual, leveled curriculum materials across language arts, math, science, social studies, functional literacy, and functional math. These are teaching resources rather than an accredited school.", "Leveled special-education materials • Downloadable • Commercial")}
+        ${educationLink("https://www.gemmlearning.com/programs/fast-forword/", "Gemm Learning and Fast ForWord", "A remotely coached, adaptive reading and language intervention that works on processing, working memory, attention, sequencing, phonics, fluency, and comprehension. It is a focused intervention, not a complete homeschool curriculum.", "Reading and language intervention • Ages 5+ • Remote coaching")}
+        ${educationLink("https://www.theautismoasis.com/programs", "The Autism Oasis", "A homeschool program designed for nonspeaking and minimally speaking autistic learners, with reading, math, science, social studies, and art. An optional AAC module supports academic and everyday communication.", "Specialized homeschool curriculum • Nonspeaking learners • Optional AAC")}
+      </div>
+
+      <h3>Key features to look for</h3>
+      <ul><li><strong>Flexible pacing:</strong> The freedom to slow down, repeat, pause, or move ahead based on daily sensory, communication, and attention needs.</li><li><strong>Visual and predictable structure:</strong> Clear directions, visual schedules, consistent lesson patterns, and interfaces without unnecessary sensory clutter.</li><li><strong>Interest-led adaptations:</strong> Space to use the child’s special interests as a bridge to engagement, practice, communication, and deeper learning.</li><li><strong>Multiple ways to participate:</strong> Speech should not be the only way to answer. Look for typing, pointing, selecting, gestures, hands-on work, and AAC access.</li><li><strong>Meaningful parent controls:</strong> Preview lessons, adjust placement by subject, monitor progress, protect privacy, and turn off distracting or unwanted features.</li></ul>
+
+      <h3>Additional autism teaching resources</h3>
+      <div class="education-links">
         ${educationLink("https://www.n2y.com/unique-learning-system/accessible-content/", "Unique Learning System", "Standards-based differentiated academics and life-skills content for students with complex learning needs.", "Special education curriculum • Commercial")}
         ${educationLink("https://starautismprogram.com/curriculum/star-program", "STAR Program", "A structured autism-focused program covering communication, academics, routines, play, and social skills.", "Autism curriculum • Commercial • ABA-based")}
         ${educationLink("https://starautismprogram.com/curriculum/links-curriculum", "LINKS Curriculum", "School, community, vocational, and independence instruction for older learners.", "Older learners • Commercial • ABA-based")}
         ${educationLink("https://afirm.fpg.unc.edu/afirm-modules", "AFIRM Modules", "Step-by-step modules and downloadable materials for evidence-based autism practices.", "Free teaching support • Not a full core curriculum")}
         ${educationLink("https://autisminternetmodules.org/", "Autism Internet Modules", "Learning modules on communication, sensory needs, structured teaching, transitions, and other topics.", "Free learning resource • Not a full core curriculum")}
-      </div><p class="hint">These links are starting points, not endorsements. Methods that work well for one child may not fit another, and prices or access can change.</p>
+      </div>
+      <p class="hint">These links are starting points, not endorsements. Review samples, accessibility, teaching philosophy, cancellation terms, accreditation when relevant, total cost, device requirements, and current state homeschool rules before paying.</p>
     </div></details>
 
     <details class="education-card"><summary>🏫 Private, alternative, and specialized schools</summary><div class="education-body">
