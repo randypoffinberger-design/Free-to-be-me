@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.11 Sync Alpha
+# More than Measured™ v0.9.12 Sync Alpha
+
+## v0.9.12 Sync Alpha changes
+
+- Added “10 Things an Autistic Child May Want Adults to Know” under Caregiver Corner → Signs of Autism.
+- Kept the existing “12 Things Autistic Children Want You to Know” guide because the new guide covers a distinct set of perspectives and support needs.
+- Optimized the new guide for lightweight offline use while retaining tap-to-enlarge and zoom support.
 
 ## v0.9.11 Sync Alpha changes
 

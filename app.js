@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.11-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.12-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2220,6 +2220,7 @@ const INFO_GUIDE_VISUALS = {
   "🧭 Signs of autism": [
     ["autism-can-look-different.webp", "Autism can look different"],
     ["things-autistic-children-want-known.webp", "12 things autistic children want you to know"],
+    ["things-autistic-child-may-want-adults-to-know.webp", "10 things an autistic child may want adults to know"],
   ],
   "🫶 Understanding aggressive behaviors": [
     ["behavior-is-communication.webp", "Behavior is communication"],

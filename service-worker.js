@@ -1,10 +1,10 @@
-const CACHE='ftbm-v0.9.11-sync-alpha';
+const CACHE='ftbm-v0.9.12-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.9.11',
-  './sync.js?v=0.9.11',
-  './app.js?v=0.9.11',
+  './styles.css?v=0.9.12',
+  './sync.js?v=0.9.12',
+  './app.js?v=0.9.12',
   './assets/home/homepage.jpeg',
   './assets/guides/oral-ties-guide.png',
   './assets/guides/oral-dysfunction-screening-tool.jpeg',
@@ -21,6 +21,7 @@ const CRITICAL_ASSETS=[
   './assets/visual-guides/stimming-examples.webp',
   './assets/visual-guides/supporting-autistic-children.webp',
   './assets/visual-guides/supporting-emotional-regulation.webp',
+  './assets/visual-guides/things-autistic-child-may-want-adults-to-know.webp',
   './assets/visual-guides/things-autistic-children-want-known.webp',
   './assets/visual-guides/understanding-autistic-meltdowns.webp',
   './assets/visual-guides/waiting-taking-turns.webp'
