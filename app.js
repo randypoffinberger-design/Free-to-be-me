@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.8-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.9-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2096,6 +2096,23 @@ async function renderSleepSanctuary() {
 }
 
 const FRIENDLY_PLACES={
+  "🛝 Outdoor playgrounds":[
+    ["Shane’s Inspiration Playground","4730 Crystal Springs Dr, Los Angeles, CA 90027","Inclusive Griffith Park playground created for children of all abilities, with accessible play experiences and an emphasis on shared, social play.","https://recreation.parks.lacity.gov/playgrounds/griffithUAPk"],
+    ["Harper’s Playground at Arbor Lodge Park","Portland, OR 97217","Nature-rich, universally accessible playground with gradual ramps, adaptive play equipment, a spinner, and sand-and-water play.","https://www.harpersplayground.org/playgrounds/harpers-playground/"],
+    ["Friendship Hill Inclusive Playground","410 S Carroll St, Wabash, IN 46992","Inclusive playground for children and caregivers of all abilities, with smooth surfacing, accessible paths, and shared play structures.","https://www.cityofwabash.com/egov/apps/locations/facilities.egov?id=26&view=detail"],
+    ["Anna & Abby’s Yard at Rogers Park","2421 17th Ave, Forest Grove, OR 97116","Nature-inspired inclusive playground with accessible play equipment, walking paths, and space designed for connection and imaginative play.","https://www.harpersplayground.org/playgrounds/anna-abbys-yard/"],
+    ["Clemyjontri Park","6317 Georgetown Pike, McLean, VA 22101","Two-acre playground where children with sensory, developmental, and mobility disabilities can play alongside peers, with four distinct play zones and connected ramps.","https://www.fairfaxcounty.gov/parks/clemyjontri"],
+    ["Jake’s Place at Challenge Grove Park","101 Bortons Mill Rd, Cherry Hill, NJ 08034","All-inclusive playground created so children and adults of different abilities can play and interact together.","https://our-view.com/build-jakes-place"],
+    ["H!GH Five Park at Glasgow Regional Park","2275 Pulaski Hwy, Newark, DE 19702","Fenced playground created specifically around the needs of children on the autism spectrum, with equipment selected for varied sensory and movement needs.","https://www.newcastlede.gov/m/newsflash/Home/Detail/1192"],
+    ["Tatum’s Garden","1 Maryal Dr, Salinas, CA 93906","Privately managed, community-built inclusive playground with accessible play experiences, including its signature treehouse.","https://www.tatumsgarden.org/"],
+    ["Possibility Playground at Upper Lake Park","498 N Lake St, Port Washington, WI 53074","Universally accessible playground overlooking Lake Michigan that integrates play for children with physical, cognitive, and developmental disabilities.","https://possibilityplayground.org/"],
+    ["SENSES Park","2296 Camelia Dr, Kissimmee, FL 34743","Autism-focused all-inclusive playground with structures spaced apart for exploration and less-intense social play; the play space is wheelchair accessible.","https://www.osceola.org/Community/Parks-and-Public-Lands/Find-a-Park-or-Facility/SENSES-Park"],
+    ["Wing-Dickerson Park Playground","Allens Ln near Carpenter St, Woodbury, NJ 08096","Renovated municipal playground beside courts and open park space. The city does not currently publish specialized autism or sensory supports, so preview the setting before visiting.","https://woodbury.nj.us/facilities/facility/details/WingDickerson-Park-4"],
+    ["Norwood Park Universal Accessibility Park","1885 Morgantown Ave, Fairmont, WV 26554","West Virginia universal-accessibility park with large play structures, wheelchair-accessible equipment, and a zipline for varied ability levels.","https://www.fairmontwv.gov/155/Parks-Recreation"],
+    ["Hope Park at Frisco Commons","8000 McKinney Rd, Frisco, TX 75033","All-abilities playground with rubberized footing, a sensory area, adaptive equipment, and separate play areas for different ages.","https://www.friscotexas.gov/facilities/facility/details/Hope-Park-121"],
+    ["Jaycee Playground at Wirth Park","2000 N Calhoun Rd, Brookfield, WI 53005","Inclusive playground designed so children of all ages and abilities can play and socialize together.","https://www.ci.brookfield.wi.us/1072/Wirth-Park-Playground"],
+    ["Ridgeview Park Playground","700 S Magnolia Ave, Waynesboro, VA 22980","Creative municipal playground with separate age-appropriate equipment and caregiver seating. Specialized autism or sensory features are not listed by the city, so preview the park before visiting.","https://www.waynesboro.va.us/197/Playground"]
+  ],
   "🎢 Theme parks":[
     ["Sesame Place","Langhorne, PA & San Diego, CA","Certified Autism Center resources, sensory guides, quiet spaces, hearing protection, and ride-accessibility support.","https://sesameplace.com/philadelphia/help/autism-resources/"],
     ["LEGOLAND Resorts","California, Florida & New York","Certified staff, attraction sensory guides, quiet or low-sensory spaces, and disability-access programs. Rules vary by resort.","https://www.legoland.com/new-york/plan-your-visit/know-before-you-go/special-situations-accessibility/certified-autism-center/"],

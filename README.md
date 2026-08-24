@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.8 Sync Alpha
+# More than Measured™ v0.9.9 Sync Alpha
+
+## v0.9.9 Sync Alpha changes
+
+- Added 15 linked outdoor playgrounds to ASD Friendly Fun, using official park or municipal pages.
+- Corrected park names and addresses against current official listings.
+- Used verified inclusion and sensory details and added preview-before-visiting notes where specialized autism supports are not documented.
 
 ## v0.9.8 Sync Alpha changes
 
