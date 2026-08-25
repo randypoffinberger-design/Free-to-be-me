@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.12-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.13-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2641,6 +2641,20 @@ function renderSafetyInformation() {
       <div class="education-links">${safetyLink("https://projectlifesaver.org/about-us/where-we-are/", "Find a Project Lifesaver program", "Check whether a participating public-safety agency serves your area.", "Project Lifesaver International")}</div>
     </div></details>
 
+    <details class="education-card"><summary>🚓 Autism and special-needs police registries</summary><div class="education-body">
+      <h3>What is an autism police registry?</h3>
+      <p>An autism or special-needs police registry is a <strong>voluntary local database</strong>. When a program is available, an individual or family can share important information with local law enforcement, 911 dispatchers, emergency management, or another participating public-safety agency before an emergency occurs.</p>
+      <ul><li><strong>Faster, better-informed response:</strong> Dispatchers may be able to alert responding officers before they arrive at a home that an occupant has autism, a communication difference, or another support need.</li><li><strong>Elopement support:</strong> If the person goes missing, responders may already have a current photograph, physical description, communication information, likely destinations, and favorite locations.</li></ul>
+
+      <h3>What information may be included?</h3>
+      <ul><li><strong>Personal details:</strong> Name, home address, emergency contacts, and caregiver phone numbers.</li><li><strong>Physical description:</strong> Height, weight, hair color, identifying features, and a recent photograph.</li><li><strong>Communication style:</strong> Whether the person speaks, is nonspeaking, may not respond to their name, or uses an AAC device, pictures, gestures, or sign language.</li><li><strong>Triggers and behaviors:</strong> Sensitivities to loud noises, sirens, flashing lights, touch, crowds, or particular approaches, along with effective calming and de-escalation techniques.</li><li><strong>Favorite or likely places:</strong> Parks, playgrounds, bodies of water, relatives' homes, stores, transit locations, or other places the person may wander toward.</li><li><strong>Other response needs:</strong> Medical risks, allergies, seizure information, attraction to water or traffic, how to approach safely, and what may increase distress.</li></ul>
+
+      <h3>How to register</h3>
+      <ol><li><strong>Contact local law enforcement:</strong> Call the non-emergency number for the city police department or county sheriff's office and ask whether it maintains an autism, special-needs, vulnerable-person, or emergency registry.</li><li><strong>Check county 911 services:</strong> A regional 911 center, emergency communications office, or emergency-management agency may manage a “special consideration,” “premise alert,” or similar database, sometimes through an online form.</li><li><strong>Ask how the program works:</strong> Find out which agencies and responders can access the information, whether it follows the person away from the registered address, how it is protected, how long it is retained, and how to correct or remove it.</li><li><strong>Keep it updated:</strong> Submit a newer photograph as the person ages and update changes to height, weight, appearance, communication, favorite locations, phone numbers, emergency contacts, or home address.</li></ol>
+
+      <div class="banner"><strong>Important limits:</strong> These programs are not available everywhere and are not a national registry. Registration cannot guarantee a particular response and may not be visible to neighboring jurisdictions. It does not replace identification, a current emergency profile, layered wandering safeguards, or calling 911 immediately when a vulnerable person is missing or in danger.</div>
+    </div></details>
+
     <details class="education-card"><summary>🪪 Identification for nonspeaking or vulnerable children</summary><div class="education-body">
       <p>An ID item can speak for a child who cannot reliably give their name, address, or caregiver’s number—especially when frightened or overwhelmed.</p>
       <ul><li>Medical ID bracelet, silicone band, shoe tag, necklace, watch-band tag, or secure clothing label.</li><li>Communication card in a pocket, backpack, AAC case, school bag, or emergency pouch.</li><li>Vehicle seat-belt sleeve or backpack tag that tells a responder where to find emergency information.</li><li>Temporary ID band or written caregiver number for fairs, parks, travel, and crowded events.</li></ul>
@@ -2677,7 +2691,6 @@ function renderSafetyInformation() {
 
     <details class="education-card"><summary>🏠 Home, fire, medication, and household safety</summary><div class="education-body">
       <ul><li>Anchor furniture and televisions; secure medications, cleaners, sharp objects, firearms, lighters, and button batteries.</li><li>Use appropriate window guards without blocking emergency escape.</li><li>Check smoke and carbon-monoxide alarms and consider visual, vibrating, or voice options when sound alone may not work.</li><li>Practice a short fire-escape routine. Tell firefighters if the child may hide, resist touch, run, or not respond to spoken directions.</li><li>Use visual labels or locks for high-risk spaces while keeping safe spaces easy to reach.</li><li>Prepare for power loss if AAC, medication refrigeration, feeding, monitoring, or sensory-regulation equipment needs electricity.</li></ul>
-      <p>Ask the local 911 center, police, sheriff, or fire department whether they offer a voluntary vulnerable-person registry, premise alert, or emergency profile. Names and privacy rules vary, so ask who can see it and how to update or remove it.</p>
     </div></details>
 
     <details class="education-card"><summary>🏫 School, outings, internet, and growing independence</summary><div class="education-body">

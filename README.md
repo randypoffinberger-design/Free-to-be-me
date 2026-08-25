@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.12 Sync Alpha
+# More than Measured™ v0.9.13 Sync Alpha
+
+## v0.9.13 Sync Alpha changes
+
+- Added a dedicated Autism and Special-Needs Police Registries guide under ASD Safety.
+- Included how voluntary registries may help responders, what information families may submit, how to find and register with a local program, and what details should be kept current.
+- Added privacy, jurisdiction, availability, and response-limit reminders without removing the original registry information.
 
 ## v0.9.12 Sync Alpha changes
 
