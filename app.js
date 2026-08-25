@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.13-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.14-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2148,7 +2148,25 @@ const FRIENDLY_PLACES={
 function renderAsdFriendlyFunExpanded(){
   renderAsdFriendlyFun();
   const cards=document.querySelectorAll(".education-card"), html=Object.entries(FRIENDLY_PLACES).map(([heading,places])=>`<h3>${heading}</h3><div class="friendly-place-list">${places.map(([name,location,description,url])=>`<a href="${url}" target="_blank" rel="noopener"><strong>${esc(name)}</strong><small>${esc(location)}</small><span>${esc(description)}</span></a>`).join("")}</div>`).join("");
-  if(cards[1])cards[1].insertAdjacentHTML("afterend",`<details class="education-card"><summary>🗺️ Autism-friendly places to explore</summary><div class="education-body"><p>Programs, certifications, admission rules, and event schedules change. Confirm accommodations before buying tickets. Certification usually means training and planning resources; it does not guarantee that every space will be quiet or fit every visitor.</p><p class="hint"><strong>Playground planning:</strong> Equipment, fencing, gates, surfacing, quiet areas, and operating conditions can change. The descriptions below summarize published and community-supplied design information; contact the park before a long trip when a particular safety or sensory feature is essential.</p>${html}<div class="banner"><strong>Federal Access Pass detail:</strong> At per-vehicle sites the pass generally covers the pass holder and occupants of one noncommercial vehicle. At per-person sites it generally covers the pass holder plus up to three adults; children under 16 are ordinarily admitted free. Concessions, special permits, and every recreation fee are not automatically included.</div></div></details>`);
+  const socialization=`<details class="education-card"><summary>🤝 Socialization</summary><div class="education-body">
+    <p>Social opportunities do not have to look like a traditional playgroup. Some children connect best through a shared interest, online game, structured activity, one-to-one buddy, or small group with clear expectations. Check the current age range, communication expectations, supervision, cost, location, and availability before enrolling.</p>
+    <h3>National organizations and online clubs</h3>
+    <div class="education-links">
+      <a class="education-link" href="https://aane.org/services-programs/group-services/social-groups-activities/" target="_blank" rel="noopener noreferrer"><strong>AANE social groups and activities</strong><span>Virtual and regional opportunities for autistic teens, young adults, adults, and family members. Current groups, ages, locations, fees, and registration requirements vary.</span><small>View current AANE groups ↗</small></a>
+      <a class="education-link" href="https://www.friendinmegroup.org/" target="_blank" rel="noopener noreferrer"><strong>Friend in Me</strong><span>Free, flexible weekly Zoom sessions pairing children with disabilities and student volunteers for guided one-to-one games, conversation, or shared activities. Parents or aides may help when needed.</span><small>Open official program ↗</small></a>
+      <a class="education-link" href="https://outschool.com/online-classes/autism-social-clubs" target="_blank" rel="noopener noreferrer"><strong>Outschool interest-based social clubs</strong><span>Live online classes and clubs built around interests such as gaming, art, LEGO, Pokémon, and conversation, including options advertised for autistic and neurodivergent children and teens.</span><small>Browse current clubs ↗</small></a>
+    </div>
+    <h3>Structured programs and local groups</h3>
+    <div class="education-links">
+      <a class="education-link" href="https://teams.semel.ucla.edu/peers" target="_blank" rel="noopener noreferrer"><strong>UCLA PEERS® programs</strong><span>Manualized, evidence-based social-skills programs for preschoolers, adolescents, young adults, and adults. Programs teach and practice friendship and relationship skills; ages, caregiver involvement, format, cost, and provider availability differ.</span><small>Programs and provider information ↗</small></a>
+      <a class="education-link" href="https://www.friendshipcircle.com/locations/" target="_blank" rel="noopener noreferrer"><strong>Friendship Circle chapters</strong><span>Local chapters may offer friendship matching, recreation, camps, clubs, family events, or supervised activities with volunteers. Search the chapter directory and confirm current local programs.</span><small>Find a chapter ↗</small></a>
+      <a class="education-link" href="https://autismsociety.org/" target="_blank" rel="noopener noreferrer"><strong>Autism Society affiliates</strong><span>Regional affiliates may coordinate park meetups, family events, support groups, adaptive recreation, teen activities, or referrals to other local opportunities.</span><small>Find local support ↗</small></a>
+      <a class="education-link" href="https://ourcircle.org/" target="_blank" rel="noopener noreferrer"><strong>Our Circle — formerly Spectrum Circle</strong><span>A family-focused app for connecting with nearby parents, joining local groups, sharing playdates, and discovering or creating inclusive meetups for children with support needs.</span><small>Open official app site ↗</small></a>
+    </div>
+    <div class="banner"><strong>Meetup safety:</strong> A listing, group membership, volunteer match, identity check, or professional title is not a guarantee of safety or fit. Review supervision and screening practices, protect the child's private information, involve the child in the decision when possible, and use a public setting with a caregiver present for first meetings.</div>
+  </div></details>`;
+  const places=`<details class="education-card"><summary>🗺️ Autism-friendly places to explore</summary><div class="education-body"><p>Programs, certifications, admission rules, and event schedules change. Confirm accommodations before buying tickets. Certification usually means training and planning resources; it does not guarantee that every space will be quiet or fit every visitor.</p><p class="hint"><strong>Playground planning:</strong> Equipment, fencing, gates, surfacing, quiet areas, and operating conditions can change. The descriptions below summarize published and community-supplied design information; contact the park before a long trip when a particular safety or sensory feature is essential.</p>${html}<div class="banner"><strong>Federal Access Pass detail:</strong> At per-vehicle sites the pass generally covers the pass holder and occupants of one noncommercial vehicle. At per-person sites it generally covers the pass holder plus up to three adults; children under 16 are ordinarily admitted free. Concessions, special permits, and every recreation fee are not automatically included.</div></div></details>`;
+  if(cards[1])cards[1].insertAdjacentHTML("afterend",`${socialization}${places}`);
 }
 
 function renderResources() {
@@ -2159,7 +2177,7 @@ function renderResources() {
     <button class="card-button" data-go="health"><span class="emoji">🏥</span><strong>Medical advocacy & health</strong><small>Appointment tools, provider reports, medical letters, labs, and health education.</small></button>
     <button class="card-button" data-go="education"><span class="emoji">🎓</span><strong>Educational options</strong><small>IEPs, 504 plans, homeschooling, school choices, and letter templates.</small></button>
     <button class="card-button" data-go="skills"><span class="emoji">📚</span><strong>Learning & skill building</strong><small>Strengths-first learning, daily living skills, potty training, and practical supports.</small></button>
-    <button class="card-button" data-go="fun"><span class="emoji">🎡</span><strong>ASD Friendly Fun</strong><small>Accessible destinations, sensory-friendly programs, films, cruises, and national parks.</small></button>
+    <button class="card-button" data-go="fun"><span class="emoji">🎡</span><strong>ASD Friendly Fun</strong><small>Socialization, accessible destinations, sensory-friendly programs, films, cruises, and national parks.</small></button>
     <button class="card-button" data-go="caregiver"><span class="emoji">💛</span><strong>Caregiver resources</strong><small>Education, benefits, safety, therapy, terms, planning, and caregiver tools.</small></button>
   </div>`;
   bindRouteButtons();

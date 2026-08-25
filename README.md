@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.13 Sync Alpha
+# More than Measured™ v0.9.14 Sync Alpha
+
+## v0.9.14 Sync Alpha changes
+
+- Added a Socialization guide under ASD Friendly Fun with seven linked online, structured, and local connection resources.
+- Included AANE, Friend in Me, Outschool, UCLA PEERS®, Friendship Circle, Autism Society affiliates, and Our Circle.
+- Updated Spectrum Circle to its current name, Our Circle, while retaining the former name so families can recognize it.
+- Added practical fit, privacy, supervision, and first-meeting safety reminders.
 
 ## v0.9.13 Sync Alpha changes
 
