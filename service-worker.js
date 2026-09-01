@@ -1,11 +1,12 @@
-const CACHE='ftbm-v0.9.15-sync-alpha';
+const CACHE='ftbm-v0.9.16-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.9.15',
-  './sync.js?v=0.9.15',
-  './app.js?v=0.9.15',
+  './styles.css?v=0.9.16',
+  './sync.js?v=0.9.16',
+  './app.js?v=0.9.16',
   './assets/home/homepage.jpeg',
+  './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
   './assets/guides/oral-dysfunction-screening-tool.jpeg',
   './assets/visual-guides/autism-can-look-different.webp',

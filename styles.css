@@ -32,6 +32,7 @@ dialog{border:0;border-radius:24px;padding:0;max-width:min(92vw,560px);width:100
 .quote-button{display:block;width:100%;text-align:left;color:var(--ink);cursor:pointer}
 .quote-button span{display:block;margin-top:8px;font-size:.78rem;font-style:normal;color:var(--muted);font-weight:700}
 .illustrated-home{position:relative;width:100%;height:100%;margin:0;overflow:hidden;background:#fff}
+.illustrated-home picture{display:block;width:100%;height:100%}
 .illustrated-home img{display:block;width:100%;max-width:100%;height:100%;object-fit:fill;pointer-events:none;-webkit-user-drag:none}
 .home-hotspot{position:absolute;width:23%;height:13.5%;border:0;border-radius:18px;background:transparent;color:transparent;padding:0}
 .home-hotspot span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -43,9 +44,16 @@ dialog{border:0;border-radius:24px;padding:0;max-width:min(92vw,560px);width:100
 @media(max-width:520px){.home-hotspot{border-radius:10px}}
 @media(min-width:700px){
   .home-route .view{display:grid;place-items:center;background:#f7f2e8}
-  .home-route .topbar{left:50%;right:auto;width:min(100vw,calc(100dvh * .5625));transform:translateX(-50%)}
-  .illustrated-home{width:min(100vw,calc(100dvh * .5625));height:min(100dvh,calc(100vw * 1.7777778));aspect-ratio:9/16}
+  .home-route .topbar{left:50%;right:auto;width:min(100vw,calc(100dvh * 1.7768));transform:translateX(-50%)}
+  .illustrated-home{width:min(100vw,calc(100dvh * 1.7768));height:min(100dvh,calc(100vw * .5628));aspect-ratio:1672/941}
   .illustrated-home img{object-fit:contain}
+  .home-hotspot{width:10.6%;height:29%;border-radius:16px}
+  .home-hotspot.growth,.home-hotspot.communication,.home-hotspot.sleep,.home-hotspot.sensory{top:14%}
+  .home-hotspot.learning,.home-hotspot.medical,.home-hotspot.caregiver-link,.home-hotspot.community{top:43%}
+  .home-hotspot.growth,.home-hotspot.learning{left:56.5%}
+  .home-hotspot.communication,.home-hotspot.medical{left:67.3%}
+  .home-hotspot.sleep,.home-hotspot.caregiver-link{left:78.1%}
+  .home-hotspot.sensory,.home-hotspot.community{left:88.9%}
 }
 
 .speech-totals{display:grid;grid-template-columns:minmax(82px,1.2fr) repeat(4,minmax(50px,1fr));gap:0;margin-top:16px;padding:0;overflow:hidden;text-align:center}.speech-totals>*{padding:10px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.speech-totals>*:nth-child(5n){border-right:0}.speech-totals>*:nth-last-child(-n+5){border-bottom:0}.speech-totals .totals-heading{background:#f3edf8;color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase}.speech-totals .totals-label{text-align:left;font-weight:800}.speech-totals strong{font-size:1.08rem}

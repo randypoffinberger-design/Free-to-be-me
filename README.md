@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.15 Sync Alpha
+# More than Measured™ v0.9.16 Sync Alpha
+
+## v0.9.16 Sync Alpha changes
+
+- Added a separate landscape homepage designed for desktop and landscape tablet screens.
+- Reworked the desktop composition with the title and family scene on the left and the eight navigation icons in a large 4-by-2 grid on the right.
+- Added desktop-specific hotspot positions while preserving the original portrait homepage and hotspot layout on phones.
+- Compressed the new 1672 × 941 artwork to about 228 KB and added it to the offline cache.
 
 ## v0.9.15 Sync Alpha changes
 

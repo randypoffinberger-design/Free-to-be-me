@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.15-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.16-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -233,7 +233,10 @@ function bindRouteButtons() {
 
 async function renderHome() {
   view.innerHTML = `<section class="illustrated-home" aria-label="More than Measured trademark home navigation">
-    <img src="assets/home/homepage.jpeg" alt="More than Measured trademark — celebrating every child’s unique journey" width="864" height="1536">
+    <picture>
+      <source media="(min-width:700px)" srcset="assets/home/homepage-desktop.webp" type="image/webp">
+      <img src="assets/home/homepage.jpeg" alt="More than Measured trademark — celebrating every child’s unique journey" width="864" height="1536">
+    </picture>
     <button class="home-hotspot growth" data-go="child" aria-label="Open Growth Journey and My Child"><span>Growth Journey</span></button>
     <button class="home-hotspot communication" data-go="speech" aria-label="Open Speech and Language Building"><span>Speech/Language Building</span></button>
     <button class="home-hotspot sleep" data-go="sleep" aria-label="Open Sleep Sanctuary"><span>Sleep Sanctuary</span></button>
