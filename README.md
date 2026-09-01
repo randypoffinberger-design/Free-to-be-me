@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.14 Sync Alpha
+# More than Measured™ v0.9.15 Sync Alpha
+
+## v0.9.15 Sync Alpha changes
+
+- Fixed the homepage artwork stretching across desktop and tablet screens.
+- Preserved the original 9:16 artwork ratio and centered it on wider displays.
+- Kept all eight navigation hotspots and the homepage controls aligned with the artwork.
+- Left the existing phone layout unchanged.
 
 ## v0.9.14 Sync Alpha changes
 
