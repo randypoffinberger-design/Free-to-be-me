@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.26-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.27-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -2164,7 +2164,7 @@ function renderAsdFriendlyFunExpanded(){
   const cards=document.querySelectorAll(".education-card"), html=Object.entries(FRIENDLY_PLACES).map(([heading,places])=>`<h3>${heading}</h3><div class="friendly-place-list">${places.map(([name,location,description,url])=>`<a href="${url}" target="_blank" rel="noopener"><strong>${esc(name)}</strong><small>${esc(location)}</small><span>${esc(description)}</span></a>`).join("")}</div>`).join("");
   const socialization=`<details class="education-card"><summary>🤝 Socialization</summary><div class="education-body">
     <p>Social opportunities do not have to look like a traditional playgroup. Some children connect best through a shared interest, online game, structured activity, one-to-one buddy, or small group with clear expectations. Check the current age range, communication expectations, supervision, cost, location, and availability before enrolling.</p>
-    <button class="btn full" data-go="community" type="button">Open Community Connections beta</button>
+    <button class="btn full" data-go="community" type="button">Open Social Meetups</button>
     <h3>National organizations and online clubs</h3>
     <div class="education-links">
       <a class="education-link" href="https://aane.org/services-programs/group-services/social-groups-activities/" target="_blank" rel="noopener noreferrer"><strong>AANE social groups and activities</strong><span>Virtual and regional opportunities for autistic teens, young adults, adults, and family members. Current groups, ages, locations, fees, and registration requirements vary.</span><small>View current AANE groups ↗</small></a>
@@ -2186,11 +2186,12 @@ function renderAsdFriendlyFunExpanded(){
 }
 
 const COMMUNITY_CACHE_KEY="mtm-community-playgroups-v1";
+let communityMeetups=[];
 const communityKindLabel={hosting:"Hosting a playdate",looking:"Looking for a playdate",recurring:"Recurring group",parent:"Parent meetup",outing:"Sensory-friendly outing"};
 const communityDate=value=>new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
 async function loadCommunityPlaygroups(){
   const state=await window.MTMSync.state();
-  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Community Connections.");
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Social Meetups.");
   try{
     const data=await window.MTMSync.api("/v1/community/playgroups");
     const snapshot={playgroups:data.playgroups,updatedAt:data.serverTime||nowISO()};
@@ -2207,17 +2208,21 @@ function communityCard(item){
   return `<article class="community-card ${item.status}"><div class="community-card-head"><span>${esc(communityKindLabel[item.kind]||item.kind)}</span><small>${esc(item.status)}</small></div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><dl><div><dt>When</dt><dd>${esc(communityDate(item.startsAt))}</dd></div><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div><div><dt>Public meeting place</dt><dd>${esc(item.publicPlace)}</dd></div><div><dt>Ages</dt><dd>${esc(item.ageRange)}</dd></div><div><dt>Setting</dt><dd>${esc(item.setting)}</dd></div>${item.maxGroupSize?`<div><dt>Group limit</dt><dd>${item.maxGroupSize}</dd></div>`:""}</dl>${item.sensoryNotes?`<p><strong>Sensory notes:</strong> ${esc(item.sensoryNotes)}</p>`:""}${item.accessibility?`<p><strong>Accessibility:</strong> ${esc(item.accessibility)}</p>`:""}<p class="hint">Organized by ${esc(item.organizer.displayName)} · ${item.siblingsWelcome?"Siblings welcome":"Ask before bringing siblings"} · ${item.parentMustRemain?"A parent or caregiver must remain":"Confirm supervision with organizer"} · ${item.goingCount} going</p>${response?`<div class="banner">${esc(response)}</div>`:""}<div class="btn-row">${item.isOrganizer?`<button class="btn secondary community-requests" data-id="${item.id}" type="button">Requests${item.requestedCount?` (${item.requestedCount})`:""}</button>${item.status==="active"?`<button class="btn secondary community-cancel" data-id="${item.id}" type="button">Cancel gathering</button>`:""}`:item.status==="active"?`${item.myStatus?`<button class="btn secondary community-withdraw" data-id="${item.id}" type="button">Withdraw response</button>`:`<button class="btn secondary community-interest" data-id="${item.id}" type="button">Interested</button><button class="btn community-request" data-id="${item.id}" type="button">Request to join</button>`}`:""}</div></article>`;
 }
 async function renderCommunityConnections(){
-  view.innerHTML=`<section class="hero"><h1>🤝 Community Connections</h1><p>Connect with other MTM families for inclusive playdates and gatherings.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div id="communityStatus" class="card"><p>Loading community gatherings…</p></div>`;
+  view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div id="communityStatus" class="card"><p>Loading social meetups…</p></div>`;
   try{
     const data=await loadCommunityPlaygroups();
-    view.innerHTML=`<section class="hero"><h1>🤝 Community Connections</h1><p>Connect with other MTM families for inclusive playdates and gatherings.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div class="btn-row community-actions"><button id="newGathering" class="btn" type="button">Create a gathering</button><button id="refreshCommunity" class="btn secondary" type="button">Refresh</button></div>${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing information last updated ${esc(communityDate(data.updatedAt))}. Changes and cancellations may be missing.</div>`:`<p class="hint">Updated ${esc(communityDate(data.updatedAt))}</p>`}<div class="community-list">${data.playgroups.length?data.playgroups.map(communityCard).join(""):'<div class="empty"><p>No upcoming gatherings have been posted yet.</p></div>'}</div><details class="education-card"><summary>🧑‍🍼 Recommended babysitters — coming next</summary><div class="education-body"><p>The shared community foundation is now in place. Babysitter recommendations will require sitter consent, use recommendation counts instead of star ratings, and keep safety concerns private for moderation.</p></div></details>`;
+    communityMeetups=data.playgroups;
+    view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div class="btn-row community-actions"><button id="newGathering" class="btn" type="button">Create a meetup</button><button id="refreshCommunity" class="btn secondary" type="button">Refresh</button></div>${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing information last updated ${esc(communityDate(data.updatedAt))}. Changes and cancellations may be missing.</div>`:`<p class="hint">Updated ${esc(communityDate(data.updatedAt))}</p>`}<section class="card community-search" aria-label="Search social meetups"><h2>Find a meetup</h2><div class="form-grid two-col"><div class="field"><label>Search words, city, area, or ZIP</label><input id="meetupSearch" type="search" placeholder="Park, 21740, sensory, ages 5–8…"></div><div class="field"><label>Meetup type</label><select id="meetupKind"><option value="">All types</option>${Object.entries(communityKindLabel).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div><div class="field"><label>When</label><select id="meetupWhen"><option value="">Any upcoming date</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option></select></div><div class="field"><label>Setting</label><select id="meetupSetting"><option value="">Indoor or outdoor</option><option value="indoor">Indoor</option><option value="outdoor">Outdoor</option><option value="either">Either</option></select></div></div><div class="community-checks"><label class="check-option"><input id="meetupSensory" type="checkbox"> Has sensory details</label><label class="check-option"><input id="meetupAccessible" type="checkbox"> Has accessibility details</label></div><p id="meetupResultCount" class="hint" role="status"></p></section><div id="communityResults" class="community-list"></div><details class="education-card"><summary>🧑‍🍼 Recommended babysitters — coming next</summary><div class="education-body"><p>The shared community foundation is now in place. Babysitter recommendations will require sitter consent, use recommendation counts instead of star ratings, and keep safety concerns private for moderation.</p></div></details>`;
     $("#newGathering").onclick=openCommunityForm;$("#refreshCommunity").onclick=()=>renderCommunityConnections();
-    document.querySelectorAll(".community-interest").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"interested"));
-    document.querySelectorAll(".community-request").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"requested"));
-    document.querySelectorAll(".community-withdraw").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,null));
-    document.querySelectorAll(".community-cancel").forEach(b=>b.onclick=()=>cancelCommunityGathering(b.dataset.id));
-    document.querySelectorAll(".community-requests").forEach(b=>b.onclick=()=>openCommunityRequests(b.dataset.id));
+    ["meetupSearch","meetupKind","meetupWhen","meetupSetting","meetupSensory","meetupAccessible"].forEach(id=>$("#"+id).addEventListener(id==="meetupSearch"?"input":"change",renderCommunityResults));renderCommunityResults();
   }catch(error){view.querySelector("#communityStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+}
+function renderCommunityResults(){
+  const words=$("#meetupSearch").value.trim().toLowerCase(),kind=$("#meetupKind").value,days=Number($("#meetupWhen").value||0),setting=$("#meetupSetting").value,deadline=days?Date.now()+days*86400000:Infinity;
+  const matches=communityMeetups.filter(item=>{const haystack=[item.title,item.description,item.generalArea,item.publicPlace,item.ageRange,item.sensoryNotes,item.accessibility,item.organizer?.displayName].join(" ").toLowerCase();return(!words||words.split(/\s+/).every(word=>haystack.includes(word)))&&(!kind||item.kind===kind)&&(!setting||item.setting===setting)&&Date.parse(item.startsAt)<=deadline&&(!$("#meetupSensory").checked||item.sensoryNotes)&&(!$("#meetupAccessible").checked||item.accessibility);});
+  $("#meetupResultCount").textContent=`${matches.length} ${matches.length===1?"meetup":"meetups"} found`;
+  $("#communityResults").innerHTML=matches.length?matches.map(communityCard).join(""):'<div class="empty"><p>No meetups match those filters. Try a nearby city, ZIP code, broader date, or fewer filters.</p></div>';
+  document.querySelectorAll(".community-interest").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"interested"));document.querySelectorAll(".community-request").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"requested"));document.querySelectorAll(".community-withdraw").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,null));document.querySelectorAll(".community-cancel").forEach(b=>b.onclick=()=>cancelCommunityGathering(b.dataset.id));document.querySelectorAll(".community-requests").forEach(b=>b.onclick=()=>openCommunityRequests(b.dataset.id));
 }
 function openCommunityForm(){
   const soon=new Date(Date.now()+86400000);soon.setMinutes(0,0,0);const local=new Date(soon.getTime()-soon.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -2942,6 +2947,7 @@ async function renderCaregiver() {
   view.innerHTML = `<section class="hero"><h1>💛 Caregiver Corner</h1><p>Support, organization, and clear information for the caregiver.</p></section>
   <h2 class="section-title">Caregiver support</h2>
   <div class="grid">
+    <button id="caregiverMeetups" class="card-button"><strong>🤝 Social Meetups</strong><small>Find or create inclusive playdates, family gatherings, parent meetups, and sensory-friendly outings.</small></button>
     <button id="caregiverBabysitter" class="card-button"><strong>🧑‍🍼 Babysitter care sheet</strong><small>Pull saved care details into editable text that can be shared without an app.</small></button>
     <button id="caregiverEmergencyContacts" class="card-button"><strong>☎️ Emergency contacts</strong><small>Save multiple contacts per child for redundancy and care-sheet sharing.</small></button>
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
@@ -2959,6 +2965,7 @@ async function renderCaregiver() {
     <button id="caregiverReflections" class="card-button"><strong>📝 Caregiver Reflections</strong><small>${reflectionCount} saved ${reflectionCount === 1 ? "entry" : "entries"} • searchable personal journal.</small></button>
   </div>`;
   $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
+  $("#caregiverMeetups").onclick = () => navigate("community");
   $("#caregiverEmergencyContacts").onclick = openEmergencyContacts;
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
@@ -3497,7 +3504,7 @@ function setupDrawer() {
     ["📚", "Skill Building", "skills"],
     ["📚", "Resources", "resources"],
     ["🎡", "ASD Friendly Fun", "fun"],
-    ["🤝", "Community Connections", "community"],
+    ["🤝", "Social Meetups", "community"],
     ["💛", "Caregiver Corner", "caregiver"],
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],

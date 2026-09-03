@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.26 Sync Alpha
+# More than Measured™ v0.9.27 Sync Alpha
+
+## v0.9.27 Sync Alpha changes
+
+- Renamed the community area to Social Meetups.
+- Added keyword/location, type, date, setting, sensory-detail, and accessibility-detail filters.
+- Added a Social Meetups card to Caregiver Corner.
 
 ## v0.9.26 Sync Alpha changes
 
