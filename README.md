@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.18 Sync Alpha
+# More than Measured™ v0.9.19 Sync Alpha
+
+## v0.9.19 Sync Alpha changes
+
+- Account registration no longer requires or automatically creates a household.
+- Added separate household creation and shareable invitation links.
+- Added temporary 24-hour babysitter accounts with restricted data access and create-only notes, tasks, and potty entries.
+- Protected newer edits, including ASL changes, from being removed by an older in-progress sync response.
 
 ## v0.9.18 Sync Alpha changes
 

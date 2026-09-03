@@ -21,7 +21,7 @@ window.MTMSync = (() => {
     const s=await state(); if(!s.householdId) return;
     const meta=await rawGet("syncMeta",metaId(store,id));
     const existing=(await rawAll("syncOutbox")).find(x=>x.entityType===store&&x.entityId===id);
-    const item={id:existing?.id||uuid(),mutationId:existing?.mutationId||uuid(),entityType:store,entityId:id,
+    const item={id:existing?.id||uuid(),mutationId:uuid(),entityType:store,entityId:id,
       operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
     await rawPut("syncOutbox",item);
   }
@@ -53,8 +53,9 @@ window.MTMSync = (() => {
     const s=await state(), mutations=await rawAll("syncOutbox"); if(!s.token||!s.householdId||!mutations.length)return;
     for(let i=0;i<mutations.length;i+=100){const batch=mutations.slice(i,i+100),data=await api("/v1/sync/push",{method:"POST",body:JSON.stringify({householdId:s.householdId,mutations:batch})});
       for(const result of data.results){const item=batch.find(x=>x.mutationId===result.mutationId);if(!item)continue;
-        if(result.status==="accepted"){await rawPut("syncMeta",{id:metaId(item.entityType,item.entityId),revision:result.revision,updatedAt:result.updatedAt,deletedAt:result.deletedAt||null});await rawDelete("syncOutbox",item.id);}
-        else if(result.status==="conflict"){await recordConflict(item.entityType,await rawGet(item.entityType,item.entityId),result.current);await rawDelete("syncOutbox",item.id);}
+        if(result.status==="accepted"){await rawPut("syncMeta",{id:metaId(item.entityType,item.entityId),revision:result.revision,updatedAt:result.updatedAt,deletedAt:result.deletedAt||null});const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);else if(latest)await rawPut("syncOutbox",{...latest,baseRevision:result.revision});}
+        else if(result.status==="conflict"){await recordConflict(item.entityType,await rawGet(item.entityType,item.entityId),result.current);const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);}
+        else if(result.status==="denied"){const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);throw new Error(result.error||"This account cannot make that household change.");}
       }}
   }
   async function syncNow(){if(running){rerun=true;return;}const s=await state();if(!s.token||!s.householdId||!navigator.onLine)return;running=true;let received=0;try{received+=await pull();await push();received+=await pull();await saveState({...await state(),lastSyncAt:iso(),lastError:null});if(received)window.dispatchEvent(new CustomEvent("mtm:remote-data",{detail:{received}}));}catch(e){await saveState({...await state(),lastError:e.message});}finally{running=false;if(currentRoute==="sync")refreshSyncCenter().catch(()=>{});if(rerun){rerun=false;schedule();}}}
@@ -77,14 +78,46 @@ async function renderSyncCenter(){
   const signedIn=Boolean(s.token), status=!navigator.onLine?"Offline — local data remains available":s.lastError?`Sync paused: ${esc(s.lastError)}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Synchronized ${fmtDate(s.lastSyncAt)}`:"Not synchronized yet";
   view.innerHTML=`<section class="hero"><h1>🔄 Accounts & Sync</h1><p>Local data remains on this device whether the server is available or not.</p></section>
   <div class="card"><h3>Server</h3><div class="field"><label>Server address</label><input id="syncServer" value="${esc(s.serverUrl||"http://127.0.0.1:8788")}" placeholder="http://192.168.1.20:8788"></div><button id="saveServer" class="btn secondary">Save address</button><p id="syncStatus" class="hint">${esc(status)}</p></div>
-  ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create account</h3><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Household name</label><input id="regHousehold" placeholder="Our family"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><button id="registerSync" class="btn">Create account and household</button></div></div>`}
+  ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><button id="registerSync" class="btn">Create account</button></div></div>`}
   <h2 id="syncDecisionsTitle" class="section-title">Sync decisions${conflicts.length?` (${conflicts.length})`:""}</h2><div id="syncDecisions" class="list">${syncConflictMarkup(conflicts)}</div>`;
   $("#saveServer").onclick=async()=>{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});alert("Server address saved.");};
-  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.saveState({...await sync.state(),token:d.token});renderSyncCenter();}catch(e){alert(e.message);}};
-    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,householdName:$("#regHousehold").value,email:$("#regEmail").value,password:$("#regPassword").value})});await sync.saveState({...await sync.state(),token:d.token,householdId:d.household.id,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};
-  }else{try{const d=await sync.api("/v1/households"),area=$("#householdArea");area.innerHTML=`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===s.householdId?"selected":""}>${esc(h.name)} — ${esc(h.role)}</option>`).join("")}</select></div><div class="btn-row"><button id="createInvite" class="btn secondary">Create caregiver invite</button><button id="joinInvite" class="btn secondary">Join with invitation</button></div>`;if(!s.householdId&&d.households[0])await sync.saveState({...s,householdId:d.households[0].id,cursor:0});$("#activeHousehold").onchange=async e=>{await sync.saveState({...await sync.state(),householdId:e.target.value,cursor:0});};$("#createInvite").onclick=async()=>{try{const role=confirm("OK creates a caregiver invitation. Cancel creates a read-only viewer invitation.")?"caregiver":"viewer",d=await sync.api("/v1/invitations",{method:"POST",body:JSON.stringify({householdId:$("#activeHousehold").value,role})});prompt(`Invitation expires ${d.expiresAt}. Copy this code:`,d.code);}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(!code)return;try{const d=await sync.api("/v1/invitations/join",{method:"POST",body:JSON.stringify({code})});await sync.saveState({...await sync.state(),householdId:d.householdId,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
+  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.saveState({...await sync.state(),token:d.token});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,email:$("#regEmail").value,password:$("#regPassword").value})});await sync.saveState({...await sync.state(),token:d.token,cursor:0});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+  }else{try{const d=await sync.api("/v1/households"),area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Accept invitation</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteBabysitter" class="btn secondary">Invite babysitter (24 hours)</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}</div>`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&s.householdId!==active.id)await sync.saveState({...s,householdId:active.id,cursor:0});if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{await sync.saveState({...await sync.state(),householdId:e.target.value,cursor:0});renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.saveState({...await sync.state(),householdId:result.household.id,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
     $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.saveState({id:"current",serverUrl:s.serverUrl,cursor:0});renderSyncCenter();};}
   bindSyncConflictActions(conflicts);
+}
+
+function invitationCodeFromLink(){
+  return new URL(location.href).searchParams.get("invite")?.trim()||"";
+}
+
+function clearInvitationFromLink(){
+  const url=new URL(location.href);url.searchParams.delete("invite");history.replaceState(null,"",`${url.pathname}${url.search}${url.hash}`);
+}
+
+async function acceptInvitation(sync,code){
+  try{
+    const d=await sync.api("/v1/invitations/join",{method:"POST",body:JSON.stringify({code:code.trim()})});
+    await sync.saveState({...await sync.state(),householdId:d.householdId,cursor:0});
+    clearInvitationFromLink();
+    await renderSyncCenter();
+    return true;
+  }catch(e){alert(e.message);return false;}
+}
+
+async function acceptPendingInvitation(sync){
+  const code=invitationCodeFromLink();
+  if(code)await acceptInvitation(sync,code);
+}
+
+async function createInvitation(sync,role){
+  try{
+    const s=await sync.state(),d=await sync.api("/v1/invitations",{method:"POST",body:JSON.stringify({householdId:s.householdId,role})});
+    const url=new URL(location.href);url.searchParams.set("invite",d.code);url.hash="sync";
+    const label=role==="babysitter"?`Babysitter access lasts ${d.accessHours} hours after acceptance.`:`This ${role} invitation can be used once.`;
+    prompt(`${label} Send this link:`,url.href);
+  }catch(e){alert(e.message);}
 }
 
 function syncConflictMarkup(conflicts){
