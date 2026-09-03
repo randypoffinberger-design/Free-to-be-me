@@ -1,4 +1,4 @@
-const CACHE='ftbm-v0.9.17-sync-fix';
+const CACHE='ftbm-v0.9.17-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,

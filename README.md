@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.16 Sync Alpha
+# More than Measured™ v0.9.17 Sync Alpha
+
+## v0.9.17 Sync Alpha changes
+
+- Fixed the Accounts & Sync screen flashing every 30 seconds by updating sync status and conflict decisions in place.
+- Kept the selected household and form state stable during background and manual sync.
+- Preserved the existing household sync protocol, local-first storage, and automatic live updates.
 
 ## v0.9.16 Sync Alpha changes
 
