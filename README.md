@@ -1,4 +1,8 @@
-# More than Measured™ v0.9.20 Sync Alpha
+# More than Measured™ v0.9.21 Sync Alpha
+
+## v0.9.21 Sync Alpha changes
+
+- Household caregivers can create 24-hour babysitter invitations without gaining permission to invite permanent caregivers or viewers.
 
 ## v0.9.20 Sync Alpha changes
 
