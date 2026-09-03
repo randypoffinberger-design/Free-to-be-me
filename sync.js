@@ -101,6 +101,7 @@ async function acceptInvitation(sync,code){
     const d=await sync.api("/v1/invitations/join",{method:"POST",body:JSON.stringify({code:code.trim()})});
     await sync.saveState({...await sync.state(),householdId:d.householdId,cursor:0});
     clearInvitationFromLink();
+    await sync.syncNow();
     await renderSyncCenter();
     return true;
   }catch(e){alert(e.message);return false;}
@@ -134,6 +135,14 @@ async function refreshSyncCenter(){
   const status=!navigator.onLine?"Offline — local data remains available":s.lastError?`Sync paused: ${s.lastError}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Synchronized ${fmtDate(s.lastSyncAt)}`:"Not synchronized yet";
   const statusEl=$("#syncStatus"),titleEl=$("#syncDecisionsTitle"),decisionsEl=$("#syncDecisions");
   if(!statusEl||!titleEl||!decisionsEl)return;
+  if(s.token){
+    try{
+      const d=await sync.api("/v1/households"),select=$("#activeHousehold");
+      const shown=select?[...select.options].map(option=>option.value).sort().join("|"):"";
+      const available=d.households.map(h=>h.id).sort().join("|");
+      if(shown!==available){await renderSyncCenter();return;}
+    }catch{}
+  }
   statusEl.textContent=status;
   titleEl.textContent=`Sync decisions${conflicts.length?` (${conflicts.length})`:""}`;
   decisionsEl.innerHTML=syncConflictMarkup(conflicts);

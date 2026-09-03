@@ -1,4 +1,20 @@
-# More than Measured™ v0.9.21 Sync Alpha
+# More than Measured™ v0.9.25 Sync Alpha
+
+## v0.9.25 Sync Alpha changes
+
+- Household choices refresh automatically when an invitation adds a membership or temporary access expires, without restoring the periodic selector flicker.
+
+## v0.9.24 Sync Alpha changes
+
+- The first household sync now runs immediately after a caregiver, viewer, or babysitter accepts an invitation.
+
+## v0.9.23 Sync Alpha changes
+
+- Added the private-network permission response required when GitHub Pages calls the Tailscale synchronization server.
+
+## v0.9.22 Sync Alpha changes
+
+- Corrected Windows startup detection so the updated server stays running when launched normally.
 
 ## v0.9.21 Sync Alpha changes
 
