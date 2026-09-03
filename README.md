@@ -1,4 +1,9 @@
-# More than Measured™ v0.9.27 Sync Alpha
+# More than Measured™ v0.9.28 Sync Alpha
+
+## v0.9.28 Sync Alpha changes
+
+- Organizers now see and control every meetup response, including Interested responses.
+- The open Social Meetups page refreshes response information every five seconds.
 
 ## v0.9.27 Sync Alpha changes
 
