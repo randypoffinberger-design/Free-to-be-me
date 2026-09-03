@@ -1,4 +1,9 @@
-# More than Measured™ v0.9.25 Sync Alpha
+# More than Measured™ v0.9.26 Sync Alpha
+
+## v0.9.26 Sync Alpha changes
+
+- Added a signed-in Community Connections playgroups beta that remains separate from household child records.
+- Added gathering creation, interest, join requests, organizer approvals, cancellations, and a clearly dated offline snapshot.
 
 ## v0.9.25 Sync Alpha changes
 
