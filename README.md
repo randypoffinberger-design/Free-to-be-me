@@ -1,4 +1,9 @@
-# More than Measured™ v0.9.19 Sync Alpha
+# More than Measured™ v0.9.20 Sync Alpha
+
+## v0.9.20 Sync Alpha changes
+
+- All currently visible synchronized sections refresh when household changes arrive, not only Communication Tracker.
+- Incoming refreshes defer safely while a form field or dialog is in use.
 
 ## v0.9.19 Sync Alpha changes
 

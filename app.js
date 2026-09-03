@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.19-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.20-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -21,6 +21,8 @@ let db,
   vocabSessionFilters = null,
   currentRoute = "",
   routeStack = [],
+  remoteRefreshPending = false,
+  remoteRefreshRunning = false,
   birthdayGreetingsShown = false;
 const $ = (s) => document.querySelector(s),
   view = $("#view"),
@@ -222,6 +224,14 @@ async function navigate(r, options = {}) {
   history.replaceState(null, "", `#${route}`);
   closeDrawer();
   view.focus();
+}
+async function refreshVisibleRouteFromSync(){
+  if(!remoteRefreshPending||remoteRefreshRunning||modal.open)return;
+  if(document.activeElement?.matches("input, textarea, select, [contenteditable=true]"))return;
+  remoteRefreshPending=false;
+  if(currentRoute==="sync"||!routes[currentRoute])return;
+  remoteRefreshRunning=true;
+  try{await routes[currentRoute]();}finally{remoteRefreshRunning=false;}
 }
 const card = (i, t, d, r) =>
   `<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
@@ -3488,9 +3498,9 @@ async function init() {
   db = await openDB();
   setupDrawer();
   setupPWA();
-  window.addEventListener("mtm:remote-data", () => {
-    if (currentRoute === "vocabulary" && !modal.open) renderVocabulary().catch(() => {});
-  });
+  window.addEventListener("mtm:remote-data",()=>{remoteRefreshPending=true;refreshVisibleRouteFromSync().catch(()=>{});});
+  document.addEventListener("focusout",()=>setTimeout(()=>refreshVisibleRouteFromSync().catch(()=>{}),0));
+  modal.addEventListener("close",()=>refreshVisibleRouteFromSync().catch(()=>{}));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       birthdayGreetingsShown = false;
