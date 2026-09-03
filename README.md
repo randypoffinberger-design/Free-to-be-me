@@ -1,4 +1,10 @@
-# More than Measured™ v0.9.17 Sync Alpha
+# More than Measured™ v0.9.18 Sync Alpha
+
+## v0.9.18 Sync Alpha changes
+
+- Incoming household changes are checked every five seconds instead of every 30 seconds.
+- Edits made during an active sync are retried immediately after it finishes.
+- The open Communication Tracker refreshes when synchronized word changes arrive.
 
 ## v0.9.17 Sync Alpha changes
 

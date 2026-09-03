@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.17-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.9.18-sync-alpha", schemaVersion: 4 };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -3488,6 +3488,9 @@ async function init() {
   db = await openDB();
   setupDrawer();
   setupPWA();
+  window.addEventListener("mtm:remote-data", () => {
+    if (currentRoute === "vocabulary" && !modal.open) renderVocabulary().catch(() => {});
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       birthdayGreetingsShown = false;

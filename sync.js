@@ -5,7 +5,7 @@
 window.MTMSync = (() => {
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
-  let applyingRemote = false, running = false;
+  let applyingRemote = false, running = false, rerun = false, syncTimer = null;
   const iso = () => new Date().toISOString();
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const rawStore = (name, mode = "readonly") => db.transaction(name, mode).objectStore(name);
@@ -35,17 +35,19 @@ window.MTMSync = (() => {
     const id=metaId(localStore,remote.entityId); await rawPut("syncConflicts",{id,entityType:localStore,entityId:remote.entityId,local:structuredClone(localRecord||null),remote,reason,createdAt:iso()});
   }
   async function pull() {
-    const s=await state(); if(!s.token||!s.householdId)return;
-    let cursor=s.cursor||0, more=true;
+    const s=await state(); if(!s.token||!s.householdId)return 0;
+    let cursor=s.cursor||0, more=true, received=0;
     while(more){const data=await api(`/v1/sync/pull?householdId=${encodeURIComponent(s.householdId)}&since=${cursor}`), outbox=await rawAll("syncOutbox");
       applyingRemote=true;
       try{for(const change of data.changes){const pending=outbox.find(x=>x.entityType===change.entityType&&x.entityId===change.entityId), local=await rawGet(change.entityType,change.entityId), meta=await rawGet("syncMeta",metaId(change.entityType,change.entityId));
         if(pending && change.revision>(meta?.revision||0)){await recordConflict(change.entityType,local,change);continue;}
         if(change.deletedAt){if(local)await rawPut("deletedRecords",{id:metaId(change.entityType,change.entityId),entityType:change.entityType,entityId:change.entityId,record:local,deletedAt:change.deletedAt,remote:true});await rawDelete(change.entityType,change.entityId);}
         else await rawPut(change.entityType,{...change.payload,id:change.entityId});
+        received++;
         await rawPut("syncMeta",{id:metaId(change.entityType,change.entityId),revision:change.revision,updatedAt:change.updatedAt,deletedAt:change.deletedAt||null});
       }}finally{applyingRemote=false;} cursor=data.cursor;more=data.hasMore;}
     await saveState({...await state(),cursor,lastSyncAt:iso(),lastError:null});
+    return received;
   }
   async function push() {
     const s=await state(), mutations=await rawAll("syncOutbox"); if(!s.token||!s.householdId||!mutations.length)return;
@@ -55,8 +57,8 @@ window.MTMSync = (() => {
         else if(result.status==="conflict"){await recordConflict(item.entityType,await rawGet(item.entityType,item.entityId),result.current);await rawDelete("syncOutbox",item.id);}
       }}
   }
-  async function syncNow(){if(running)return;const s=await state();if(!s.token||!s.householdId||!navigator.onLine)return;running=true;try{await pull();await push();await pull();await saveState({...await state(),lastSyncAt:iso(),lastError:null});}catch(e){await saveState({...await state(),lastError:e.message});}finally{running=false;if(currentRoute==="sync")refreshSyncCenter().catch(()=>{});}}
-  function schedule(){setTimeout(()=>syncNow(),250);}
+  async function syncNow(){if(running){rerun=true;return;}const s=await state();if(!s.token||!s.householdId||!navigator.onLine)return;running=true;let received=0;try{received+=await pull();await push();received+=await pull();await saveState({...await state(),lastSyncAt:iso(),lastError:null});if(received)window.dispatchEvent(new CustomEvent("mtm:remote-data",{detail:{received}}));}catch(e){await saveState({...await state(),lastError:e.message});}finally{running=false;if(currentRoute==="sync")refreshSyncCenter().catch(()=>{});if(rerun){rerun=false;schedule();}}}
+  function schedule(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;syncNow();},250);}
   async function queueExisting(){const s=await state();if(!s.householdId)throw new Error("Choose a household first.");await createSnapshot("Before connecting local data to household sync");let count=0;for(const store of SYNCED_STORES){for(const item of await getAll(store)){if(!syncable(store,item))continue;const meta=await rawGet("syncMeta",metaId(store,item.id));if(!meta){await queue(store,item.id,"upsert",item);count++;}}}return count;}
   async function resolveConflict(id,choice,merged=null){const c=await rawGet("syncConflicts",id);if(!c)return;applyingRemote=true;try{
     if(choice==="remote"){if(c.remote.deletedAt)await rawDelete(c.entityType,c.entityId);else await rawPut(c.entityType,{...c.remote.payload,id:c.entityId});await rawPut("syncMeta",{id,revision:c.remote.revision,updatedAt:c.remote.updatedAt,deletedAt:c.remote.deletedAt||null});}
@@ -66,7 +68,7 @@ window.MTMSync = (() => {
     await rawDelete("syncConflicts",id);
   }finally{applyingRemote=false;}schedule();}
   window.addEventListener("online",schedule);
-  setInterval(()=>syncNow(),30000);
+  setInterval(()=>syncNow(),5000);
   return {onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll};
 })();
 
