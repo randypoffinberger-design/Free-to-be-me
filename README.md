@@ -1,4 +1,11 @@
-# More than Measured™ v0.9.28 Sync Alpha
+# More than Measured™ v0.9.29 Sync Alpha
+
+## v0.9.29 Sync Alpha changes
+
+- Added two zoomable, offline sensory visual guides for grooming and daily hygiene.
+- Added verified assistance links for AAC devices and apps, sensory equipment, pediatric continence supplies, therapy and equipment grants, free samples, wandering kits, medical IDs, visual supports, and autism research participation.
+- Placed each resource in the relevant Speech & Language, Sensory Support, Potty Training, Benefits, ASD Safety, or Assessment section.
+- Replaced unsupported guarantees and outdated program descriptions with current eligibility, geographic, cost, availability, and privacy cautions.
 
 ## v0.9.28 Sync Alpha changes
 

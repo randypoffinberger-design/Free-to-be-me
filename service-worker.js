@@ -1,10 +1,10 @@
-const CACHE='ftbm-v0.9.28-sync-alpha';
+const CACHE='ftbm-v0.9.29-sync-alpha';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.9.28',
-  './sync.js?v=0.9.28',
-  './app.js?v=0.9.28',
+  './styles.css?v=0.9.29',
+  './sync.js?v=0.9.29',
+  './app.js?v=0.9.29',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -19,6 +19,8 @@ const CRITICAL_ASSETS=[
   './assets/visual-guides/sensory-differences.webp',
   './assets/visual-guides/sensory-inputs-regulation.webp',
   './assets/visual-guides/sensory-regulation-strategies.webp',
+  './assets/visual-guides/when-daily-hygiene-feels-overwhelming.webp',
+  './assets/visual-guides/when-grooming-feels-painful.webp',
   './assets/visual-guides/stimming-examples.webp',
   './assets/visual-guides/supporting-autistic-children.webp',
   './assets/visual-guides/supporting-emotional-regulation.webp',
