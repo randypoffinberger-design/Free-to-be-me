@@ -13,7 +13,7 @@ window.MTMSync = (() => {
   const rawAll = store => new Promise((resolve, reject) => { const r=rawStore(store).getAll(); r.onsuccess=()=>resolve(r.result); r.onerror=()=>reject(r.error); });
   const rawPut = (store, value) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").put(value); r.onsuccess=()=>resolve(value); r.onerror=()=>reject(r.error); });
   const rawDelete = (store, id) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").delete(id); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
-  const state = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:"http://127.0.0.1:8788", cursor:0 };
+  const state = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:"http://127.0.0.1:8791", cursor:0 };
   const saveState = value => rawPut("accountState", { ...(value || {}), id:"current" });
   const syncable = (store, valueOrId) => SYNCED_STORES.has(store) && !(store === "settings" && DEVICE_SETTINGS.has(typeof valueOrId === "object" ? valueOrId.id : valueOrId));
   const metaId = (store,id) => `${store}:${id}`;
@@ -28,6 +28,9 @@ window.MTMSync = (() => {
   async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value); schedule(); }
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
+    if ((await state()).serverUrl !== "http://127.0.0.1:8791") {
+      throw new Error("This test build requires http://127.0.0.1:8791. Save that server address in Accounts & Sync.");
+    }
     const s=await state(), response=await fetch(`${s.serverUrl.replace(/\/$/,"")}${path}`,{...options,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
     const data=await response.json().catch(()=>({error:`HTTP ${response.status}`})); if(!response.ok)throw Object.assign(new Error(data.error||"Server request failed"),{status:response.status}); return data;
   }
@@ -77,7 +80,7 @@ async function renderSyncCenter(){
   const sync=window.MTMSync,s=await sync.state(),outbox=await sync.rawAll("syncOutbox"),conflicts=await sync.rawAll("syncConflicts");
   const signedIn=Boolean(s.token), status=!navigator.onLine?"Offline — local data remains available":s.lastError?`Sync paused: ${esc(s.lastError)}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Synchronized ${fmtDate(s.lastSyncAt)}`:"Not synchronized yet";
   view.innerHTML=`<section class="hero"><h1>🔄 Accounts & Sync</h1><p>Local data remains on this device whether the server is available or not.</p></section>
-  <div class="card"><h3>Server</h3><div class="field"><label>Server address</label><input id="syncServer" value="${esc(s.serverUrl||"http://127.0.0.1:8788")}" placeholder="http://192.168.1.20:8788"></div><button id="saveServer" class="btn secondary">Save address</button><p id="syncStatus" class="hint">${esc(status)}</p></div>
+  <div class="card"><h3>Server</h3><div class="field"><label>Server address</label><input id="syncServer" value="${esc(s.serverUrl||"http://127.0.0.1:8791")}" placeholder="http://192.168.1.20:8788"></div><button id="saveServer" class="btn secondary">Save address</button><p id="syncStatus" class="hint">${esc(status)}</p></div>
   ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><button id="registerSync" class="btn">Create account</button></div></div>`}
   <h2 id="syncDecisionsTitle" class="section-title">Sync decisions${conflicts.length?` (${conflicts.length})`:""}</h2><div id="syncDecisions" class="list">${syncConflictMarkup(conflicts)}</div>`;
   $("#saveServer").onclick=async()=>{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});alert("Server address saved.");};
