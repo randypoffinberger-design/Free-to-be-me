@@ -56,6 +56,8 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
+  const url = new URL(event.request.url);
+  if(url.origin !== self.location.origin || url.pathname.startsWith('/v1/') || url.pathname === '/health')return;
   if(event.request.mode==='navigate'){
     event.respondWith(
       caches.open(CACHE).then(async cache=>{
