@@ -26,6 +26,7 @@ let db,
   myDayFilterProfile = "all",
   currentRoute = "",
   routeStack = [],
+  navigationQueue = Promise.resolve(),
   remoteRefreshPending = false,
   remoteRefreshRunning = false,
   birthdayGreetingsShown = false;
@@ -235,7 +236,14 @@ async function renderSubscription() {
   bindRouteButtons();
 }
 
-async function navigate(r, options = {}) {
+function applyRouteChrome(activeRoute = currentRoute) {
+  const isHome = activeRoute === "home";
+  document.body.classList.toggle("home-route", isHome);
+  $("#backBtn").classList.toggle("hidden", isHome);
+  $("#homeBadge").classList.toggle("hidden", isHome);
+}
+
+async function performNavigation(r, options = {}) {
   let route;
   if (options.back) {
     if (routeStack.length > 1) routeStack.pop();
@@ -253,14 +261,19 @@ async function navigate(r, options = {}) {
   }
   if(communityRefreshTimer){clearInterval(communityRefreshTimer);communityRefreshTimer=null;}
   if(screenTimerInterval){clearInterval(screenTimerInterval);screenTimerInterval=null;}
-  document.body.classList.toggle("home-route", route === "home");
   currentRoute = route;
+  applyRouteChrome(route);
   await routes[route]();
-  $("#backBtn").classList.toggle("hidden", route === "home");
-  $("#homeBadge").classList.toggle("hidden", route === "home");
+  applyRouteChrome(route);
   history.replaceState(null, "", `#${route}`);
   closeDrawer();
   view.focus();
+}
+
+function navigate(r, options = {}) {
+  const run = () => performNavigation(r, options);
+  navigationQueue = navigationQueue.then(run, run);
+  return navigationQueue;
 }
 async function refreshVisibleRouteFromSync(){
   if(!remoteRefreshPending||remoteRefreshRunning||modal.open)return;
@@ -279,6 +292,7 @@ function bindRouteButtons() {
 }
 
 async function renderHome() {
+  applyRouteChrome("home");
   view.innerHTML = `<section class="illustrated-home" aria-label="More than Measured trademark home navigation">
     <picture>
       <source media="(min-width:700px)" srcset="assets/home/homepage-desktop.webp" type="image/webp">
@@ -3793,11 +3807,17 @@ async function init() {
   window.addEventListener("mtm:remote-data",()=>{remoteRefreshPending=true;refreshVisibleRouteFromSync().catch(()=>{});});
   document.addEventListener("focusout",()=>setTimeout(()=>refreshVisibleRouteFromSync().catch(()=>{}),0));
   modal.addEventListener("close",()=>refreshVisibleRouteFromSync().catch(()=>{}));
+  window.addEventListener("pageshow", () => {
+    applyRouteChrome(currentRoute || (location.hash.slice(1) === "home" ? "home" : ""));
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       birthdayGreetingsShown = false;
-    } else if (currentRoute === "home" && !modal.open) {
-      showBirthdayGreetingsIfNeeded().catch(() => {});
+    } else {
+      applyRouteChrome(currentRoute || (location.hash.slice(1) === "home" ? "home" : ""));
+      if (currentRoute === "home" && !modal.open) {
+        showBirthdayGreetingsIfNeeded().catch(() => {});
+      }
     }
   });
   document
