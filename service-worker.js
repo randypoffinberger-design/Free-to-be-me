@@ -1,10 +1,10 @@
-const CACHE='ftbm-test-v0.10.0-sync-alpha-2';
+const CACHE='ftbm-test-v0.10.0-sync-alpha-3';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-test-2',
-  './sync.js?v=0.10.0-test-2',
-  './app.js?v=0.10.0-test-2',
+  './styles.css?v=0.10.0-test-3',
+  './sync.js?v=0.10.0-test-3',
+  './app.js?v=0.10.0-test-3',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
