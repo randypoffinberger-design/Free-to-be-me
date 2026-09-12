@@ -1,4 +1,22 @@
-# More than Measured™ v0.9.29 Sync Alpha
+# More than Measured™ v0.10.0 Sync Alpha
+
+## v0.10.0 Sync Alpha changes
+
+- Added My Day with tap-to-log event bubbles, custom bubbles, child and date filters, editable timelines, optional duration and intensity, and synchronized local-first records.
+- Added cautious possible-pattern summaries after at least seven recorded days, with separate one-hour behavior and twelve-hour sleep windows and an explicit correlation-not-causation limit.
+- Added screen-time timers and manual entries with daily and seven-day totals.
+- Separated communication and AAC use from other screen-time totals.
+- Added an ASD Myths and Misconceptions guide covering varied presentations, empathy, parenting, savant stereotypes, nonspeaking communication, AAC, stimming, eye contact, lifelong autism, and meltdowns.
+- Added a dormant server-authoritative entitlement layer for permanent owner access, seven-day full-access trials, active household subscriptions, and expired access.
+- Kept development builds unlocked while payment processing and server entitlements are unfinished.
+- Preserved the existing IndexedDB schema, server compatibility, household synchronization, backups, and offline behavior by storing My Day records in the synchronized notes store.
+
+## Planned community expansion
+
+- Free Toy Exchange with approximate-location search, listing status, protected contact, moderation, reporting, and no payment handling.
+- Recommended local doctors, dentists, therapists, restaurants, and other locations with category, specialty, keyword, ZIP-code, and distance filters.
+- Recommended Babysitters with email invitation, sitter-controlled opt-in profiles, private email addresses, revocation, reporting, and no unverified vetting claims.
+- Curated product links and Amazon affiliate disclosures after launch.
 
 ## v0.9.29 Sync Alpha changes
 

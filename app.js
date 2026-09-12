@@ -1,6 +1,7 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.9.29-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured", version: "0.10.0-sync-alpha", schemaVersion: 4 };
+const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 4,
   STORE_NAMES = [
@@ -19,7 +20,10 @@ let db,
   deferredInstallPrompt = null,
   profileAgeTimer = null,
   communityRefreshTimer = null,
+  screenTimerInterval = null,
   vocabSessionFilters = null,
+  myDayFilterDate = "",
+  myDayFilterProfile = "all",
   currentRoute = "",
   routeStack = [],
   remoteRefreshPending = false,
@@ -195,6 +199,10 @@ const routes = {
   sensory: renderSensorySupport,
   fun: renderAsdFriendlyFunExpanded,
   community: renderCommunityConnections,
+  myDay: renderMyDay,
+  screenTime: renderScreenTime,
+  myths: renderAutismMyths,
+  subscription: renderSubscription,
   food: renderFoodDiary,
   lifeSkills: renderLifeSkills,
   resources: renderResources,
@@ -204,6 +212,29 @@ const routes = {
   settings: renderSettings,
   sync: renderSyncCenter,
 };
+
+const ACCOUNT_ONLY_ROUTES = new Set(["home", "subscription", "settings", "backup", "about", "sync"]);
+async function getEntitlement() {
+  const account = await window.MTMSync?.state?.(), entitlement = account?.entitlement;
+  if (!entitlement?.enforced) return { access: true, kind: "development", label: "Development access" };
+  const level = entitlement.level || entitlement.accessLevel;
+  if (level === "owner") return { access: true, kind: "owner", label: "Permanent owner access" };
+  if (entitlement.subscriptionStatus === "active" || level === "subscriber")
+    return { access: true, kind: "subscriber", label: "Active subscription" };
+  const trialEndsAt = entitlement.trialEndsAt ? new Date(entitlement.trialEndsAt) : null;
+  if (trialEndsAt && trialEndsAt > new Date()) {
+    const remaining = Math.max(1, Math.ceil((trialEndsAt - new Date()) / 86400000));
+    return { access: true, kind: "trial", label: `${remaining} trial ${remaining === 1 ? "day" : "days"} remaining`, trialEndsAt };
+  }
+  return { access: false, kind: "expired", label: "Trial ended" };
+}
+
+async function renderSubscription() {
+  const status = await getEntitlement();
+  view.innerHTML = `<section class="hero"><h1>🌈 Full MTM access</h1><p>More than Measured includes a ${ACCESS.trialDays}-day full-access trial. After the trial, an active household subscription is required.</p></section><div class="card subscription-card"><h2>${esc(status.label)}</h2>${status.access ? `<p>This development build remains fully unlocked while subscriptions are being prepared.</p>` : `<p>Your account and saved information are still here. Subscribe to reopen MTM's features.</p>`}<div class="btn-row"><button class="btn secondary" data-go="sync">Account</button><button class="btn secondary" data-go="backup">Export my data</button></div></div><div class="banner"><strong>Your information stays yours.</strong> An expired trial or subscription never deletes existing records. Before enforcement is enabled, account controls, privacy choices, export, and account deletion will remain available.</div>`;
+  bindRouteButtons();
+}
+
 async function navigate(r, options = {}) {
   let route;
   if (options.back) {
@@ -214,11 +245,14 @@ async function navigate(r, options = {}) {
     route = routes[r] ? r : "home";
     if (route !== currentRoute) routeStack.push(route);
   }
+  const entitlement = await getEntitlement();
+  if (!entitlement.access && !ACCOUNT_ONLY_ROUTES.has(route)) route = "subscription";
   if (profileAgeTimer) {
     clearInterval(profileAgeTimer);
     profileAgeTimer = null;
   }
   if(communityRefreshTimer){clearInterval(communityRefreshTimer);communityRefreshTimer=null;}
+  if(screenTimerInterval){clearInterval(screenTimerInterval);screenTimerInterval=null;}
   document.body.classList.toggle("home-route", route === "home");
   currentRoute = route;
   await routes[route]();
@@ -1580,6 +1614,184 @@ async function openDailyCareProfile() {
   await draw(); modal.showModal();
 }
 
+const DAY_BUBBLES = [
+  { id: "wake", emoji: "☀️", label: "Woke up", category: "routine" },
+  { id: "meal", emoji: "🍽️", label: "Meal or snack", category: "food" },
+  { id: "school", emoji: "🎒", label: "School", category: "activity" },
+  { id: "therapy", emoji: "🧩", label: "Therapy", category: "activity" },
+  { id: "outing", emoji: "🚗", label: "Outing", category: "activity" },
+  { id: "family", emoji: "🏡", label: "Family visit", category: "activity" },
+  { id: "medication", emoji: "💊", label: "Medication", category: "health" },
+  { id: "nap", emoji: "😴", label: "Nap", category: "sleep" },
+  { id: "bedtime", emoji: "🌙", label: "Bedtime", category: "sleep" },
+  { id: "screen", emoji: "📱", label: "Screen time", category: "screen" },
+  { id: "meltdown", emoji: "🌋", label: "Meltdown", category: "behavior", outcome: true },
+  { id: "sleep-difficulty", emoji: "🌘", label: "Trouble sleeping", category: "sleepOutcome", outcome: true },
+  { id: "regulated", emoji: "🌿", label: "Regulated and comfortable", category: "wellbeing", outcome: true },
+  { id: "win", emoji: "✨", label: "Positive moment", category: "wellbeing", outcome: true },
+];
+const SCREEN_TYPES = ["Television", "Tablet", "Phone", "Video game", "Learning app", "Video call", "Other"];
+const SCREEN_PURPOSES = ["Entertainment", "Education", "Regulation", "Communication/AAC", "Background viewing", "Other"];
+const localDayKey = (date = new Date()) => {
+  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return shifted.toISOString().slice(0, 10);
+};
+const localTimeValue = (date = new Date()) => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+const dayEventTime = (entry) => new Date(entry.occurredAt || entry.createdAt);
+const clockTime = (value) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+const durationText = (minutes) => {
+  const value = Number(minutes) || 0;
+  if (!value) return "";
+  const hours = Math.floor(value / 60), remainder = value % 60;
+  return hours ? `${hours}h${remainder ? ` ${remainder}m` : ""}` : `${remainder}m`;
+};
+async function getDayEvents() {
+  return (await getAll("notes")).filter((entry) => entry.kind === "dayEvent");
+}
+async function getDayBubbles() {
+  const custom = await getSetting("myDayCustomBubbles", []);
+  return [...DAY_BUBBLES, ...custom.filter((item) => item?.id && item?.label)];
+}
+function dayEventCard(entry, profiles, includeDate = false) {
+  const profile = profiles.find((item) => item.id === entry.profileId), details = [];
+  if (entry.durationMinutes) details.push(durationText(entry.durationMinutes));
+  if (entry.intensity) details.push(`Intensity ${entry.intensity}/5`);
+  if (entry.screenType) details.push(entry.screenType);
+  if (entry.screenPurpose) details.push(entry.screenPurpose);
+  return `<div class="day-entry card"><div class="day-entry-icon">${esc(entry.emoji || "•")}</div><div class="day-entry-body"><strong>${esc(entry.label)}</strong><span>${includeDate ? `${fmtDate(entry.occurredAt)} • ` : ""}${clockTime(entry.occurredAt)} • ${esc(profile?.name || "Child")}${details.length ? ` • ${esc(details.join(" • "))}` : ""}</span>${entry.notes ? `<p>${esc(entry.notes)}</p>` : ""}</div><div class="day-entry-actions"><button class="small-action edit-day-event" data-id="${entry.id}" type="button">Edit</button><button class="small-action danger-link delete-day-event" data-id="${entry.id}" type="button">Delete</button></div></div>`;
+}
+
+function buildDayInsights(events) {
+  const usable = events.filter((entry) => entry.occurredAt).sort((a, b) => dayEventTime(a) - dayEventTime(b));
+  const recordedDays = new Set(usable.map((entry) => localDayKey(dayEventTime(entry))));
+  if (recordedDays.size < 7) return { ready: false, days: recordedDays.size, insights: [] };
+  const predictors = usable.filter((entry) => !entry.outcome && !["behavior", "sleepOutcome", "wellbeing"].includes(entry.category));
+  const outcomes = usable.filter((entry) => entry.outcome || ["behavior", "sleepOutcome"].includes(entry.category));
+  const groups = new Map();
+  for (const predictor of predictors) {
+    const key = predictor.label.toLocaleLowerCase(), group = groups.get(key) || { label: predictor.label, count: 0, matches: new Map() };
+    group.count++;
+    const matchedOutcomes = new Set();
+    for (const outcome of outcomes) {
+      const gap = dayEventTime(outcome) - dayEventTime(predictor), windowMs = outcome.category === "sleepOutcome" ? 12 * 3600000 : 3600000;
+      if (outcome.profileId !== predictor.profileId || gap < 0 || gap > windowMs) continue;
+      const outcomeKey = outcome.label.toLocaleLowerCase();
+      if (matchedOutcomes.has(outcomeKey)) continue;
+      matchedOutcomes.add(outcomeKey);
+      const match = group.matches.get(outcomeKey) || { label: outcome.label, count: 0, window: windowMs };
+      match.count++;
+      group.matches.set(outcomeKey, match);
+    }
+    groups.set(key, group);
+  }
+  const insights = [];
+  for (const group of groups.values()) {
+    if (group.count < 3) continue;
+    for (const match of group.matches.values()) if (match.count >= 2)
+      insights.push({ predictor: group.label, outcome: match.label, matches: Math.min(match.count, group.count), total: group.count, hours: match.window / 3600000 });
+  }
+  insights.sort((a, b) => b.matches / b.total - a.matches / a.total || b.matches - a.matches);
+  return { ready: true, days: recordedDays.size, insights: insights.slice(0, 4) };
+}
+
+async function openDayEventForm(profiles, bubble, existing = null) {
+  const occurred = existing ? dayEventTime(existing) : new Date(), selectedBubble = bubble || DAY_BUBBLES.find((item) => item.id === existing?.bubbleId) || { id: existing?.bubbleId, label: existing?.label, emoji: existing?.emoji, category: existing?.category, outcome: existing?.outcome };
+  const isScreen = selectedBubble.category === "screen";
+  modalBody.innerHTML = `<h2>${existing ? "Edit" : "Log"} ${esc(selectedBubble.emoji || "")} ${esc(selectedBubble.label)}</h2><div class="form-grid"><div class="field"><label>Child</label><select id="dayProfile">${profiles.map((profile) => `<option value="${profile.id}" ${existing?.profileId === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Date</label><input id="dayDate" type="date" value="${localDayKey(occurred)}"></div><div class="field"><label>Time</label><input id="dayTime" type="time" value="${localTimeValue(occurred)}"></div></div><div class="field"><label>Duration in minutes <span class="hint">(optional)</span></label><input id="dayDuration" type="number" min="0" max="1440" inputmode="numeric" value="${existing?.durationMinutes || ""}"></div>${isScreen ? `<div class="form-grid two-col"><div class="field"><label>Screen or activity</label><select id="screenType">${SCREEN_TYPES.map((item) => `<option ${existing?.screenType === item ? "selected" : ""}>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="screenPurpose">${SCREEN_PURPOSES.map((item) => `<option ${existing?.screenPurpose === item ? "selected" : ""}>${item}</option>`).join("")}</select></div></div>` : ""}<div class="field"><label>Intensity <span class="hint">(optional)</span></label><select id="dayIntensity"><option value="">Not recorded</option>${[1,2,3,4,5].map((n) => `<option value="${n}" ${Number(existing?.intensity) === n ? "selected" : ""}>${n}${n === 1 ? " — low" : n === 5 ? " — high" : ""}</option>`).join("")}</select></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="dayNotes" placeholder="What happened, what helped, or anything worth remembering…">${esc(existing?.notes || "")}</textarea></div><button id="saveDayEvent" class="btn full" type="button">Save to My Day</button></div>`;
+  modal.showModal();
+  if (!existing && myDayFilterProfile !== "all" && profiles.some((profile) => profile.id === myDayFilterProfile)) $("#dayProfile").value = myDayFilterProfile;
+  $("#saveDayEvent").onclick = async () => {
+    const date = $("#dayDate").value, time = $("#dayTime").value;
+    if (!date || !time) return alert("Choose a date and time.");
+    const occurredAt = new Date(`${date}T${time}:00`).toISOString(), timestamp = nowISO();
+    await put("notes", { ...(existing || {}), id: existing?.id || uid(), kind: "dayEvent", profileId: $("#dayProfile").value, bubbleId: selectedBubble.id, label: selectedBubble.label, emoji: selectedBubble.emoji || "•", category: selectedBubble.category || "activity", outcome: Boolean(selectedBubble.outcome), occurredAt, durationMinutes: Number($("#dayDuration").value) || null, intensity: Number($("#dayIntensity").value) || null, notes: $("#dayNotes").value.trim(), screenType: isScreen ? $("#screenType").value : null, screenPurpose: isScreen ? $("#screenPurpose").value : null, createdAt: existing?.createdAt || timestamp, updatedAt: timestamp, syncStatus: "local" });
+    myDayFilterDate = date;
+    modal.close();
+    navigate(currentRoute === "screenTime" ? "screenTime" : "myDay");
+  };
+}
+
+async function openCustomBubbleForm() {
+  const current = await getSetting("myDayCustomBubbles", []);
+  modalBody.innerHTML = `<h2>➕ Create a custom bubble</h2><div class="form-grid"><div class="field"><label>Name</label><input id="customBubbleName" maxlength="40" placeholder="Grandma's house"></div><div class="field"><label>Icon or emoji</label><input id="customBubbleEmoji" maxlength="8" placeholder="🏡"></div><div class="field"><label>Type</label><select id="customBubbleCategory"><option value="activity">Activity or event</option><option value="food">Food or drink</option><option value="health">Health or medication</option><option value="sleep">Sleep event</option><option value="behavior">Behavior or response</option><option value="sleepOutcome">Sleep difficulty</option><option value="wellbeing">Positive or comfortable moment</option></select></div><button id="saveCustomBubble" class="btn full" type="button">Add bubble</button></div>${current.length ? `<h3>Custom bubbles</h3><div class="list">${current.map((bubble) => `<div class="list-item"><div><strong>${esc(bubble.emoji || "🔹")} ${esc(bubble.label)}</strong><div class="hint">${esc(bubble.category)}</div></div><button class="small-action danger-link delete-custom-bubble" data-id="${esc(bubble.id)}" type="button">Delete</button></div>`).join("")}</div>` : ""}`;
+  modal.showModal();
+  $("#saveCustomBubble").onclick = async () => {
+    const label = $("#customBubbleName").value.trim();
+    if (!label) return alert("Enter a bubble name.");
+    const category = $("#customBubbleCategory").value, current = await getSetting("myDayCustomBubbles", []);
+    current.push({ id: `custom-${uid()}`, label, emoji: $("#customBubbleEmoji").value.trim() || "🔹", category, outcome: ["behavior", "sleepOutcome", "wellbeing"].includes(category) });
+    await setSetting("myDayCustomBubbles", current);
+    modal.close();
+    renderMyDay();
+  };
+  document.querySelectorAll(".delete-custom-bubble").forEach((button) => button.onclick = async () => {
+    const bubble = current.find((item) => item.id === button.dataset.id);
+    if (!bubble || !confirm(`Delete the “${bubble.label}” bubble? Existing timeline entries will remain.`)) return;
+    await setSetting("myDayCustomBubbles", current.filter((item) => item.id !== bubble.id));
+    await openCustomBubbleForm();
+  });
+}
+
+async function renderMyDay() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) {
+    view.innerHTML = `<div class="empty card"><div class="big">🫧</div><h2>Create a child profile first</h2><p>My Day connects each event to the child it belongs to.</p><button class="btn" data-go="child">Create profile</button></div>`;
+    bindRouteButtons(); return;
+  }
+  if (!myDayFilterDate) myDayFilterDate = localDayKey();
+  const bubbles = await getDayBubbles(), allEvents = await getDayEvents(), selectedEvents = allEvents.filter((entry) => localDayKey(dayEventTime(entry)) === myDayFilterDate && (myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile)).sort((a, b) => dayEventTime(a) - dayEventTime(b));
+  const insightEvents = allEvents.filter((entry) => myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile), insight = buildDayInsights(insightEvents);
+  view.innerHTML = `<section class="hero"><h1>🫧 My Day</h1><p>Tap a bubble to record what happened and when. Over time, MTM can show possible patterns without claiming that one event caused another.</p></section><div class="card day-picker"><div class="form-grid two-col"><div class="field"><label>Child</label><select id="myDayProfile"><option value="all">All children</option>${profiles.map((profile) => `<option value="${profile.id}" ${myDayFilterProfile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="myDayDate" type="date" value="${myDayFilterDate}"></div></div></div><h2 class="section-title">What happened?</h2><div class="day-bubbles">${bubbles.map((bubble) => `<button class="day-bubble day-${esc(bubble.category)}" data-bubble-id="${esc(bubble.id)}" type="button"><span>${esc(bubble.emoji || "•")}</span><strong>${esc(bubble.label)}</strong></button>`).join("")}<button id="addCustomBubble" class="day-bubble day-custom" type="button"><span>＋</span><strong>Custom bubble</strong></button></div><div class="btn-row"><button class="btn secondary" data-go="screenTime">Open screen-time tracker</button></div><h2 class="section-title">Timeline</h2><div class="day-timeline">${selectedEvents.length ? selectedEvents.map((entry) => dayEventCard(entry, profiles)).join("") : `<div class="empty card"><p>No events recorded for this day.</p></div>`}</div><h2 class="section-title">Possible patterns</h2>${!insight.ready ? `<div class="card"><p>Record events on at least seven different days before MTM looks for possible patterns.</p><p class="hint">Days recorded: ${insight.days} of 7</p></div>` : insight.insights.length ? `<div class="pattern-list">${insight.insights.map((item) => `<div class="card pattern-card"><strong>${esc(item.outcome)} followed ${esc(item.predictor)}</strong><p>Logged within ${item.hours === 1 ? "1 hour" : `${item.hours} hours`} ${item.matches} of ${item.total} recorded times.</p></div>`).join("")}</div>` : `<div class="card"><p>No repeated pattern meets the display threshold yet. Keep recording ordinary days as well as difficult ones.</p></div>`}<div class="banner pattern-disclaimer"><strong>Correlation is not causation.</strong> These summaries only compare what was recorded. Missing entries, routines, illness, environment, and other factors can change the result.</div>`;
+  $("#myDayProfile").onchange = (event) => { myDayFilterProfile = event.target.value; renderMyDay(); };
+  $("#myDayDate").onchange = (event) => { myDayFilterDate = event.target.value || localDayKey(); renderMyDay(); };
+  document.querySelectorAll("[data-bubble-id]").forEach((button) => button.onclick = () => openDayEventForm(profiles, bubbles.find((bubble) => bubble.id === button.dataset.bubbleId)));
+  $("#addCustomBubble").onclick = openCustomBubbleForm;
+  document.querySelectorAll(".edit-day-event").forEach((button) => button.onclick = () => { const entry = allEvents.find((item) => item.id === button.dataset.id), bubble = bubbles.find((item) => item.id === entry?.bubbleId) || entry; if (entry) openDayEventForm(profiles, bubble, entry); });
+  document.querySelectorAll(".delete-day-event").forEach((button) => button.onclick = async () => { const entry = allEvents.find((item) => item.id === button.dataset.id); if (!entry || !confirm(`Delete “${entry.label}”?`)) return; await createSnapshot(`Before deleting My Day entry ${entry.label}`); await deleteItem("notes", entry.id); renderMyDay(); });
+  bindRouteButtons();
+}
+
+const ACTIVE_SCREEN_TIMER_KEY = "mtmActiveScreenTimer";
+function getActiveScreenTimer() { try { return JSON.parse(localStorage.getItem(ACTIVE_SCREEN_TIMER_KEY) || "null"); } catch { return null; } }
+async function openScreenTimerForm(profiles) {
+  modalBody.innerHTML = `<h2>▶️ Start screen-time timer</h2><div class="form-grid"><div class="field"><label>Child</label><select id="timerProfile">${profiles.map((profile) => `<option value="${profile.id}">${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Screen or activity</label><select id="timerType">${SCREEN_TYPES.map((item) => `<option>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="timerPurpose">${SCREEN_PURPOSES.map((item) => `<option>${item}</option>`).join("")}</select></div><button id="beginScreenTimer" class="btn full" type="button">Start timer</button></div>`;
+  modal.showModal();
+  $("#beginScreenTimer").onclick = () => { localStorage.setItem(ACTIVE_SCREEN_TIMER_KEY, JSON.stringify({ profileId: $("#timerProfile").value, screenType: $("#timerType").value, screenPurpose: $("#timerPurpose").value, startedAt: nowISO() })); modal.close(); renderScreenTime(); };
+}
+async function stopScreenTimer() {
+  const active = getActiveScreenTimer(); if (!active) return;
+  const endedAt = new Date(), startedAt = new Date(active.startedAt), minutes = Math.max(1, Math.round((endedAt - startedAt) / 60000));
+  await put("notes", { id: uid(), kind: "dayEvent", profileId: active.profileId, bubbleId: "screen", label: "Screen time", emoji: "📱", category: "screen", outcome: false, occurredAt: active.startedAt, durationMinutes: minutes, intensity: null, notes: "", screenType: active.screenType, screenPurpose: active.screenPurpose, createdAt: nowISO(), updatedAt: nowISO(), syncStatus: "local" });
+  localStorage.removeItem(ACTIVE_SCREEN_TIMER_KEY); renderScreenTime();
+}
+async function renderScreenTime() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) { view.innerHTML = `<div class="empty card"><h2>Create a child profile first</h2><button class="btn" data-go="child">Create profile</button></div>`; bindRouteButtons(); return; }
+  const events = (await getDayEvents()).filter((entry) => entry.category === "screen").sort((a, b) => dayEventTime(b) - dayEventTime(a)), today = localDayKey(), weekStart = Date.now() - 7 * 86400000;
+  const todayMinutes = events.filter((entry) => localDayKey(dayEventTime(entry)) === today && entry.screenPurpose !== "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), weekMinutes = events.filter((entry) => dayEventTime(entry).getTime() >= weekStart && entry.screenPurpose !== "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), aacMinutes = events.filter((entry) => dayEventTime(entry).getTime() >= weekStart && entry.screenPurpose === "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), active = getActiveScreenTimer();
+  view.innerHTML = `<section class="hero"><h1>📱 Screen time</h1><p>Record screen use by activity and purpose. Communication and AAC are reported separately from recreational screen time.</p></section>${active ? `<div class="card active-screen-timer"><strong>Timer running</strong><span id="screenTimerElapsed"></span><p>${esc(profiles.find((profile) => profile.id === active.profileId)?.name || "Child")} • ${esc(active.screenType)} • ${esc(active.screenPurpose)}</p><button id="stopScreenTimer" class="btn" type="button">Stop and save</button></div>` : `<div class="btn-row"><button id="startScreenTimer" class="btn" type="button">Start timer</button><button id="manualScreenEntry" class="btn secondary" type="button">Add manually</button></div>`}<div class="screen-summary"><div class="card"><strong>${durationText(todayMinutes) || "0m"}</strong><span>Today, excluding AAC</span></div><div class="card"><strong>${durationText(weekMinutes) || "0m"}</strong><span>Past 7 days, excluding AAC</span></div><div class="card"><strong>${durationText(aacMinutes) || "0m"}</strong><span>Past 7 days, communication/AAC</span></div></div><div class="banner"><strong>These totals describe recorded use.</strong> They do not judge whether screen time was helpful or harmful. Content, purpose, participation, sleep, movement, and the individual child all matter.</div><h2 class="section-title">Recent entries</h2><div class="day-timeline">${events.length ? events.slice(0, 20).map((entry) => dayEventCard(entry, profiles, true)).join("") : `<div class="empty card"><p>No screen time recorded yet.</p></div>`}</div>`;
+  if (active) { const update = () => { const seconds = Math.max(0, Math.floor((Date.now() - new Date(active.startedAt)) / 1000)), hours = Math.floor(seconds / 3600), minutes = Math.floor((seconds % 3600) / 60), remainder = seconds % 60; $("#screenTimerElapsed").textContent = `${hours ? `${hours}:` : ""}${String(minutes).padStart(hours ? 2 : 1, "0")}:${String(remainder).padStart(2, "0")}`; }; update(); screenTimerInterval = setInterval(update, 1000); $("#stopScreenTimer").onclick = stopScreenTimer; }
+  else { $("#startScreenTimer").onclick = () => openScreenTimerForm(profiles); $("#manualScreenEntry").onclick = () => openDayEventForm(profiles, DAY_BUBBLES.find((item) => item.id === "screen")); }
+  document.querySelectorAll(".edit-day-event").forEach((button) => button.onclick = () => { const entry = events.find((item) => item.id === button.dataset.id); if (entry) openDayEventForm(profiles, DAY_BUBBLES.find((item) => item.id === "screen"), entry); });
+  document.querySelectorAll(".delete-day-event").forEach((button) => button.onclick = async () => { const entry = events.find((item) => item.id === button.dataset.id); if (!entry || !confirm("Delete this screen-time entry?")) return; await createSnapshot("Before deleting screen-time entry"); await deleteItem("notes", entry.id); renderScreenTime(); });
+}
+
+function renderAutismMyths() {
+  const myths = [
+    ["Autism looks the same in everyone", "Autistic people have different strengths, support needs, communication styles, sensory experiences, interests, and daily-living abilities. A profile that fits one person cannot define another."],
+    ["Autistic people lack empathy", "Empathy is not one single skill. Someone may feel another person's emotions strongly while having difficulty reading an expression, knowing what response is expected, or showing care in a familiar way."],
+    ["Autism comes from bad parenting", "Autism is a developmental disability related to differences in the brain. Parenting style does not create autism."],
+    ["Every autistic person is a savant", "Some autistic people have exceptional skills, and many do not. Ordinary strengths and interests deserve respect without expecting a rare talent."],
+    ["Nonspeaking means not understanding", "Speech is only one way to communicate. A person may use AAC, typing, signs, pictures, gestures, movement, or behavior. Speech ability does not reveal everything a person understands."],
+    ["AAC prevents speech", "AAC gives a person another reliable way to communicate. It can be used with speech and should not be withheld while waiting to see whether speech develops."],
+    ["All stimming should be stopped", "Stimming can help with regulation, concentration, expression, or sensory needs. Support is needed when an action is unsafe or causing harm, but harmless stimming does not need to be removed for appearance."],
+    ["Eye contact proves someone is listening", "A person can listen without looking into someone's eyes. Forced eye contact can consume attention or cause discomfort, leaving less capacity for the conversation itself."],
+    ["Children grow out of autism", "Autism is lifelong. Skills, needs, coping strategies, and outward traits can change, and some people learn to mask differences, but that is not the same as no longer being autistic."],
+    ["A meltdown is a tantrum", "A meltdown is an overwhelmed response, not a calculated demand. Reduce demands and sensory load, protect safety, and allow recovery before trying to discuss what happened."],
+  ];
+  view.innerHTML = `<section class="hero"><h1>🧠 ASD myths and misconceptions</h1><p>Plain answers to common assumptions that can affect how autistic people are understood and supported.</p></section><div class="education-sections myth-list">${myths.map(([myth, fact]) => `<details class="education-card"><summary>Myth: ${esc(myth)}</summary><div class="education-body"><p>${esc(fact)}</p></div></details>`).join("")}</div><div class="education-links myth-sources"><a class="education-link" href="https://www.nimh.nih.gov/health/topics/autism-spectrum-disorders-asd" target="_blank" rel="noopener"><strong>National Institute of Mental Health</strong><span>Autism overview, characteristics, and support.</span><small>Clinical source ↗</small></a><a class="education-link" href="https://www.asha.org/public/speech/disorders/aac/" target="_blank" rel="noopener"><strong>American Speech-Language-Hearing Association</strong><span>AAC methods, assessment, and communication support.</span><small>Clinical source ↗</small></a><a class="education-link" href="https://www.autism.org.uk/advice-and-guidance/what-is-autism" target="_blank" rel="noopener"><strong>National Autistic Society</strong><span>Autism, communication, sensory differences, and varied support needs.</span><small>Community source ↗</small></a></div><div class="banner"><strong>Use this section to question assumptions, not the person.</strong> Individual autistic people and their chosen communication should guide how they are described and supported.</div>`;
+}
+
 async function renderChild() {
   const p = await getAll("profiles"),
     a = await getAll("achievements"),
@@ -1605,7 +1817,7 @@ async function renderChild() {
     if (profile?.specialInterest) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Special interest:</strong> ${esc(profile.specialInterest)}</p>`);
     if (profile?.currentFocus) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Currently working on:</strong> ${esc(profile.currentFocus)}</p>`);
   });
-  view.insertAdjacentHTML("beforeend", `<h2 class="section-title">Growth tools</h2><div class="grid"><button class="card-button" data-go="food"><span class="emoji">🍽️</span><strong>Food diary</strong><small>Track foods and meals by comfort level, then build gentle variety ideas.</small></button></div>`);
+  view.insertAdjacentHTML("beforeend", `<h2 class="section-title">Growth tools</h2><div class="grid"><button class="card-button" data-go="myDay"><span class="emoji">🫧</span><strong>My Day</strong><small>Tap event bubbles, build a daily timeline, and watch for possible patterns over time.</small></button><button class="card-button" data-go="screenTime"><span class="emoji">📱</span><strong>Screen time</strong><small>Use a timer or manual entries and keep communication/AAC totals separate.</small></button><button class="card-button" data-go="food"><span class="emoji">🍽️</span><strong>Food diary</strong><small>Track foods and meals by comfort level, then build gentle variety ideas.</small></button></div>`);
   $("#addProfile").onclick = openProfileForm;
   $("#dailyCareProfile").onclick = openDailyCareProfile;
   document
@@ -2975,6 +3187,7 @@ async function renderCaregiver() {
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
     <button id="caregiverTerms" class="card-button"><strong>📖 Common terms</strong><small>Plain-language explanations of autism and sensory terminology.</small></button>
     <button id="caregiverSigns" class="card-button"><strong>🧭 Signs of autism</strong><small>Social communication, repetition, routines, sensory differences, and when to ask for an evaluation.</small></button>
+    <button id="caregiverMyths" class="card-button"><strong>🧠 ASD myths and misconceptions</strong><small>Clear explanations of common assumptions about autism, communication, empathy, stimming, and support.</small></button>
     <button id="caregiverAggression" class="card-button"><strong>🫶 Aggressive behaviors</strong><small>Why they may happen, what they can look like, safer responses, and what to avoid.</small></button>
     <button id="caregiverRegulationGuides" class="card-button"><strong>🌱 Regulation & confidence</strong><small>Visual guides for connection, emotional regulation, confidence, and supportive caregiving.</small></button>
     <button id="caregiverEducation" class="card-button"><strong>🎓 Educational options</strong><small>Homeschooling, school choices, IEPs, 504 plans, resources, and letter templates.</small></button>
@@ -2992,6 +3205,7 @@ async function renderCaregiver() {
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
   $("#caregiverSigns").onclick = openAutismSignsGuide;
+  $("#caregiverMyths").onclick = () => navigate("myths");
   $("#caregiverAggression").onclick = openAggressionGuide;
   $("#caregiverRegulationGuides").onclick = openCaregiverRegulationGuides;
   $("#caregiverEducation").onclick = () => navigate("education");
@@ -3379,7 +3593,7 @@ function validateBackup(b) {
 async function previewRestore(file) {
   const b = JSON.parse(await file.text());
   validateBackup(b);
-  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Wins:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
+  modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Wins:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>My Day entries:</strong> ${(b.data.notes || []).filter((item) => item.kind === "dayEvent").length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
   modal.showModal();
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");
@@ -3422,6 +3636,7 @@ async function renderBackup() {
 async function renderSettings() {
   const profiles = await getAll("profiles"),
     categories = await getVocabCategories(),
+    accessStatus = await getEntitlement(),
     d = {
       profile: "all",
       type: "all",
@@ -3442,7 +3657,7 @@ async function renderSettings() {
       savedProfileDisplay === "exact" && !exactReady
         ? "yearsMonths"
         : savedProfileDisplay;
-  view.innerHTML = `<section class="hero"><h1>⚙️ Settings</h1><p>Choose how profiles and speech filters work for your family.</p></section><div class="card settings-card"><h3>Profile card display</h3><div class="field"><label>Show beneath the child’s name</label><select id="profileDisplay"><option value="birthDate" ${profileDisplay === "birthDate" ? "selected" : ""}>Birth date</option><option value="years" ${profileDisplay === "years" ? "selected" : ""}>Age in whole years — 2 yo</option><option value="yearsMonths" ${profileDisplay === "yearsMonths" ? "selected" : ""}>Age in years and months — 2 years 3 months</option><option value="exact" ${profileDisplay === "exact" ? "selected" : ""}>Live exact age — years, months, days, hours, minutes, seconds</option><option value="none" ${profileDisplay === "none" ? "selected" : ""}>Nothing</option></select></div><button id="saveProfileDisplay" class="btn" type="button">Save profile display</button></div><div class="card settings-card"><h3>Speech & Language filter defaults</h3><p class="hint">These choices load when the tracker opens and whenever Clear filters is pressed.</p><div class="form-grid settings-filter-grid"><div class="field"><label>Child</label><select id="defaultVocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}" ${d.profile === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Default search</label><input id="defaultVocabSearch" type="search" value="${esc(d.search || "")}" placeholder="Blank shows everything"></div><div class="field"><label>Category</label><select id="defaultVocabCategory"><option value="">All categories</option>${categories.map((c) => `<option ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Sort</label><select id="defaultVocabSort"><option value="alpha" ${d.sort === "alpha" ? "selected" : ""}>Alphabetical</option><option value="category" ${d.sort === "category" ? "selected" : ""}>Category</option><option value="newest" ${d.sort === "newest" ? "selected" : ""}>Date first said — newest</option><option value="oldest" ${d.sort === "oldest" ? "selected" : ""}>Date first said — oldest</option></select></div><div class="field"><label>Year</label><input id="defaultVocabYear" type="number" min="1900" max="2100" inputmode="numeric" value="${esc(d.year || "")}" placeholder="All years"></div><div class="field"><label>Month</label><select id="defaultVocabMonth"><option value="">All months</option>${Array.from(
+  view.innerHTML = `<section class="hero"><h1>⚙️ Settings</h1><p>Choose how profiles and speech filters work for your family.</p></section><div class="card settings-card access-card"><h3>Access</h3><p><strong>${esc(accessStatus.label)}</strong></p><p class="hint">New accounts receive ${ACCESS.trialDays} days of full access. Owner and active household subscription access will be confirmed by the server before enforcement is enabled.</p><button class="btn secondary" data-go="subscription" type="button">View access details</button></div><div class="card settings-card"><h3>Profile card display</h3><div class="field"><label>Show beneath the child’s name</label><select id="profileDisplay"><option value="birthDate" ${profileDisplay === "birthDate" ? "selected" : ""}>Birth date</option><option value="years" ${profileDisplay === "years" ? "selected" : ""}>Age in whole years — 2 yo</option><option value="yearsMonths" ${profileDisplay === "yearsMonths" ? "selected" : ""}>Age in years and months — 2 years 3 months</option><option value="exact" ${profileDisplay === "exact" ? "selected" : ""}>Live exact age — years, months, days, hours, minutes, seconds</option><option value="none" ${profileDisplay === "none" ? "selected" : ""}>Nothing</option></select></div><button id="saveProfileDisplay" class="btn" type="button">Save profile display</button></div><div class="card settings-card"><h3>Speech & Language filter defaults</h3><p class="hint">These choices load when the tracker opens and whenever Clear filters is pressed.</p><div class="form-grid settings-filter-grid"><div class="field"><label>Child</label><select id="defaultVocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}" ${d.profile === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Default search</label><input id="defaultVocabSearch" type="search" value="${esc(d.search || "")}" placeholder="Blank shows everything"></div><div class="field"><label>Category</label><select id="defaultVocabCategory"><option value="">All categories</option>${categories.map((c) => `<option ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Sort</label><select id="defaultVocabSort"><option value="alpha" ${d.sort === "alpha" ? "selected" : ""}>Alphabetical</option><option value="category" ${d.sort === "category" ? "selected" : ""}>Category</option><option value="newest" ${d.sort === "newest" ? "selected" : ""}>Date first said — newest</option><option value="oldest" ${d.sort === "oldest" ? "selected" : ""}>Date first said — oldest</option></select></div><div class="field"><label>Year</label><input id="defaultVocabYear" type="number" min="1900" max="2100" inputmode="numeric" value="${esc(d.year || "")}" placeholder="All years"></div><div class="field"><label>Month</label><select id="defaultVocabMonth"><option value="">All months</option>${Array.from(
     { length: 12 },
     (_, i) => {
       const value = String(i + 1).padStart(2, "0"),
@@ -3519,6 +3734,7 @@ function setupDrawer() {
   const links = [
     ["🏠", "Home", "home"],
     ["🌱", "My Child", "child"],
+    ["🫧", "My Day", "myDay"],
     ["🗣️", "Speech & Language", "speech"],
     ["🌙", "Sleep Sanctuary", "sleep"],
     ["🫧", "Sensory Support", "sensory"],
