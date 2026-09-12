@@ -1,10 +1,10 @@
-const CACHE='ftbm-v0.10.0-sync-alpha';
+const CACHE='ftbm-test-v0.10.0-sync-alpha-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0',
-  './sync.js?v=0.10.0',
-  './app.js?v=0.10.0',
+  './styles.css?v=0.10.0-test-1',
+  './sync.js?v=0.10.0-test-1',
+  './app.js?v=0.10.0-test-1',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -49,7 +49,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('ftbm-v')&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('ftbm-test-v')&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
 });
