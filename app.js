@@ -1,9 +1,9 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-sync-alpha-test", schemaVersion: 4 };
+const APP = { name: "More than Measured Test", version: "0.10.0-sync-alpha-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
-  DB_VERSION = 4,
+  DB_VERSION = 5,
   STORE_NAMES = [
     "profiles",
     "achievements",
@@ -263,7 +263,13 @@ async function performNavigation(r, options = {}) {
   if(screenTimerInterval){clearInterval(screenTimerInterval);screenTimerInterval=null;}
   currentRoute = route;
   applyRouteChrome(route);
-  await routes[route]();
+  try {
+    await routes[route]();
+  } catch (error) {
+    console.error(`Route "${route}" failed`, error);
+    view.innerHTML = `<div class="banner"><strong>Could not open this section:</strong> ${esc(error?.message || String(error))}</div><div class="btn-row"><button class="btn secondary" data-go="home" type="button">Return home</button><button class="btn secondary" data-go="${route}" type="button">Try again</button></div>`;
+    bindRouteButtons();
+  }
   applyRouteChrome(route);
   history.replaceState(null, "", `#${route}`);
   closeDrawer();
