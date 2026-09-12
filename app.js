@@ -1,8 +1,8 @@
 "use strict";
 
-const APP = { name: "More than Measured", version: "0.10.0-sync-alpha", schemaVersion: 4 };
+const APP = { name: "More than Measured Test", version: "0.10.0-sync-alpha-test", schemaVersion: 4 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
-const DB_NAME = "ftbm-db",
+const DB_NAME = "ftbm-test-db",
   DB_VERSION = 4,
   STORE_NAMES = [
     "profiles",
@@ -1751,7 +1751,7 @@ async function renderMyDay() {
   bindRouteButtons();
 }
 
-const ACTIVE_SCREEN_TIMER_KEY = "mtmActiveScreenTimer";
+const ACTIVE_SCREEN_TIMER_KEY = "mtmTestActiveScreenTimer";
 function getActiveScreenTimer() { try { return JSON.parse(localStorage.getItem(ACTIVE_SCREEN_TIMER_KEY) || "null"); } catch { return null; } }
 async function openScreenTimerForm(profiles) {
   modalBody.innerHTML = `<h2>▶️ Start screen-time timer</h2><div class="form-grid"><div class="field"><label>Child</label><select id="timerProfile">${profiles.map((profile) => `<option value="${profile.id}">${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Screen or activity</label><select id="timerType">${SCREEN_TYPES.map((item) => `<option>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="timerPurpose">${SCREEN_PURPOSES.map((item) => `<option>${item}</option>`).join("")}</select></div><button id="beginScreenTimer" class="btn full" type="button">Start timer</button></div>`;
@@ -2399,7 +2399,7 @@ function renderAsdFriendlyFunExpanded(){
   bindRouteButtons();
 }
 
-const COMMUNITY_CACHE_KEY="mtm-community-playgroups-v1";
+const COMMUNITY_CACHE_KEY="mtm-test-community-playgroups-v1";
 let communityMeetups=[];
 const communityKindLabel={hosting:"Hosting a playdate",looking:"Looking for a playdate",recurring:"Recurring group",parent:"Parent meetup",outing:"Sensory-friendly outing"};
 const communityDate=value=>new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
