@@ -2429,13 +2429,14 @@ let toyListings=[];
 async function loadToyExchange(){
   const state=await window.MTMSync.state();
   if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
+  const accountCacheKey=`${TOY_CACHE_KEY}:${String(state.token).slice(-12)}`;
   try{
     const data=await window.MTMSync.api("/v1/community/toys");
     const snapshot={toys:data.toys,updatedAt:data.serverTime||nowISO()};
-    localStorage.setItem(TOY_CACHE_KEY,JSON.stringify(snapshot));
+    localStorage.setItem(accountCacheKey,JSON.stringify(snapshot));
     return {...snapshot,offline:false};
   }catch(error){
-    const cached=JSON.parse(localStorage.getItem(TOY_CACHE_KEY)||"null");
+    const cached=JSON.parse(localStorage.getItem(accountCacheKey)||"null");
     if(cached)return {...cached,offline:true,error:error.message};
     throw error;
   }
