@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-toy-exchange-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-recommendations-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 5,
@@ -201,6 +201,7 @@ const routes = {
   fun: renderAsdFriendlyFunExpanded,
   community: renderCommunityConnections,
   toys: renderToyExchange,
+  recommendations: renderRecommendations,
   myDay: renderMyDay,
   screenTime: renderScreenTime,
   myths: renderAutismMyths,
@@ -2421,6 +2422,132 @@ function renderAsdFriendlyFunExpanded(){
 }
 
 
+const RECOMMENDATION_CACHE_KEY="mtm-test-community-recommendations-v1";
+const RECOMMENDATION_CATEGORIES={
+  doctor:"Doctors & medical specialists",dentist:"Dentists","speech-therapy":"Speech therapy",
+  "occupational-therapy":"Occupational therapy","physical-therapy":"Physical therapy",
+  "behavioral-therapy":"Behavioral therapy","mental-health":"Mental health",
+  restaurant:"Restaurants",school:"Schools & education",activities:"Activities & recreation",
+  "barber-salon":"Barbers & salons",other:"Other local resources"
+};
+let communityRecommendations=[];
+
+async function loadRecommendations(){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended.");
+  const cacheKey=`${RECOMMENDATION_CACHE_KEY}:${String(state.token).slice(-12)}`;
+  try{
+    const data=await window.MTMSync.api("/v1/community/recommendations");
+    const snapshot={recommendations:data.recommendations,updatedAt:data.serverTime||nowISO()};
+    localStorage.setItem(cacheKey,JSON.stringify(snapshot));
+    return {...snapshot,offline:false};
+  }catch(error){
+    const cached=JSON.parse(localStorage.getItem(cacheKey)||"null");
+    if(cached)return {...cached,offline:true,error:error.message};
+    throw error;
+  }
+}
+
+function recommendationCard(item){
+  const status=item.status==="active"?"Active":"Removed";
+  const supportButton=item.isOwner?"":`<button class="btn ${item.supportedByMe?"secondary":""} recommendation-support" data-id="${item.id}" data-support="${item.supportedByMe?"false":"true"}" type="button">${item.supportedByMe?"Remove my recommendation":"Recommend this too"}</button>`;
+  const ownerActions=item.isOwner?`<button class="btn secondary recommendation-manage" data-id="${item.id}" data-action="${item.status==="active"?"remove":"activate"}" type="button">${item.status==="active"?"Remove listing":"Restore listing"}</button>`:"";
+  const publicLinks=`${item.phone?`<a href="tel:${esc(item.phone.replace(/[^+\d]/g,""))}">📞 ${esc(item.phone)}</a>`:""}${item.website?`<a href="${esc(item.website)}" target="_blank" rel="noopener noreferrer">🌐 Visit website</a>`:""}`;
+  return `<article class="recommendation-card ${esc(item.status)}">
+    <div class="recommendation-card-head"><span>${esc(RECOMMENDATION_CATEGORIES[item.category]||item.category)}</span><small>${esc(status)}</small></div>
+    <h3>${esc(item.name)}</h3><p>${esc(item.description)}</p>
+    <dl><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div>${item.address?`<div><dt>Public address</dt><dd>${esc(item.address)}</dd></div>`:""}<div><dt>Recommended by</dt><dd>${item.recommendationCount} ${item.recommendationCount===1?"parent":"parents"}</dd></div><div><dt>Added by</dt><dd>${esc(item.submittedBy.displayName)}</dd></div></dl>
+    ${item.accommodations?`<div class="recommendation-detail"><strong>Accommodations families noticed</strong><p>${esc(item.accommodations)}</p></div>`:""}
+    ${item.goodFit?`<div class="recommendation-detail"><strong>May be a good fit for</strong><p>${esc(item.goodFit)}</p></div>`:""}
+    ${publicLinks?`<div class="recommendation-links">${publicLinks}</div>`:""}
+    <div class="btn-row">${supportButton}${ownerActions}${!item.isOwner?`<button class="small-action danger-link recommendation-report" data-id="${item.id}" type="button">Report concern</button>`:""}</div>
+  </article>`;
+}
+
+function drawRecommendationResults(){
+  const search=$("#recommendationSearch").value.trim().toLocaleLowerCase(),
+    category=$("#recommendationCategory").value,show=$("#recommendationView").value;
+  const shown=communityRecommendations.filter(item=>{
+    if(category&&item.category!==category)return false;
+    if(show==="mine"&&!item.isOwner)return false;
+    if(show==="supported"&&!item.supportedByMe)return false;
+    if(show==="active"&&item.status!=="active")return false;
+    const haystack=`${item.name} ${item.description} ${item.generalArea} ${item.address} ${item.accommodations} ${item.goodFit} ${RECOMMENDATION_CATEGORIES[item.category]||""}`.toLocaleLowerCase();
+    return !search||haystack.includes(search);
+  });
+  $("#recommendationResultCount").textContent=`${shown.length} ${shown.length===1?"recommendation":"recommendations"} found.`;
+  $("#recommendationResults").innerHTML=shown.length?shown.map(recommendationCard).join(""):`<div class="empty card"><div class="big">⭐</div><p>No recommendations match those filters yet.</p></div>`;
+  document.querySelectorAll(".recommendation-support").forEach(button=>button.onclick=()=>supportRecommendation(button.dataset.id,button.dataset.support==="true"));
+  document.querySelectorAll(".recommendation-manage").forEach(button=>button.onclick=()=>manageRecommendation(button.dataset.id,button.dataset.action));
+  document.querySelectorAll(".recommendation-report").forEach(button=>button.onclick=()=>reportRecommendation(button.dataset.id));
+}
+
+async function renderRecommendations(){
+  view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1><p>Find local professionals, services, restaurants, schools, and activities recommended by other parents.</p></section>
+    <div class="banner"><strong>Community recommendations, not MTM endorsements:</strong> Details can change. Confirm current licensing, credentials, insurance, prices, accessibility, accommodations, policies, and fit directly with the provider or business before making a decision.</div>
+    <div id="recommendationStatus" class="card"><p>Loading recommendations…</p></div>`;
+  try{
+    const data=await loadRecommendations();communityRecommendations=data.recommendations;
+    view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1><p>Find local professionals, services, restaurants, schools, and activities recommended by other parents.</p></section>
+      <div class="banner"><strong>Community recommendations, not MTM endorsements:</strong> Details can change. Confirm current licensing, credentials, insurance, prices, accessibility, accommodations, policies, and fit directly with the provider or business before making a decision.</div>
+      <div class="btn-row"><button id="newRecommendation" class="btn" type="button">Add a recommendation</button><button id="refreshRecommendations" class="btn secondary" type="button">Refresh</button></div>
+      ${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing recommendations last updated ${esc(new Date(data.updatedAt).toLocaleString())}. Details may have changed.</div>`:""}
+      <section class="card recommendation-search" aria-label="Search recommendations"><h2>Search near you</h2><div class="form-grid two-col">
+        <div class="field"><label>Search name, service, city, state, or ZIP</label><input id="recommendationSearch" type="search" placeholder="Dentist, speech, Berkeley Springs…"></div>
+        <div class="field"><label>Category</label><select id="recommendationCategory"><option value="">All categories</option>${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+        <div class="field"><label>Show</label><select id="recommendationView"><option value="active">All active recommendations</option><option value="mine">My submissions</option><option value="supported">I recommend these too</option></select></div>
+      </div><p id="recommendationResultCount" class="hint" role="status"></p></section>
+      <div id="recommendationResults" class="recommendation-list"></div>`;
+    $("#newRecommendation").onclick=openRecommendationForm;
+    $("#refreshRecommendations").onclick=()=>renderRecommendations();
+    ["recommendationSearch","recommendationCategory","recommendationView"].forEach(id=>$("#"+id).addEventListener(id==="recommendationSearch"?"input":"change",drawRecommendationResults));
+    drawRecommendationResults();
+  }catch(error){
+    $("#recommendationStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();
+  }
+}
+
+function openRecommendationForm(){
+  modalBody.innerHTML=`<h2>Add a local recommendation</h2><div class="banner">Share your own experience. Use public business details only—never post a provider’s personal number, a home address, or a child’s private information.</div><div class="form-grid">
+    <div class="field"><label>Category</label><select id="recommendationFormCategory">${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>Name</label><input id="recommendationName" maxlength="140" placeholder="Provider, practice, restaurant, school, or place"></div>
+    <div class="field"><label>Why do you recommend them?</label><textarea id="recommendationDescription" maxlength="1200" placeholder="Describe your family’s experience without sharing private health information."></textarea></div>
+    <div class="field"><label>General area</label><input id="recommendationArea" maxlength="120" placeholder="City, state, or ZIP code"></div>
+    <div class="field"><label>Public business address <span class="hint">(optional)</span></label><input id="recommendationAddress" maxlength="220" placeholder="Use the published office or business address only"></div>
+    <div class="field"><label>Public business phone <span class="hint">(optional)</span></label><input id="recommendationPhone" type="tel" maxlength="40"></div>
+    <div class="field"><label>Website <span class="hint">(optional)</span></label><input id="recommendationWebsite" type="url" maxlength="500" placeholder="https://…"></div>
+    <div class="field"><label>Accommodations or sensory supports <span class="hint">(optional)</span></label><textarea id="recommendationAccommodations" maxlength="800" placeholder="Quiet waiting area, dimmer lighting, AAC respected, flexible seating…"></textarea></div>
+    <div class="field"><label>Who might find this especially helpful? <span class="hint">(optional)</span></label><textarea id="recommendationGoodFit" maxlength="500" placeholder="For example: children who need extra transition time"></textarea></div>
+    <button id="saveRecommendation" class="btn full" type="button">Post recommendation</button></div>`;
+  modal.showModal();
+  $("#saveRecommendation").onclick=async()=>{
+    const button=$("#saveRecommendation");button.disabled=true;button.textContent="Posting…";
+    try{
+      await window.MTMSync.api("/v1/community/recommendations",{method:"POST",body:JSON.stringify({
+        category:$("#recommendationFormCategory").value,name:$("#recommendationName").value,
+        description:$("#recommendationDescription").value,generalArea:$("#recommendationArea").value,
+        address:$("#recommendationAddress").value,phone:$("#recommendationPhone").value,
+        website:$("#recommendationWebsite").value,accommodations:$("#recommendationAccommodations").value,
+        goodFit:$("#recommendationGoodFit").value
+      })});
+      modal.close();renderRecommendations();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Post recommendation";}
+  };
+}
+
+async function supportRecommendation(id,support){
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/support`,{method:"POST",body:JSON.stringify({support})});renderRecommendations();}catch(error){alert(error.message);}
+}
+async function manageRecommendation(id,action){
+  if(!confirm(action==="remove"?"Remove this recommendation?":"Restore this recommendation?"))return;
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action})});renderRecommendations();}catch(error){alert(error.message);}
+}
+async function reportRecommendation(id){
+  const reason=prompt("Briefly describe what is inaccurate, unsafe, private, or concerning. Reports are private.");
+  if(!reason?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/report`,{method:"POST",body:JSON.stringify({reason})});alert("The recommendation was reported for review.");}catch(error){alert(error.message);}
+}
+
 const TOY_CACHE_KEY="mtm-test-community-toys-v1";
 const TOY_CATEGORIES={learning:"Learning & educational",sensory:"Sensory",outdoor:"Outdoor",pretend:"Pretend play",building:"Building",vehicles:"Vehicles",dolls:"Dolls & figures",games:"Games & puzzles",books:"Books",baby:"Baby & toddler",other:"Other"};
 const TOY_CONDITIONS={"like-new":"Like new",good:"Good",fair:"Fair","parts":"Parts or pieces missing"};
@@ -3381,6 +3508,8 @@ async function renderCaregiver() {
   <h2 class="section-title">Caregiver support</h2>
   <div class="grid">
     <button id="caregiverMeetups" class="card-button"><strong>🤝 Social Meetups</strong><small>Find or create inclusive playdates, family gatherings, parent meetups, and sensory-friendly outings.</small></button>
+    <button id="caregiverToys" class="card-button"><strong>🧸 Free Toy Exchange</strong><small>Offer toys your family no longer needs or find free toys offered by parents nearby.</small></button>
+    <button id="caregiverRecommended" class="card-button"><strong>⭐ Recommended</strong><small>Find parent-recommended doctors, dentists, therapists, restaurants, schools, activities, and other local places.</small></button>
     <button id="caregiverBabysitter" class="card-button"><strong>🧑‍🍼 Babysitter care sheet</strong><small>Pull saved care details into editable text that can be shared without an app.</small></button>
     <button id="caregiverEmergencyContacts" class="card-button"><strong>☎️ Emergency contacts</strong><small>Save multiple contacts per child for redundancy and care-sheet sharing.</small></button>
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
@@ -3400,6 +3529,8 @@ async function renderCaregiver() {
   </div>`;
   $("#caregiverBabysitter").onclick = openBabysitterCareSheet;
   $("#caregiverMeetups").onclick = () => navigate("community");
+  $("#caregiverToys").onclick = () => navigate("toys");
+  $("#caregiverRecommended").onclick = () => navigate("recommendations");
   $("#caregiverEmergencyContacts").onclick = openEmergencyContacts;
   $("#caregiverEncouragement").onclick = openWeeklyEncouragement;
   $("#caregiverTerms").onclick = openTermsGuide;
@@ -3943,6 +4074,7 @@ function setupDrawer() {
     ["🎡", "ASD Friendly Fun", "fun"],
     ["🤝", "Social Meetups", "community"],
     ["🧸", "Toy Exchange", "toys"],
+    ["⭐", "Recommended", "recommendations"],
     ["💛", "Caregiver Corner", "caregiver"],
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],
