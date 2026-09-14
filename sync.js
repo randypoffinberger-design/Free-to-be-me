@@ -20,6 +20,22 @@ window.MTMSync = (() => {
   const normalizeServerUrl = value => String(value || "").trim().replace(/\/+$/, "");
   const state = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:defaultTestServer(), cursor:0 };
   const saveState = value => rawPut("accountState", { ...(value || {}), id:"current" });
+  async function clearTemporaryShareData(){
+    const current=await state(),profileId=current.sharedProfileId;
+    if(!profileId)return;
+    applyingRemote=true;
+    try{
+      for(const store of SYNCED_STORES){
+        for(const item of await rawAll(store)){
+          if((store==="profiles"&&item.id===profileId)||(store!=="profiles"&&item.profileId===profileId)){
+            await rawDelete(store,item.id);await rawDelete("syncMeta",metaId(store,item.id));
+          }
+        }
+      }
+      for(const item of await rawAll("syncOutbox"))if(item.payload?.profileId===profileId||item.entityId===profileId)await rawDelete("syncOutbox",item.id);
+      for(const item of await rawAll("syncConflicts"))if(item.local?.profileId===profileId||item.entityId===profileId)await rawDelete("syncConflicts",item.id);
+    }finally{applyingRemote=false;}
+  }
   const syncable = (store, valueOrId) => SYNCED_STORES.has(store) && !(store === "settings" && DEVICE_SETTINGS.has(typeof valueOrId === "object" ? valueOrId.id : valueOrId));
   const metaId = (store,id) => `${store}:${id}`;
   async function queue(store, id, operation, payload) {
@@ -67,7 +83,17 @@ window.MTMSync = (() => {
         else if(result.status==="denied"){const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);throw new Error(result.error||"This account cannot make that household change.");}
       }}
   }
-  async function syncNow(){if(running){rerun=true;return;}const s=await state();if(!s.token||!s.householdId||!navigator.onLine)return;running=true;let received=0;try{received+=await pull();await push();received+=await pull();await saveState({...await state(),lastSyncAt:iso(),lastError:null});if(received)window.dispatchEvent(new CustomEvent("mtm:remote-data",{detail:{received}}));}catch(e){await saveState({...await state(),lastError:e.message});}finally{running=false;if(currentRoute==="sync")refreshSyncCenter().catch(()=>{});if(rerun){rerun=false;schedule();}}}
+  async function syncNow(){if(running){rerun=true;return;}const s=await state();if(!s.token||!s.householdId)return;
+    if(s.householdRole==="babysitter"&&s.accessExpiresAt&&Date.parse(s.accessExpiresAt)<=Date.now()){
+      await clearTemporaryShareData();await saveState({...s,householdId:null,householdRole:null,sharedProfileId:null,accessExpiresAt:null,cursor:0,lastError:"Temporary babysitter access expired."});return;
+    }
+    if(!navigator.onLine)return;running=true;let received=0;
+    try{received+=await pull();await push();received+=await pull();await saveState({...await state(),lastSyncAt:iso(),lastError:null});if(received)window.dispatchEvent(new CustomEvent("mtm:remote-data",{detail:{received}}));}
+    catch(e){
+      const current=await state();
+      if(current.householdRole==="babysitter"&&e.status===403){await clearTemporaryShareData();await saveState({...current,householdId:null,householdRole:null,sharedProfileId:null,accessExpiresAt:null,cursor:0,lastError:"Temporary babysitter access ended."});}
+      else await saveState({...current,lastError:e.message});
+    }finally{running=false;if(currentRoute==="sync")refreshSyncCenter().catch(()=>{});if(rerun){rerun=false;schedule();}}}
   function schedule(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;syncNow();},250);}
   async function queueExisting(){const s=await state();if(!s.householdId)throw new Error("Choose a household first.");await createSnapshot("Before connecting local data to household sync");let count=0;for(const store of SYNCED_STORES){for(const item of await getAll(store)){if(!syncable(store,item))continue;const meta=await rawGet("syncMeta",metaId(store,item.id));if(!meta){await queue(store,item.id,"upsert",item);count++;}}}return count;}
   async function resolveConflict(id,choice,merged=null){const c=await rawGet("syncConflicts",id);if(!c)return;applyingRemote=true;try{
@@ -79,21 +105,23 @@ window.MTMSync = (() => {
   }finally{applyingRemote=false;}schedule();}
   window.addEventListener("online",schedule);
   setInterval(()=>syncNow(),5000);
-  return {onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,defaultServer:defaultTestServer};
+  return {onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,defaultServer:defaultTestServer};
 })();
 
 async function renderSyncCenter(){
-  const sync=window.MTMSync,s=await sync.state(),outbox=await sync.rawAll("syncOutbox"),conflicts=await sync.rawAll("syncConflicts");
+  const sync=window.MTMSync,outbox=await sync.rawAll("syncOutbox"),conflicts=await sync.rawAll("syncConflicts");
+  let s=await sync.state();
+  if(s.token&&!s.user){try{const account=await sync.api("/v1/account");s={...s,user:account.user};await sync.saveState(s);}catch{}}
   const signedIn=Boolean(s.token), status=!navigator.onLine?"Offline — local data remains available":s.lastError?`Sync paused: ${esc(s.lastError)}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Synchronized ${fmtDate(s.lastSyncAt)}`:"Not synchronized yet";
   view.innerHTML=`<section class="hero"><h1>🔄 Accounts & Sync</h1><p>Local data remains on this device whether the server is available or not.</p></section>
   <div class="card"><h3>Server</h3><div class="field"><label>Server address</label><input id="syncServer" value="${esc(s.serverUrl||sync.defaultServer())}" placeholder="${esc(sync.defaultServer())}"></div><button id="saveServer" class="btn secondary">Save address</button><p id="syncStatus" class="hint">${esc(status)}</p></div>
-  ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><button id="registerSync" class="btn">Create account</button></div></div>`}
+  ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><label class="check-option"><input id="regBabysitter" type="checkbox"> I am a babysitter and want to create a free searchable profile</label><button id="registerSync" class="btn">Create account</button></div></div>`}
   <h2 id="syncDecisionsTitle" class="section-title">Sync decisions${conflicts.length?` (${conflicts.length})`:""}</h2><div id="syncDecisions" class="list">${syncConflictMarkup(conflicts)}</div>`;
   $("#saveServer").onclick=async()=>{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});alert("Server address saved.");};
-  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.saveState({...await sync.state(),token:d.token,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
-    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,email:$("#regEmail").value,password:$("#regPassword").value})});await sync.saveState({...await sync.state(),token:d.token,cursor:0,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
-  }else{try{const d=await sync.api("/v1/households"),area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Accept invitation</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}${["owner","caregiver"].includes(active?.role)?'<button id="inviteBabysitter" class="btn secondary">Invite babysitter (24 hours)</button>':""}</div>`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&s.householdId!==active.id)await sync.saveState({...s,householdId:active.id,cursor:0});if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{await sync.saveState({...await sync.state(),householdId:e.target.value,cursor:0});renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.saveState({...await sync.state(),householdId:result.household.id,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
-    $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.saveState({id:"current",serverUrl:s.serverUrl,cursor:0});renderSyncCenter();};}
+  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.saveState({...await sync.state(),token:d.token,user:d.user,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,email:$("#regEmail").value,password:$("#regPassword").value,isBabysitter:$("#regBabysitter").checked})});await sync.saveState({...await sync.state(),token:d.token,user:d.user,cursor:0,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+  }else{try{const d=await sync.api("/v1/households"),area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Accept invitation</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}${["owner","caregiver"].includes(active?.role)?'<button id="inviteBabysitter" class="btn secondary">Share with a babysitter</button>':""}</div>${["owner","caregiver"].includes(active?.role)?'<div id="currentShares"><p class="hint">Loading shared access…</p></div>':""}`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&(s.householdId!==active.id||s.householdRole!==active.role||s.accessExpiresAt!==active.accessExpiresAt))await sync.saveState({...s,householdId:active.id,householdRole:active.role,sharedProfileId:active.sharedProfileId||null,accessExpiresAt:active.accessExpiresAt||null,cursor:s.householdId===active.id?s.cursor||0:0});if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{const selected=d.households.find(item=>item.id===e.target.value);await sync.saveState({...await sync.state(),householdId:selected.id,householdRole:selected.role,sharedProfileId:selected.sharedProfileId||null,accessExpiresAt:selected.accessExpiresAt||null,cursor:0});renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.saveState({...await sync.state(),householdId:result.household.id,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");await renderCurrentShares(sync,active);}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
+    $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{if(s.householdRole==="babysitter")await sync.clearTemporaryShareData();try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.saveState({id:"current",serverUrl:s.serverUrl,cursor:0});renderSyncCenter();};}
   bindSyncConflictActions(conflicts);
 }
 
@@ -108,7 +136,7 @@ function clearInvitationFromLink(){
 async function acceptInvitation(sync,code){
   try{
     const d=await sync.api("/v1/invitations/join",{method:"POST",body:JSON.stringify({code:code.trim()})});
-    await sync.saveState({...await sync.state(),householdId:d.householdId,cursor:0});
+    await sync.saveState({...await sync.state(),householdId:d.householdId,householdRole:d.role,sharedProfileId:d.sharedProfileId||null,accessExpiresAt:d.accessExpiresAt||null,cursor:0});
     clearInvitationFromLink();
     await sync.syncNow();
     await renderSyncCenter();
@@ -121,13 +149,79 @@ async function acceptPendingInvitation(sync){
   if(code)await acceptInvitation(sync,code);
 }
 
+function invitationShareText(result){
+  const url=new URL(location.href);url.searchParams.set("invite",result.code);url.hash="sync";
+  return `One-time code: ${result.code}\n\nInvitation link: ${url.href}`;
+}
+
 async function createInvitation(sync,role){
+  if(role==="babysitter")return openBabysitterShare(sync);
   try{
-    const s=await sync.state(),d=await sync.api("/v1/invitations",{method:"POST",body:JSON.stringify({householdId:s.householdId,role})});
-    const url=new URL(location.href);url.searchParams.set("invite",d.code);url.hash="sync";
-    const label=role==="babysitter"?`Babysitter access lasts ${d.accessHours} hours after acceptance.`:`This ${role} invitation can be used once.`;
-    prompt(`${label} Send this link:`,url.href);
+    const state=await sync.state(),result=await sync.api("/v1/invitations",{method:"POST",body:JSON.stringify({householdId:state.householdId,role})});
+    prompt(`This ${role} invitation can be used once.`,invitationShareText(result));
   }catch(e){alert(e.message);}
+}
+
+async function openBabysitterShare(sync){
+  const profiles=await sync.rawAll("profiles");
+  if(!profiles.length)return alert("Create a child profile before sharing access.");
+  modalBody.innerHTML=`<h2>Share a child profile</h2><p class="hint">The babysitter can view only the selected child's profile and related records. You can withdraw access at any time.</p><div class="form-grid">
+    <div class="field"><label>Babysitter's email</label><input id="shareBabysitterEmail" type="email" autocomplete="email"></div>
+    <div class="field"><label>Child</label><select id="shareProfile">${profiles.map(profile=>`<option value="${esc(profile.id)}">${esc(profile.name||"Child profile")}</option>`).join("")}</select></div>
+    <div class="field"><label>Access length</label><select id="shareDays">${[1,2,3,4,5,6,7].map(day=>`<option value="${day}" ${day===1?"selected":""}>${day} day${day===1?"":"s"}</option>`).join("")}</select></div>
+    <button id="sendBabysitterShare" class="btn" type="button">Create access</button><button id="cancelBabysitterShare" class="btn secondary" type="button">Cancel</button></div>`;
+  modal.showModal();
+  $("#cancelBabysitterShare").onclick=()=>modal.close();
+  $("#sendBabysitterShare").onclick=async()=>{
+    const button=$("#sendBabysitterShare");button.disabled=true;button.textContent="Creating…";
+    try{
+      const state=await sync.state(),result=await sync.api("/v1/invitations",{method:"POST",body:JSON.stringify({
+        householdId:state.householdId,role:"babysitter",email:$("#shareBabysitterEmail").value.trim(),
+        profileId:$("#shareProfile").value,accessDays:Number($("#shareDays").value)
+      })});
+      modal.close();
+      if(result.emailed)alert("That email does not have an MTM account yet. An invitation to create one was sent.");
+      else prompt(`${result.recipientName||"That babysitter"} already has an MTM account. Give them this code or link:`,invitationShareText(result));
+      await renderSyncCenter();
+    }catch(e){alert(e.message);button.disabled=false;button.textContent="Create access";}
+  };
+}
+
+function temporaryAccessRemaining(value){
+  const ms=Date.parse(value)-Date.now();if(ms<=0)return "expired";
+  const hours=Math.ceil(ms/3600000),days=Math.floor(hours/24),remainingHours=hours%24;
+  return days?`${days} day${days===1?"":"s"}${remainingHours?`, ${remainingHours} hour${remainingHours===1?"":"s"}`:""} remaining`:`${hours} hour${hours===1?"":"s"} remaining`;
+}
+
+function shareCard(item){
+  const expires=item.accessExpiresAt||item.invitationExpiresAt,label=item.status==="active"?"Active access":item.status==="pending"?"Waiting for acceptance":"Expired";
+  return `<article class="card"><div class="babysitter-card-head"><span>${esc(label)}</span><small>${expires?esc(fmtDate(expires)):""}</small></div><h3>${esc(item.name||item.email||"Babysitter")}</h3><p>Shared child: <strong>${esc(item.profileName||"Child profile")}</strong></p>
+    <p class="hint">${item.status==="pending"?`The invitation expires ${esc(fmtDate(item.invitationExpiresAt))}. The selected access period starts when accepted.`:`Access ${item.status==="active"?"ends":"ended"} ${esc(fmtDate(item.accessExpiresAt))}${item.status==="active"?` · ${esc(temporaryAccessRemaining(item.accessExpiresAt))}`:""}.`}</p>
+    <div class="btn-row">${item.status==="active"||item.status==="pending"?`<button class="btn secondary share-remove" data-type="${item.type}" data-id="${item.id}" type="button">${item.status==="active"?"Withdraw access":"Cancel invitation"}</button>`:`<button class="btn share-renew" data-type="${item.type}" data-id="${item.id}" data-days="${item.accessDays||1}" type="button">Renew</button><button class="btn secondary share-remove" data-type="${item.type}" data-id="${item.id}" type="button">Remove</button>`}</div></article>`;
+}
+
+async function renderCurrentShares(sync,active){
+  const host=$("#currentShares");if(!host||!active)return;
+  try{
+    const data=await sync.api(`/v1/households/${encodeURIComponent(active.id)}/shares`),current=data.shares.filter(item=>item.status!=="expired"),expired=data.shares.filter(item=>item.status==="expired");
+    host.innerHTML=`<h3>Current shared access</h3>${current.length?current.map(shareCard).join(""):'<p class="hint">No babysitter currently has or is waiting for access.</p>'}
+      <details ${expired.length?"":"class=\"hidden\""}><summary>Expired access${expired.length?` (${expired.length})`:""}</summary><div>${expired.map(shareCard).join("")}</div></details>`;
+    host.querySelectorAll(".share-remove").forEach(button=>button.onclick=async()=>{
+      const wording=button.textContent.includes("Remove")?"Remove this expired share from the list?":"End this shared access now?";
+      if(!confirm(wording))return;
+      try{await sync.api(`/v1/households/${encodeURIComponent(active.id)}/shares/${button.dataset.type}/${encodeURIComponent(button.dataset.id)}`,{method:"DELETE"});await renderCurrentShares(sync,active);}catch(e){alert(e.message);}
+    });
+    host.querySelectorAll(".share-renew").forEach(button=>button.onclick=async()=>{
+      const days=Number(prompt("Renew access for how many days? Enter 1 through 7:",button.dataset.days||"1"));
+      if(!Number.isInteger(days)||days<1||days>7)return alert("Enter a whole number from 1 through 7.");
+      try{
+        const result=await sync.api(`/v1/households/${encodeURIComponent(active.id)}/shares/${button.dataset.type}/${encodeURIComponent(button.dataset.id)}/renew`,{method:"POST",body:JSON.stringify({accessDays:days})});
+        if(result.emailed)alert("A renewed invitation was emailed.");
+        else if(result.code)prompt("Give the babysitter this renewed code or link:",invitationShareText(result));
+        await renderCurrentShares(sync,active);
+      }catch(e){alert(e.message);}
+    });
+  }catch(e){host.innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
 }
 
 function syncConflictMarkup(conflicts){
