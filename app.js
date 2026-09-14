@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-babysitter-consent-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-search-driven-community-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 5,
@@ -2426,20 +2426,10 @@ function renderAsdFriendlyFunExpanded(){
 const BABYSITTER_CACHE_KEY="mtm-test-community-babysitters-v1";
 let communityBabysitters=[];
 
-async function loadBabysitters(){
+async function loadBabysitters(params){
   const state=await window.MTMSync.state();
   if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended Babysitters.");
-  const cacheKey=`${BABYSITTER_CACHE_KEY}:${String(state.token).slice(-12)}`;
-  try{
-    const data=await window.MTMSync.api("/v1/community/babysitters");
-    const snapshot={babysitters:data.babysitters,updatedAt:data.serverTime||nowISO()};
-    localStorage.setItem(cacheKey,JSON.stringify(snapshot));
-    return {...snapshot,offline:false};
-  }catch(error){
-    const cached=JSON.parse(localStorage.getItem(cacheKey)||"null");
-    if(cached)return {...cached,offline:true,error:error.message};
-    throw error;
-  }
+  return window.MTMSync.api(`/v1/community/babysitters?${params.toString()}`);
 }
 
 function babysitterCard(item){
@@ -2469,22 +2459,28 @@ function drawBabysitterResults(){
   document.querySelectorAll(".babysitter-withdraw").forEach(button=>button.onclick=()=>withdrawBabysitterNomination(button.dataset.id));
 }
 
-async function renderBabysitters(){
-  view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1><p>Find babysitters recommended by local parents who personally approved their public profile.</p></section>
-    <div class="banner"><strong>Permission comes first:</strong> A nomination stays private until the babysitter approves it by email. MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Families must interview, check references, confirm qualifications, and make their own care decisions.</div><div id="babysitterStatus" class="card"><p>Loading babysitter profiles…</p></div>`;
+async function runBabysitterSearch(){
+  const q=$("#babysitterSearch").value.trim(),scope=$("#babysitterView").value==="mine"?"mine":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const button=$("#searchBabysitters");button.disabled=true;button.textContent="Searching…";
   try{
-    const data=await loadBabysitters();communityBabysitters=data.babysitters;
+    const data=await loadBabysitters(new URLSearchParams({q,scope}));
+    communityBabysitters=data.babysitters;drawBabysitterResults();
+  }catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
+async function renderBabysitters(){
+  try{
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended Babysitters.");
+    communityBabysitters=[];
     view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1><p>Find babysitters recommended by local parents who personally approved their public profile.</p></section>
       <div class="banner"><strong>Permission comes first:</strong> A nomination stays private until the babysitter approves it by email. MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Families must interview, check references, confirm qualifications, and make their own care decisions.</div>
-      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="refreshBabysitters" class="btn secondary" type="button">Refresh</button></div>
-      ${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing profiles last updated ${esc(new Date(data.updatedAt).toLocaleString())}. Approval and availability may have changed.</div>`:""}
-      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, or ZIP</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, 25411…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Approved profiles</option><option value="mine">My nominations</option></select></div></div><p id="babysitterResultCount" class="hint" role="status"></p></section><div id="babysitterResults" class="babysitter-list"></div>`;
-    $("#nominateBabysitter").onclick=openBabysitterNominationForm;$("#refreshBabysitters").onclick=()=>renderBabysitters();
-    ["babysitterSearch","babysitterView"].forEach(id=>$("#"+id).addEventListener(id==="babysitterSearch"?"input":"change",drawBabysitterResults));
-    drawBabysitterResults();
-  }catch(error){
-    $("#babysitterStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();
-  }
+      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button></div>
+      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, or ZIP</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, 25411…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Approved profiles</option><option value="mine">My nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location or name, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div>`;
+    $("#nominateBabysitter").onclick=openBabysitterNominationForm;$("#searchBabysitters").onclick=runBabysitterSearch;
+    $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch();});
+    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your nominations.":"Enter a location or name, then press Search.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
 function openBabysitterNominationForm(){
@@ -2537,20 +2533,10 @@ const RECOMMENDATION_CATEGORIES={
 };
 let communityRecommendations=[];
 
-async function loadRecommendations(){
+async function loadRecommendations(params){
   const state=await window.MTMSync.state();
   if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended.");
-  const cacheKey=`${RECOMMENDATION_CACHE_KEY}:${String(state.token).slice(-12)}`;
-  try{
-    const data=await window.MTMSync.api("/v1/community/recommendations");
-    const snapshot={recommendations:data.recommendations,updatedAt:data.serverTime||nowISO()};
-    localStorage.setItem(cacheKey,JSON.stringify(snapshot));
-    return {...snapshot,offline:false};
-  }catch(error){
-    const cached=JSON.parse(localStorage.getItem(cacheKey)||"null");
-    if(cached)return {...cached,offline:true,error:error.message};
-    throw error;
-  }
+  return window.MTMSync.api(`/v1/community/recommendations?${params.toString()}`);
 }
 
 function recommendationCard(item){
@@ -2587,29 +2573,32 @@ function drawRecommendationResults(){
   document.querySelectorAll(".recommendation-report").forEach(button=>button.onclick=()=>reportRecommendation(button.dataset.id));
 }
 
+async function runRecommendationSearch(){
+  const q=$("#recommendationSearch").value.trim(),viewMode=$("#recommendationView").value,
+    scope=viewMode==="mine"?"mine":viewMode==="supported"?"supported":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,category:$("#recommendationCategory").value}),button=$("#searchRecommendations");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadRecommendations(params);communityRecommendations=data.recommendations;drawRecommendationResults();}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
 async function renderRecommendations(){
-  view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1><p>Find local professionals, services, restaurants, schools, and activities recommended by other parents.</p></section>
-    <div class="banner"><strong>Community recommendations, not MTM endorsements:</strong> Details can change. Confirm current licensing, credentials, insurance, prices, accessibility, accommodations, policies, and fit directly with the provider or business before making a decision.</div>
-    <div id="recommendationStatus" class="card"><p>Loading recommendations…</p></div>`;
   try{
-    const data=await loadRecommendations();communityRecommendations=data.recommendations;
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended.");
+    communityRecommendations=[];
     view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1><p>Find local professionals, services, restaurants, schools, and activities recommended by other parents.</p></section>
       <div class="banner"><strong>Community recommendations, not MTM endorsements:</strong> Details can change. Confirm current licensing, credentials, insurance, prices, accessibility, accommodations, policies, and fit directly with the provider or business before making a decision.</div>
-      <div class="btn-row"><button id="newRecommendation" class="btn" type="button">Add a recommendation</button><button id="refreshRecommendations" class="btn secondary" type="button">Refresh</button></div>
-      ${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing recommendations last updated ${esc(new Date(data.updatedAt).toLocaleString())}. Details may have changed.</div>`:""}
+      <div class="btn-row"><button id="newRecommendation" class="btn" type="button">Add a recommendation</button></div>
       <section class="card recommendation-search" aria-label="Search recommendations"><h2>Search near you</h2><div class="form-grid two-col">
         <div class="field"><label>Search name, service, city, state, or ZIP</label><input id="recommendationSearch" type="search" placeholder="Dentist, speech, Berkeley Springs…"></div>
         <div class="field"><label>Category</label><select id="recommendationCategory"><option value="">All categories</option>${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
-        <div class="field"><label>Show</label><select id="recommendationView"><option value="active">All active recommendations</option><option value="mine">My submissions</option><option value="supported">I recommend these too</option></select></div>
-      </div><p id="recommendationResultCount" class="hint" role="status"></p></section>
-      <div id="recommendationResults" class="recommendation-list"></div>`;
-    $("#newRecommendation").onclick=openRecommendationForm;
-    $("#refreshRecommendations").onclick=()=>renderRecommendations();
-    ["recommendationSearch","recommendationCategory","recommendationView"].forEach(id=>$("#"+id).addEventListener(id==="recommendationSearch"?"input":"change",drawRecommendationResults));
-    drawRecommendationResults();
-  }catch(error){
-    $("#recommendationStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();
-  }
+        <div class="field"><label>Show</label><select id="recommendationView"><option value="active">Public recommendations</option><option value="mine">My submissions</option><option value="supported">I recommend these too</option></select></div>
+      </div><button id="searchRecommendations" class="btn full" type="button">Search</button><p id="recommendationResultCount" class="hint" role="status">Enter a location, provider, or service, then press Search. No listings are downloaded until you search.</p></section><div id="recommendationResults" class="recommendation-list"></div>`;
+    $("#newRecommendation").onclick=openRecommendationForm;$("#searchRecommendations").onclick=runRecommendationSearch;
+    $("#recommendationSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runRecommendationSearch();});
+    $("#recommendationView").onchange=()=>{communityRecommendations=[];$("#recommendationResults").innerHTML="";$("#recommendationResultCount").textContent=$("#recommendationView").value==="active"?"Enter a location, provider, or service, then press Search.":"Press Search to load your selected list.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
 function openRecommendationForm(){
@@ -2658,20 +2647,10 @@ const TOY_CATEGORIES={learning:"Learning & educational",sensory:"Sensory",outdoo
 const TOY_CONDITIONS={"like-new":"Like new",good:"Good",fair:"Fair","parts":"Parts or pieces missing"};
 let toyListings=[];
 
-async function loadToyExchange(){
+async function loadToyExchange(params){
   const state=await window.MTMSync.state();
   if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
-  const accountCacheKey=`${TOY_CACHE_KEY}:${String(state.token).slice(-12)}`;
-  try{
-    const data=await window.MTMSync.api("/v1/community/toys");
-    const snapshot={toys:data.toys,updatedAt:data.serverTime||nowISO()};
-    localStorage.setItem(accountCacheKey,JSON.stringify(snapshot));
-    return {...snapshot,offline:false};
-  }catch(error){
-    const cached=JSON.parse(localStorage.getItem(accountCacheKey)||"null");
-    if(cached)return {...cached,offline:true,error:error.message};
-    throw error;
-  }
+  return window.MTMSync.api(`/v1/community/toys?${params.toString()}`);
 }
 
 function toyContactMarkup(toy){
@@ -2724,28 +2703,33 @@ function renderToyResults(){
   document.querySelectorAll(".toy-report").forEach(button=>button.onclick=()=>reportToy(button.dataset.id));
 }
 
+async function runToySearch(){
+  const q=$("#toySearch").value.trim(),viewMode=$("#toyView").value,
+    scope=viewMode==="mine"?"mine":viewMode==="requested"?"requested":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,category:$("#toyCategory").value,condition:$("#toyCondition").value}),button=$("#searchToys");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadToyExchange(params);toyListings=data.toys;renderToyResults();}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
 async function renderToyExchange(){
-  view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1><p>Pass along toys your family no longer needs and find free toys offered nearby.</p></section>
-    <div class="banner"><strong>Exchange safely:</strong> MTM does not inspect toys or screen members. Check recalls, cleanliness, missing pieces, batteries, age labels, and choking hazards yourself. Meet in a public place with another adult when possible. Never post a home address or a child’s private information.</div>
-    <div id="toyStatus" class="card"><p>Loading available toys…</p></div>`;
   try{
-    const data=await loadToyExchange();toyListings=data.toys;
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
+    toyListings=[];
     view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1><p>Pass along toys your family no longer needs and find free toys offered nearby.</p></section>
       <div class="banner"><strong>Exchange safely:</strong> MTM does not inspect toys or screen members. Check recalls, cleanliness, missing pieces, batteries, age labels, and choking hazards yourself. Meet in a public place with another adult when possible. Never post a home address or a child’s private information.</div>
-      <div class="btn-row"><button id="newToyListing" class="btn" type="button">Offer a toy</button><button id="refreshToys" class="btn secondary" type="button">Refresh</button></div>
-      ${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing listings last updated ${esc(new Date(data.updatedAt).toLocaleString())}. Availability may have changed.</div>`:""}
+      <div class="btn-row"><button id="newToyListing" class="btn" type="button">Offer a toy</button></div>
       <section class="card toy-search" aria-label="Search free toys"><h2>Find a toy</h2><div class="form-grid two-col">
       <div class="field"><label>Search toy, city, area, or ZIP</label><input id="toySearch" type="search" placeholder="Train, sensory, 25411…"></div>
       <div class="field"><label>Category</label><select id="toyCategory"><option value="">All categories</option>${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
       <div class="field"><label>Condition</label><select id="toyCondition"><option value="">Any condition</option>${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
       <div class="field"><label>Show</label><select id="toyView"><option value="available">Available nearby</option><option value="mine">My listings</option><option value="requested">My requests</option></select></div>
-      </div><p id="toyResultCount" class="hint" role="status"></p></section><div id="toyResults" class="toy-list"></div>`;
-    $("#newToyListing").onclick=openToyListingForm;$("#refreshToys").onclick=()=>renderToyExchange();
-    ["toySearch","toyCategory","toyCondition","toyView"].forEach(id=>$("#"+id).addEventListener(id==="toySearch"?"input":"change",renderToyResults));
-    renderToyResults();
-  }catch(error){
-    $("#toyStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();
-  }
+      </div><button id="searchToys" class="btn full" type="button">Search</button><p id="toyResultCount" class="hint" role="status">Enter a toy, location, or ZIP code, then press Search. No listings are downloaded until you search.</p></section><div id="toyResults" class="toy-list"></div>`;
+    $("#newToyListing").onclick=openToyListingForm;$("#searchToys").onclick=runToySearch;
+    $("#toySearch").addEventListener("keydown",event=>{if(event.key==="Enter")runToySearch();});
+    $("#toyView").onchange=()=>{toyListings=[];$("#toyResults").innerHTML="";$("#toyResultCount").textContent=$("#toyView").value==="available"?"Enter a toy, location, or ZIP code, then press Search.":"Press Search to load your selected list.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
 function readToyPhoto(file){
@@ -2834,39 +2818,49 @@ const COMMUNITY_CACHE_KEY="mtm-test-community-playgroups-v1";
 let communityMeetups=[];
 const communityKindLabel={hosting:"Hosting a playdate",looking:"Looking for a playdate",recurring:"Recurring group",parent:"Parent meetup",outing:"Sensory-friendly outing"};
 const communityDate=value=>new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
-async function loadCommunityPlaygroups(){
+async function loadCommunityPlaygroups(params){
   const state=await window.MTMSync.state();
   if(!state.token)throw new Error("Sign in through Accounts & Sync to use Social Meetups.");
-  try{
-    const data=await window.MTMSync.api("/v1/community/playgroups");
-    const snapshot={playgroups:data.playgroups,updatedAt:data.serverTime||nowISO()};
-    localStorage.setItem(COMMUNITY_CACHE_KEY,JSON.stringify(snapshot));
-    return {...snapshot,offline:false};
-  }catch(error){
-    const cached=JSON.parse(localStorage.getItem(COMMUNITY_CACHE_KEY)||"null");
-    if(cached)return {...cached,offline:true,error:error.message};
-    throw error;
-  }
+  return window.MTMSync.api(`/v1/community/playgroups?${params.toString()}`);
 }
+
 function communityCard(item){
   const response=item.myStatus?`Your response: ${item.myStatus==="requested"?"Waiting for organizer approval":item.myStatus}`:"";
   return `<article class="community-card ${item.status}"><div class="community-card-head"><span>${esc(communityKindLabel[item.kind]||item.kind)}</span><small>${esc(item.status)}</small></div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><dl><div><dt>When</dt><dd>${esc(communityDate(item.startsAt))}</dd></div><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div><div><dt>Public meeting place</dt><dd>${esc(item.publicPlace)}</dd></div><div><dt>Ages</dt><dd>${esc(item.ageRange)}</dd></div><div><dt>Setting</dt><dd>${esc(item.setting)}</dd></div>${item.maxGroupSize?`<div><dt>Group limit</dt><dd>${item.maxGroupSize}</dd></div>`:""}</dl>${item.sensoryNotes?`<p><strong>Sensory notes:</strong> ${esc(item.sensoryNotes)}</p>`:""}${item.accessibility?`<p><strong>Accessibility:</strong> ${esc(item.accessibility)}</p>`:""}<p class="hint">Organized by ${esc(item.organizer.displayName)} · ${item.siblingsWelcome?"Siblings welcome":"Ask before bringing siblings"} · ${item.parentMustRemain?"A parent or caregiver must remain":"Confirm supervision with organizer"} · ${item.goingCount} going</p>${response?`<div class="banner">${esc(response)}</div>`:""}<div class="btn-row">${item.isOrganizer?`<button class="btn secondary community-requests" data-id="${item.id}" type="button">Responses${item.responseCount?` (${item.responseCount})`:""}</button>${item.status==="active"?`<button class="btn secondary community-cancel" data-id="${item.id}" type="button">Cancel gathering</button>`:""}`:item.status==="active"?`${item.myStatus?`<button class="btn secondary community-withdraw" data-id="${item.id}" type="button">Withdraw response</button>`:`<button class="btn secondary community-interest" data-id="${item.id}" type="button">Interested</button><button class="btn community-request" data-id="${item.id}" type="button">Request to join</button>`}`:""}</div></article>`;
 }
+async function runCommunitySearch(){
+  const q=$("#meetupSearch").value.trim(),scope=$("#meetupView").value==="mine"?"mine":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,kind:$("#meetupKind").value,days:$("#meetupWhen").value,setting:$("#meetupSetting").value,
+    sensory:$("#meetupSensory").checked?"1":"0",accessible:$("#meetupAccessible").checked?"1":"0"}),button=$("#searchMeetups");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadCommunityPlaygroups(params);communityMeetups=data.playgroups;renderCommunityResults();}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
 async function renderCommunityConnections(){
-  view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div id="communityStatus" class="card"><p>Loading social meetups…</p></div>`;
   try{
-    const data=await loadCommunityPlaygroups();
-    communityMeetups=data.playgroups;
-    view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div><div class="btn-row community-actions"><button id="newGathering" class="btn" type="button">Create a meetup</button><button id="refreshCommunity" class="btn secondary" type="button">Refresh</button></div>${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing information last updated ${esc(communityDate(data.updatedAt))}. Changes and cancellations may be missing.</div>`:`<p class="hint">Updated ${esc(communityDate(data.updatedAt))}</p>`}<section class="card community-search" aria-label="Search social meetups"><h2>Find a meetup</h2><div class="form-grid two-col"><div class="field"><label>Search words, city, area, or ZIP</label><input id="meetupSearch" type="search" placeholder="Park, 21740, sensory, ages 5–8…"></div><div class="field"><label>Meetup type</label><select id="meetupKind"><option value="">All types</option>${Object.entries(communityKindLabel).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div><div class="field"><label>When</label><select id="meetupWhen"><option value="">Any upcoming date</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option></select></div><div class="field"><label>Setting</label><select id="meetupSetting"><option value="">Indoor or outdoor</option><option value="indoor">Indoor</option><option value="outdoor">Outdoor</option><option value="either">Either</option></select></div></div><div class="community-checks"><label class="check-option"><input id="meetupSensory" type="checkbox"> Has sensory details</label><label class="check-option"><input id="meetupAccessible" type="checkbox"> Has accessibility details</label></div><p id="meetupResultCount" class="hint" role="status"></p></section><div id="communityResults" class="community-list"></div><details class="education-card"><summary>🧑‍🍼 Recommended babysitters — coming next</summary><div class="education-body"><p>The shared community foundation is now in place. Babysitter recommendations will require sitter consent, use recommendation counts instead of star ratings, and keep safety concerns private for moderation.</p></div></details>`;
-    $("#newGathering").onclick=openCommunityForm;$("#refreshCommunity").onclick=()=>renderCommunityConnections();
-    ["meetupSearch","meetupKind","meetupWhen","meetupSetting","meetupSensory","meetupAccessible"].forEach(id=>$("#"+id).addEventListener(id==="meetupSearch"?"input":"change",renderCommunityResults));renderCommunityResults();
-    communityRefreshTimer=setInterval(refreshCommunityMeetupsInPlace,5000);
-  }catch(error){view.querySelector("#communityStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Social Meetups.");
+    communityMeetups=[];clearInterval(communityRefreshTimer);communityRefreshTimer=null;
+    view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div>
+      <div class="btn-row community-actions"><button id="newGathering" class="btn" type="button">Create a meetup</button></div>
+      <section class="card community-search" aria-label="Search social meetups"><h2>Find a meetup</h2><div class="form-grid two-col">
+      <div class="field"><label>Search words, city, area, or ZIP</label><input id="meetupSearch" type="search" placeholder="Park, 21740, sensory, ages 5–8…"></div>
+      <div class="field"><label>Meetup type</label><select id="meetupKind"><option value="">All types</option>${Object.entries(communityKindLabel).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>When</label><select id="meetupWhen"><option value="">Any upcoming date</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option></select></div>
+      <div class="field"><label>Setting</label><select id="meetupSetting"><option value="">Indoor or outdoor</option><option value="indoor">Indoor</option><option value="outdoor">Outdoor</option><option value="either">Either</option></select></div>
+      <div class="field"><label>Show</label><select id="meetupView"><option value="public">Public meetups</option><option value="mine">My meetups and responses</option></select></div></div>
+      <div class="community-checks"><label class="check-option"><input id="meetupSensory" type="checkbox"> Has sensory details</label><label class="check-option"><input id="meetupAccessible" type="checkbox"> Has accessibility details</label></div>
+      <button id="searchMeetups" class="btn full" type="button">Search</button><p id="meetupResultCount" class="hint" role="status">Enter a location, activity, or ZIP code, then press Search. No meetups are downloaded until you search.</p></section><div id="communityResults" class="community-list"></div>`;
+    $("#newGathering").onclick=openCommunityForm;$("#searchMeetups").onclick=runCommunitySearch;
+    $("#meetupSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runCommunitySearch();});
+    $("#meetupView").onchange=()=>{communityMeetups=[];$("#communityResults").innerHTML="";$("#meetupResultCount").textContent=$("#meetupView").value==="mine"?"Press Search to load your meetups and responses.":"Enter a location, activity, or ZIP code, then press Search.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 async function refreshCommunityMeetupsInPlace(){
-  if(currentRoute!=="community"||modal.open||document.activeElement?.matches("input, textarea, select"))return;
-  try{const data=await loadCommunityPlaygroups();communityMeetups=data.playgroups;renderCommunityResults();}catch{}
+  if(currentRoute==="community"&&communityMeetups.length&&!modal.open)await runCommunitySearch();
 }
+
 function renderCommunityResults(){
   const words=$("#meetupSearch").value.trim().toLowerCase(),kind=$("#meetupKind").value,days=Number($("#meetupWhen").value||0),setting=$("#meetupSetting").value,deadline=days?Date.now()+days*86400000:Infinity;
   const matches=communityMeetups.filter(item=>{const haystack=[item.title,item.description,item.generalArea,item.publicPlace,item.ageRange,item.sensoryNotes,item.accessibility,item.organizer?.displayName].join(" ").toLowerCase();return(!words||words.split(/\s+/).every(word=>haystack.includes(word)))&&(!kind||item.kind===kind)&&(!setting||item.setting===setting)&&Date.parse(item.startsAt)<=deadline&&(!$("#meetupSensory").checked||item.sensoryNotes)&&(!$("#meetupAccessible").checked||item.accessibility);});
