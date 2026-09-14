@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-sync-alpha-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-toy-exchange-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 5,
@@ -200,6 +200,7 @@ const routes = {
   sensory: renderSensorySupport,
   fun: renderAsdFriendlyFunExpanded,
   community: renderCommunityConnections,
+  toys: renderToyExchange,
   myDay: renderMyDay,
   screenTime: renderScreenTime,
   myths: renderAutismMyths,
@@ -2419,6 +2420,183 @@ function renderAsdFriendlyFunExpanded(){
   bindRouteButtons();
 }
 
+
+const TOY_CACHE_KEY="mtm-test-community-toys-v1";
+const TOY_CATEGORIES={learning:"Learning & educational",sensory:"Sensory",outdoor:"Outdoor",pretend:"Pretend play",building:"Building",vehicles:"Vehicles",dolls:"Dolls & figures",games:"Games & puzzles",books:"Books",baby:"Baby & toddler",other:"Other"};
+const TOY_CONDITIONS={"like-new":"Like new",good:"Good",fair:"Fair","parts":"Parts or pieces missing"};
+let toyListings=[];
+
+async function loadToyExchange(){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
+  try{
+    const data=await window.MTMSync.api("/v1/community/toys");
+    const snapshot={toys:data.toys,updatedAt:data.serverTime||nowISO()};
+    localStorage.setItem(TOY_CACHE_KEY,JSON.stringify(snapshot));
+    return {...snapshot,offline:false};
+  }catch(error){
+    const cached=JSON.parse(localStorage.getItem(TOY_CACHE_KEY)||"null");
+    if(cached)return {...cached,offline:true,error:error.message};
+    throw error;
+  }
+}
+
+function toyContactMarkup(toy){
+  if(!toy.contact)return "";
+  const href=toy.contact.method==="email"
+    ? `mailto:${encodeURIComponent(toy.contact.value)}?subject=${encodeURIComponent("MTM Toy Exchange: "+toy.title)}`
+    : `sms:${toy.contact.value.replace(/[^+\d]/g,"")}`;
+  return `<div class="banner toy-contact"><strong>Your request was accepted.</strong><br><a href="${esc(href)}">${toy.contact.method==="email"?"Email":"Text"} ${esc(toy.contact.value)}</a> to arrange the public meetup.</div>`;
+}
+
+function toyCard(toy){
+  const statusLabel={active:"Available",pending:"Pending pickup",claimed:"Claimed",removed:"Removed"}[toy.status]||toy.status;
+  const ownerActions=toy.isOwner
+    ? `<button class="btn secondary toy-requests" data-id="${toy.id}" type="button">Requests${toy.requestCount?` (${toy.requestCount})`:""}</button>
+       ${toy.status!=="active"?`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="activate" type="button">Make available</button>`:`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="pending" type="button">Mark pending</button>`}
+       ${toy.status!=="claimed"?`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="claimed" type="button">Mark claimed</button>`:""}
+       ${toy.status!=="removed"?`<button class="small-action danger-link toy-manage" data-id="${toy.id}" data-action="remove" type="button">Remove</button>`:""}`
+    : toy.myStatus==="requested"
+      ? `<button class="btn secondary toy-withdraw" data-id="${toy.id}" type="button">Withdraw request</button>`
+      : toy.myStatus==="accepted"
+        ? `<span class="toy-request-status">Request accepted</span>`
+        : toy.status==="active"
+          ? `<button class="btn toy-request" data-id="${toy.id}" type="button">Request this toy</button>`
+          : `<span class="toy-request-status">${esc(statusLabel)}</span>`;
+  return `<article class="toy-card ${esc(toy.status)}">
+    ${toy.imageData?`<img class="toy-photo" src="${toy.imageData}" alt="${esc(toy.title)}">`:`<div class="toy-photo toy-photo-placeholder" aria-hidden="true">🧸</div>`}
+    <div class="toy-card-body"><div class="toy-card-head"><span>${esc(TOY_CATEGORIES[toy.category]||toy.category)}</span><small>${esc(statusLabel)}</small></div>
+    <h3>${esc(toy.title)}</h3><p>${esc(toy.description)}</p>
+    <dl><div><dt>Condition</dt><dd>${esc(TOY_CONDITIONS[toy.condition]||toy.condition)}</dd></div><div><dt>Age</dt><dd>${esc(toy.ageRange)}</dd></div><div><dt>Area</dt><dd>${esc(toy.generalArea)}</dd></div><div><dt>Public meetup</dt><dd>${esc(toy.publicPlace)}</dd></div></dl>
+    <p class="hint">Offered by ${esc(toy.owner.displayName)}. No payment is permitted through the Toy Exchange.</p>
+    ${toyContactMarkup(toy)}
+    <div class="btn-row">${ownerActions}${!toy.isOwner?`<button class="small-action toy-report" data-id="${toy.id}" type="button">Report listing</button>`:""}</div></div>
+  </article>`;
+}
+
+function renderToyResults(){
+  const results=document.querySelector("#toyResults");if(!results)return;
+  const words=$("#toySearch").value.trim().toLowerCase(),category=$("#toyCategory").value,condition=$("#toyCondition").value,viewMode=$("#toyView").value;
+  const matches=toyListings.filter(toy=>{
+    const haystack=[toy.title,toy.description,toy.generalArea,toy.publicPlace,toy.ageRange,toy.owner?.displayName].join(" ").toLowerCase();
+    return(!words||words.split(/\s+/).every(word=>haystack.includes(word)))&&(!category||toy.category===category)&&(!condition||toy.condition===condition)
+      &&(viewMode==="mine"?toy.isOwner:viewMode==="requested"?!toy.isOwner&&Boolean(toy.myStatus):["active","pending"].includes(toy.status));
+  });
+  $("#toyResultCount").textContent=`${matches.length} ${matches.length===1?"toy":"toys"} found`;
+  results.innerHTML=matches.length?matches.map(toyCard).join(""):'<div class="empty"><p>No toys match those filters. Try a nearby city or ZIP code, or clear a filter.</p></div>';
+  document.querySelectorAll(".toy-request").forEach(button=>button.onclick=()=>requestToy(button.dataset.id));
+  document.querySelectorAll(".toy-withdraw").forEach(button=>button.onclick=()=>withdrawToyRequest(button.dataset.id));
+  document.querySelectorAll(".toy-requests").forEach(button=>button.onclick=()=>openToyRequests(button.dataset.id));
+  document.querySelectorAll(".toy-manage").forEach(button=>button.onclick=()=>manageToy(button.dataset.id,button.dataset.action));
+  document.querySelectorAll(".toy-report").forEach(button=>button.onclick=()=>reportToy(button.dataset.id));
+}
+
+async function renderToyExchange(){
+  view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1><p>Pass along toys your family no longer needs and find free toys offered nearby.</p></section>
+    <div class="banner"><strong>Exchange safely:</strong> MTM does not inspect toys or screen members. Check recalls, cleanliness, missing pieces, batteries, age labels, and choking hazards yourself. Meet in a public place with another adult when possible. Never post a home address or a child’s private information.</div>
+    <div id="toyStatus" class="card"><p>Loading available toys…</p></div>`;
+  try{
+    const data=await loadToyExchange();toyListings=data.toys;
+    view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1><p>Pass along toys your family no longer needs and find free toys offered nearby.</p></section>
+      <div class="banner"><strong>Exchange safely:</strong> MTM does not inspect toys or screen members. Check recalls, cleanliness, missing pieces, batteries, age labels, and choking hazards yourself. Meet in a public place with another adult when possible. Never post a home address or a child’s private information.</div>
+      <div class="btn-row"><button id="newToyListing" class="btn" type="button">Offer a toy</button><button id="refreshToys" class="btn secondary" type="button">Refresh</button></div>
+      ${data.offline?`<div class="banner"><strong>Offline copy:</strong> Showing listings last updated ${esc(new Date(data.updatedAt).toLocaleString())}. Availability may have changed.</div>`:""}
+      <section class="card toy-search" aria-label="Search free toys"><h2>Find a toy</h2><div class="form-grid two-col">
+      <div class="field"><label>Search toy, city, area, or ZIP</label><input id="toySearch" type="search" placeholder="Train, sensory, 25411…"></div>
+      <div class="field"><label>Category</label><select id="toyCategory"><option value="">All categories</option>${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>Condition</label><select id="toyCondition"><option value="">Any condition</option>${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>Show</label><select id="toyView"><option value="available">Available nearby</option><option value="mine">My listings</option><option value="requested">My requests</option></select></div>
+      </div><p id="toyResultCount" class="hint" role="status"></p></section><div id="toyResults" class="toy-list"></div>`;
+    $("#newToyListing").onclick=openToyListingForm;$("#refreshToys").onclick=()=>renderToyExchange();
+    ["toySearch","toyCategory","toyCondition","toyView"].forEach(id=>$("#"+id).addEventListener(id==="toySearch"?"input":"change",renderToyResults));
+    renderToyResults();
+  }catch(error){
+    $("#toyStatus").innerHTML=`<div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();
+  }
+}
+
+function readToyPhoto(file){
+  return new Promise((resolve,reject)=>{
+    if(!file)return resolve(null);
+    if(!/^image\/(jpeg|png|webp)$/i.test(file.type))return reject(new Error("Choose a JPEG, PNG, or WebP photo."));
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("The toy photo could not be read."));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("The toy photo could not be opened."));
+      image.onload=()=>{
+        const scale=Math.min(1,900/Math.max(image.width,image.height)),canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+        canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+        const data=canvas.toDataURL("image/jpeg",.76);
+        if(data.length>1_450_000)return reject(new Error("That photo is still too large after resizing. Try another photo."));
+        resolve(data);
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openToyListingForm(){
+  modalBody.innerHTML=`<h2>Offer a free toy</h2><div class="banner">Only free items belong here. Use a general area and public meetup location. Your contact detail stays hidden until you accept a request.</div><div class="form-grid">
+    <div class="field"><label>Toy name</label><input id="toyTitle" maxlength="100" placeholder="Wooden train set"></div>
+    <div class="field"><label>Description</label><textarea id="toyDescription" maxlength="1000" placeholder="Include missing pieces, wear, cleaning, batteries, and anything a parent should know."></textarea></div>
+    <div class="field"><label>Category</label><select id="toyListingCategory">${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>Suggested age range</label><input id="toyAge" maxlength="80" placeholder="Ages 3–6"></div>
+    <div class="field"><label>Condition</label><select id="toyListingCondition">${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>General area</label><input id="toyArea" maxlength="100" placeholder="Berkeley Springs, WV or ZIP code"></div>
+    <div class="field"><label>Public meetup place</label><input id="toyPlace" maxlength="160" placeholder="Library, police station exchange area, community center…"></div>
+    <div class="field"><label>Photo (optional)</label><input id="toyPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+    <div class="field"><label>Private contact method</label><select id="toyContactMethod"><option value="email">Email</option><option value="text">Text message</option></select></div>
+    <div class="field"><label>Private contact detail</label><input id="toyContactValue" maxlength="180" placeholder="Email address"></div>
+    <button id="saveToyListing" class="btn full" type="button">Post free toy</button></div>`;
+  modal.showModal();
+  $("#toyContactMethod").onchange=()=>{$("#toyContactValue").placeholder=$("#toyContactMethod").value==="email"?"Email address":"Phone number";};
+  $("#saveToyListing").onclick=async()=>{
+    const button=$("#saveToyListing");button.disabled=true;button.textContent="Posting…";
+    try{
+      const imageData=await readToyPhoto($("#toyPhoto").files[0]);
+      await window.MTMSync.api("/v1/community/toys",{method:"POST",body:JSON.stringify({
+        title:$("#toyTitle").value,description:$("#toyDescription").value,category:$("#toyListingCategory").value,
+        ageRange:$("#toyAge").value,condition:$("#toyListingCondition").value,generalArea:$("#toyArea").value,
+        publicPlace:$("#toyPlace").value,imageData,contactMethod:$("#toyContactMethod").value,contactValue:$("#toyContactValue").value
+      })});
+      modal.close();renderToyExchange();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Post free toy";}
+  };
+}
+
+async function requestToy(id){
+  const toy=toyListings.find(item=>item.id===id),message=prompt(`Send a short message to ${toy?.owner?.displayName||"the parent"} about “${toy?.title||"this toy"}.” Do not include a home address.`);
+  if(!message?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/request`,{method:"POST",body:JSON.stringify({message})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function withdrawToyRequest(id){
+  if(!confirm("Withdraw your request for this toy?"))return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/request`,{method:"POST",body:JSON.stringify({withdraw:true})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function openToyRequests(id){
+  try{
+    const data=await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/requests`);
+    modalBody.innerHTML=`<h2>Toy requests</h2><div class="toy-request-list">${data.requests.length?data.requests.map(request=>`<div class="card"><strong>${esc(request.displayName)}</strong><p>${esc(request.message)}</p><p class="hint">${esc(request.status)}</p>${request.status==="requested"?`<div class="btn-row"><button class="btn toy-request-action" data-user="${request.userId}" data-action="accept" type="button">Accept</button><button class="btn secondary toy-request-action" data-user="${request.userId}" data-action="decline" type="button">Decline</button></div>`:""}</div>`).join(""):'<div class="empty"><p>No requests yet.</p></div>'}</div>`;
+    modal.showModal();
+    document.querySelectorAll(".toy-request-action").forEach(button=>button.onclick=async()=>{
+      try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action:button.dataset.action,userId:button.dataset.user})});modal.close();renderToyExchange();}catch(error){alert(error.message);}
+    });
+  }catch(error){alert(error.message);}
+}
+async function manageToy(id,action){
+  const question=action==="claimed"?"Mark this toy claimed?":action==="remove"?"Remove this listing?":action==="pending"?"Mark this toy pending pickup?":"Make this toy available again?";
+  if(!confirm(question))return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function reportToy(id){
+  const reason=prompt("Briefly describe the safety, privacy, or listing concern. Reports are private.");
+  if(!reason?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/report`,{method:"POST",body:JSON.stringify({reason})});alert("The listing was reported for review.");}catch(error){alert(error.message);}
+}
+
 const COMMUNITY_CACHE_KEY="mtm-test-community-playgroups-v1";
 let communityMeetups=[];
 const communityKindLabel={hosting:"Hosting a playdate",looking:"Looking for a playdate",recurring:"Recurring group",parent:"Parent meetup",outing:"Sensory-friendly outing"};
@@ -3763,6 +3941,7 @@ function setupDrawer() {
     ["📚", "Resources", "resources"],
     ["🎡", "ASD Friendly Fun", "fun"],
     ["🤝", "Social Meetups", "community"],
+    ["🧸", "Toy Exchange", "toys"],
     ["💛", "Caregiver Corner", "caregiver"],
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],
