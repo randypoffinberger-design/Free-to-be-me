@@ -120,3 +120,17 @@ dialog.wide-modal{max-width:min(96vw,960px)}.fixed-entry-picker{display:grid;gap
 .recommendation-links{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
 .recommendation-links a{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:9px 12px;background:#faf7fd;color:var(--primary);font-weight:800;text-decoration:none}
 @media(max-width:600px){.recommendation-card dl{grid-template-columns:1fr}.recommendation-card{padding:14px}.recommendation-card-head{align-items:flex-start;flex-direction:column}}
+
+
+/* Consent-based babysitter directory — v0.10.0 */
+.babysitter-search{margin-top:16px}
+.babysitter-list{display:grid;gap:14px;margin-top:14px}
+.babysitter-card{border:1px solid var(--line);border-left:5px solid #7e57a6;border-radius:20px;padding:16px;background:#fff;box-shadow:0 6px 20px rgba(63,42,88,.07)}
+.babysitter-card.pending{border-left-color:#d7a624}.babysitter-card.declined,.babysitter-card.removed{opacity:.7;border-left-color:#9a929e}
+.babysitter-card h3{margin:10px 0 7px;font-size:1.25rem}.babysitter-card>p{color:var(--muted);line-height:1.48}
+.babysitter-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.babysitter-card-head span{font-size:.78rem;font-weight:850;color:#594773;background:#eee7f6;border-radius:999px;padding:6px 10px}
+.babysitter-card-head small{color:var(--muted);font-weight:750}
+.babysitter-detail{margin:10px 0;padding:11px 12px;border-radius:13px;background:#faf7fd}
+.babysitter-detail p{margin:5px 0 0;color:var(--muted);line-height:1.45}
+@media(max-width:600px){.babysitter-card{padding:14px}.babysitter-card-head{align-items:flex-start;flex-direction:column}}
