@@ -18,10 +18,20 @@ window.MTMSync = (() => {
   const ALLOWED_TEST_SERVERS = new Set([LOCAL_TEST_SERVER, PHONE_TEST_SERVER]);
   const defaultTestServer = () => location.origin === "https://randys.tail96598f.ts.net" ? PHONE_TEST_SERVER : LOCAL_TEST_SERVER;
   const normalizeServerUrl = value => String(value || "").trim().replace(/\/+$/, "");
-  const state = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:defaultTestServer(), cursor:0 };
+  const readState = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:defaultTestServer(), cursor:0 };
+  const state = async () => {
+    const current=await readState();
+    if(current.householdRole==="babysitter"&&current.accessExpiresAt&&Date.parse(current.accessExpiresAt)<=Date.now()){
+      await clearTemporaryShareData(current);
+      const ended={...current,householdId:null,householdRole:null,sharedProfileId:null,accessExpiresAt:null,cursor:0,lastError:"Temporary babysitter access expired."};
+      await saveState(ended);return ended;
+    }
+    return current;
+  };
   const saveState = value => rawPut("accountState", { ...(value || {}), id:"current" });
-  async function clearTemporaryShareData(){
-    const current=await state(),profileId=current.sharedProfileId;
+  async function clearTemporaryShareData(current=null){
+    current ||= await readState();
+    const profileId=current.sharedProfileId;
     if(!profileId)return;
     applyingRemote=true;
     try{
@@ -165,7 +175,7 @@ async function createInvitation(sync,role){
 async function openBabysitterShare(sync){
   const profiles=await sync.rawAll("profiles");
   if(!profiles.length)return alert("Create a child profile before sharing access.");
-  modalBody.innerHTML=`<h2>Share a child profile</h2><p class="hint">The babysitter can view only the selected child's profile and related records. You can withdraw access at any time.</p><div class="form-grid">
+  modalBody.innerHTML=`<h2>Share a child profile</h2><p class="hint">The babysitter can view only the selected child's profile and related records. You can withdraw access at any time. Withdrawal stops server access immediately; MTM removes downloaded shared data the next time the babysitter's device connects.</p><div class="form-grid">
     <div class="field"><label>Babysitter's email</label><input id="shareBabysitterEmail" type="email" autocomplete="email"></div>
     <div class="field"><label>Child</label><select id="shareProfile">${profiles.map(profile=>`<option value="${esc(profile.id)}">${esc(profile.name||"Child profile")}</option>`).join("")}</select></div>
     <div class="field"><label>Access length</label><select id="shareDays">${[1,2,3,4,5,6,7].map(day=>`<option value="${day}" ${day===1?"selected":""}>${day} day${day===1?"":"s"}</option>`).join("")}</select></div>
