@@ -2423,6 +2423,17 @@ function renderAsdFriendlyFunExpanded(){
 }
 
 
+const COMMUNITY_PAGE_SIZE=50;
+function renderCommunityPager(prefix,data,goToPage){
+  const host=$("#"+prefix+"Pager"),count=$("#"+prefix+"ResultCount");
+  if(!host||!count)return;
+  const total=Number(data.total||0),page=Math.max(1,Number(data.page||1)),pages=Math.max(1,Math.ceil(total/COMMUNITY_PAGE_SIZE));
+  count.textContent=total?`Showing ${Math.min((page-1)*COMMUNITY_PAGE_SIZE+1,total)}–${Math.min(page*COMMUNITY_PAGE_SIZE,total)} of ${total} results.`:"No results found.";
+  if(!total){host.innerHTML="";return;}
+  host.innerHTML=`<div class="btn-row search-pages"><button class="btn secondary" data-page="${page-1}" type="button" ${data.hasPrevious?"":"disabled"}>← Previous</button><span class="hint">Page ${page} of ${pages}</span><button class="btn secondary" data-page="${page+1}" type="button" ${data.hasNext?"":"disabled"}>Next →</button></div>`;
+  host.querySelectorAll("button:not([disabled])").forEach(button=>button.onclick=()=>goToPage(Number(button.dataset.page)));
+}
+
 const BABYSITTER_CACHE_KEY="mtm-test-community-babysitters-v1";
 let communityBabysitters=[];
 
@@ -2459,13 +2470,13 @@ function drawBabysitterResults(){
   document.querySelectorAll(".babysitter-withdraw").forEach(button=>button.onclick=()=>withdrawBabysitterNomination(button.dataset.id));
 }
 
-async function runBabysitterSearch(){
+async function runBabysitterSearch(page=1){
   const q=$("#babysitterSearch").value.trim(),scope=$("#babysitterView").value==="mine"?"mine":"public";
   if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
   const button=$("#searchBabysitters");button.disabled=true;button.textContent="Searching…";
   try{
-    const data=await loadBabysitters(new URLSearchParams({q,scope}));
-    communityBabysitters=data.babysitters;drawBabysitterResults();
+    const data=await loadBabysitters(new URLSearchParams({q,scope,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}));
+    communityBabysitters=data.babysitters;drawBabysitterResults();renderCommunityPager("babysitter",data,runBabysitterSearch);
   }catch(error){alert(error.message);}
   finally{button.disabled=false;button.textContent="Search";}
 }
@@ -2476,10 +2487,10 @@ async function renderBabysitters(){
     view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1><p>Find babysitters recommended by local parents who personally approved their public profile.</p></section>
       <div class="banner"><strong>Permission comes first:</strong> A nomination stays private until the babysitter approves it by email. MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Families must interview, check references, confirm qualifications, and make their own care decisions.</div>
       <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button></div>
-      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, or ZIP</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, 25411…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Approved profiles</option><option value="mine">My nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location or name, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div>`;
-    $("#nominateBabysitter").onclick=openBabysitterNominationForm;$("#searchBabysitters").onclick=runBabysitterSearch;
-    $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch();});
-    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your nominations.":"Enter a location or name, then press Search.";};
+      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, or ZIP</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, 25411…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Approved profiles</option><option value="mine">My nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location or name, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
+    $("#nominateBabysitter").onclick=openBabysitterNominationForm;$("#searchBabysitters").onclick=()=>runBabysitterSearch(1);
+    $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch(1);});
+    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterPager").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your nominations.":"Enter a location or name, then press Search.";};
   }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
@@ -2573,13 +2584,13 @@ function drawRecommendationResults(){
   document.querySelectorAll(".recommendation-report").forEach(button=>button.onclick=()=>reportRecommendation(button.dataset.id));
 }
 
-async function runRecommendationSearch(){
+async function runRecommendationSearch(page=1){
   const q=$("#recommendationSearch").value.trim(),viewMode=$("#recommendationView").value,
     scope=viewMode==="mine"?"mine":viewMode==="supported"?"supported":"public";
   if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
-  const params=new URLSearchParams({q,scope,category:$("#recommendationCategory").value}),button=$("#searchRecommendations");
+  const params=new URLSearchParams({q,scope,category:$("#recommendationCategory").value,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchRecommendations");
   button.disabled=true;button.textContent="Searching…";
-  try{const data=await loadRecommendations(params);communityRecommendations=data.recommendations;drawRecommendationResults();}
+  try{const data=await loadRecommendations(params);communityRecommendations=data.recommendations;drawRecommendationResults();renderCommunityPager("recommendation",data,runRecommendationSearch);}
   catch(error){alert(error.message);}
   finally{button.disabled=false;button.textContent="Search";}
 }
@@ -2594,10 +2605,10 @@ async function renderRecommendations(){
         <div class="field"><label>Search name, service, city, state, or ZIP</label><input id="recommendationSearch" type="search" placeholder="Dentist, speech, Berkeley Springs…"></div>
         <div class="field"><label>Category</label><select id="recommendationCategory"><option value="">All categories</option>${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
         <div class="field"><label>Show</label><select id="recommendationView"><option value="active">Public recommendations</option><option value="mine">My submissions</option><option value="supported">I recommend these too</option></select></div>
-      </div><button id="searchRecommendations" class="btn full" type="button">Search</button><p id="recommendationResultCount" class="hint" role="status">Enter a location, provider, or service, then press Search. No listings are downloaded until you search.</p></section><div id="recommendationResults" class="recommendation-list"></div>`;
-    $("#newRecommendation").onclick=openRecommendationForm;$("#searchRecommendations").onclick=runRecommendationSearch;
-    $("#recommendationSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runRecommendationSearch();});
-    $("#recommendationView").onchange=()=>{communityRecommendations=[];$("#recommendationResults").innerHTML="";$("#recommendationResultCount").textContent=$("#recommendationView").value==="active"?"Enter a location, provider, or service, then press Search.":"Press Search to load your selected list.";};
+      </div><button id="searchRecommendations" class="btn full" type="button">Search</button><p id="recommendationResultCount" class="hint" role="status">Enter a location, provider, or service, then press Search. No listings are downloaded until you search.</p></section><div id="recommendationResults" class="recommendation-list"></div><nav id="recommendationPager" aria-label="Recommendation search pages"></nav>`;
+    $("#newRecommendation").onclick=openRecommendationForm;$("#searchRecommendations").onclick=()=>runRecommendationSearch(1);
+    $("#recommendationSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runRecommendationSearch(1);});
+    $("#recommendationView").onchange=()=>{communityRecommendations=[];$("#recommendationResults").innerHTML="";$("#recommendationPager").innerHTML="";$("#recommendationResultCount").textContent=$("#recommendationView").value==="active"?"Enter a location, provider, or service, then press Search.":"Press Search to load your selected list.";};
   }catch(error){view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
@@ -2703,13 +2714,13 @@ function renderToyResults(){
   document.querySelectorAll(".toy-report").forEach(button=>button.onclick=()=>reportToy(button.dataset.id));
 }
 
-async function runToySearch(){
+async function runToySearch(page=1){
   const q=$("#toySearch").value.trim(),viewMode=$("#toyView").value,
     scope=viewMode==="mine"?"mine":viewMode==="requested"?"requested":"public";
   if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
-  const params=new URLSearchParams({q,scope,category:$("#toyCategory").value,condition:$("#toyCondition").value}),button=$("#searchToys");
+  const params=new URLSearchParams({q,scope,category:$("#toyCategory").value,condition:$("#toyCondition").value,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchToys");
   button.disabled=true;button.textContent="Searching…";
-  try{const data=await loadToyExchange(params);toyListings=data.toys;renderToyResults();}
+  try{const data=await loadToyExchange(params);toyListings=data.toys;renderToyResults();renderCommunityPager("toy",data,runToySearch);}
   catch(error){alert(error.message);}
   finally{button.disabled=false;button.textContent="Search";}
 }
@@ -2725,10 +2736,10 @@ async function renderToyExchange(){
       <div class="field"><label>Category</label><select id="toyCategory"><option value="">All categories</option>${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
       <div class="field"><label>Condition</label><select id="toyCondition"><option value="">Any condition</option>${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
       <div class="field"><label>Show</label><select id="toyView"><option value="available">Available nearby</option><option value="mine">My listings</option><option value="requested">My requests</option></select></div>
-      </div><button id="searchToys" class="btn full" type="button">Search</button><p id="toyResultCount" class="hint" role="status">Enter a toy, location, or ZIP code, then press Search. No listings are downloaded until you search.</p></section><div id="toyResults" class="toy-list"></div>`;
-    $("#newToyListing").onclick=openToyListingForm;$("#searchToys").onclick=runToySearch;
-    $("#toySearch").addEventListener("keydown",event=>{if(event.key==="Enter")runToySearch();});
-    $("#toyView").onchange=()=>{toyListings=[];$("#toyResults").innerHTML="";$("#toyResultCount").textContent=$("#toyView").value==="available"?"Enter a toy, location, or ZIP code, then press Search.":"Press Search to load your selected list.";};
+      </div><button id="searchToys" class="btn full" type="button">Search</button><p id="toyResultCount" class="hint" role="status">Enter a toy, location, or ZIP code, then press Search. No listings are downloaded until you search.</p></section><div id="toyResults" class="toy-list"></div><nav id="toyPager" aria-label="Toy search pages"></nav>`;
+    $("#newToyListing").onclick=openToyListingForm;$("#searchToys").onclick=()=>runToySearch(1);
+    $("#toySearch").addEventListener("keydown",event=>{if(event.key==="Enter")runToySearch(1);});
+    $("#toyView").onchange=()=>{toyListings=[];$("#toyResults").innerHTML="";$("#toyPager").innerHTML="";$("#toyResultCount").textContent=$("#toyView").value==="available"?"Enter a toy, location, or ZIP code, then press Search.":"Press Search to load your selected list.";};
   }catch(error){view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
@@ -2828,13 +2839,13 @@ function communityCard(item){
   const response=item.myStatus?`Your response: ${item.myStatus==="requested"?"Waiting for organizer approval":item.myStatus}`:"";
   return `<article class="community-card ${item.status}"><div class="community-card-head"><span>${esc(communityKindLabel[item.kind]||item.kind)}</span><small>${esc(item.status)}</small></div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><dl><div><dt>When</dt><dd>${esc(communityDate(item.startsAt))}</dd></div><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div><div><dt>Public meeting place</dt><dd>${esc(item.publicPlace)}</dd></div><div><dt>Ages</dt><dd>${esc(item.ageRange)}</dd></div><div><dt>Setting</dt><dd>${esc(item.setting)}</dd></div>${item.maxGroupSize?`<div><dt>Group limit</dt><dd>${item.maxGroupSize}</dd></div>`:""}</dl>${item.sensoryNotes?`<p><strong>Sensory notes:</strong> ${esc(item.sensoryNotes)}</p>`:""}${item.accessibility?`<p><strong>Accessibility:</strong> ${esc(item.accessibility)}</p>`:""}<p class="hint">Organized by ${esc(item.organizer.displayName)} · ${item.siblingsWelcome?"Siblings welcome":"Ask before bringing siblings"} · ${item.parentMustRemain?"A parent or caregiver must remain":"Confirm supervision with organizer"} · ${item.goingCount} going</p>${response?`<div class="banner">${esc(response)}</div>`:""}<div class="btn-row">${item.isOrganizer?`<button class="btn secondary community-requests" data-id="${item.id}" type="button">Responses${item.responseCount?` (${item.responseCount})`:""}</button>${item.status==="active"?`<button class="btn secondary community-cancel" data-id="${item.id}" type="button">Cancel gathering</button>`:""}`:item.status==="active"?`${item.myStatus?`<button class="btn secondary community-withdraw" data-id="${item.id}" type="button">Withdraw response</button>`:`<button class="btn secondary community-interest" data-id="${item.id}" type="button">Interested</button><button class="btn community-request" data-id="${item.id}" type="button">Request to join</button>`}`:""}</div></article>`;
 }
-async function runCommunitySearch(){
+async function runCommunitySearch(page=1){
   const q=$("#meetupSearch").value.trim(),scope=$("#meetupView").value==="mine"?"mine":"public";
   if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
   const params=new URLSearchParams({q,scope,kind:$("#meetupKind").value,days:$("#meetupWhen").value,setting:$("#meetupSetting").value,
-    sensory:$("#meetupSensory").checked?"1":"0",accessible:$("#meetupAccessible").checked?"1":"0"}),button=$("#searchMeetups");
+    sensory:$("#meetupSensory").checked?"1":"0",accessible:$("#meetupAccessible").checked?"1":"0",offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchMeetups");
   button.disabled=true;button.textContent="Searching…";
-  try{const data=await loadCommunityPlaygroups(params);communityMeetups=data.playgroups;renderCommunityResults();}
+  try{const data=await loadCommunityPlaygroups(params);communityMeetups=data.playgroups;renderCommunityResults();renderCommunityPager("meetup",data,runCommunitySearch);}
   catch(error){alert(error.message);}
   finally{button.disabled=false;button.textContent="Search";}
 }
@@ -2851,10 +2862,10 @@ async function renderCommunityConnections(){
       <div class="field"><label>Setting</label><select id="meetupSetting"><option value="">Indoor or outdoor</option><option value="indoor">Indoor</option><option value="outdoor">Outdoor</option><option value="either">Either</option></select></div>
       <div class="field"><label>Show</label><select id="meetupView"><option value="public">Public meetups</option><option value="mine">My meetups and responses</option></select></div></div>
       <div class="community-checks"><label class="check-option"><input id="meetupSensory" type="checkbox"> Has sensory details</label><label class="check-option"><input id="meetupAccessible" type="checkbox"> Has accessibility details</label></div>
-      <button id="searchMeetups" class="btn full" type="button">Search</button><p id="meetupResultCount" class="hint" role="status">Enter a location, activity, or ZIP code, then press Search. No meetups are downloaded until you search.</p></section><div id="communityResults" class="community-list"></div>`;
-    $("#newGathering").onclick=openCommunityForm;$("#searchMeetups").onclick=runCommunitySearch;
-    $("#meetupSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runCommunitySearch();});
-    $("#meetupView").onchange=()=>{communityMeetups=[];$("#communityResults").innerHTML="";$("#meetupResultCount").textContent=$("#meetupView").value==="mine"?"Press Search to load your meetups and responses.":"Enter a location, activity, or ZIP code, then press Search.";};
+      <button id="searchMeetups" class="btn full" type="button">Search</button><p id="meetupResultCount" class="hint" role="status">Enter a location, activity, or ZIP code, then press Search. No meetups are downloaded until you search.</p></section><div id="communityResults" class="community-list"></div><nav id="meetupPager" aria-label="Meetup search pages"></nav>`;
+    $("#newGathering").onclick=openCommunityForm;$("#searchMeetups").onclick=()=>runCommunitySearch(1);
+    $("#meetupSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runCommunitySearch(1);});
+    $("#meetupView").onchange=()=>{communityMeetups=[];$("#communityResults").innerHTML="";$("#meetupPager").innerHTML="";$("#meetupResultCount").textContent=$("#meetupView").value==="mine"?"Press Search to load your meetups and responses.":"Enter a location, activity, or ZIP code, then press Search.";};
   }catch(error){view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 async function refreshCommunityMeetupsInPlace(){
