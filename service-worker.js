@@ -1,4 +1,4 @@
-const CACHE='ftbm-test-v0.10.0-toy-exchange-2';
+const CACHE='ftbm-test-v0.10.0-recommendations-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
