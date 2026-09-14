@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-paged-community-search-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-babysitter-accounts-sharing-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 5,
@@ -256,8 +256,9 @@ async function performNavigation(r, options = {}) {
     route = routes[r] ? r : "home";
     if (route !== currentRoute) routeStack.push(route);
   }
-  const entitlement = await getEntitlement();
-  if (!entitlement.access && !ACCOUNT_ONLY_ROUTES.has(route)) route = "subscription";
+  const entitlement = await getEntitlement(),account=await window.MTMSync?.state?.();
+  const freeBabysitterAccess=route==="babysitters"&&Boolean(account?.user?.isBabysitter);
+  if (!entitlement.access && !ACCOUNT_ONLY_ROUTES.has(route) && !freeBabysitterAccess) route = "subscription";
   if (profileAgeTimer) {
     clearInterval(profileAgeTimer);
     profileAgeTimer = null;
@@ -2439,19 +2440,22 @@ let communityBabysitters=[];
 
 async function loadBabysitters(params){
   const state=await window.MTMSync.state();
-  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended Babysitters.");
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
   return window.MTMSync.api(`/v1/community/babysitters?${params.toString()}`);
 }
 
 function babysitterCard(item){
-  const statusLabels={pending:"Waiting for permission",approved:"Approved profile",declined:"Invitation declined",removed:"Removed"};
-  const approvedActions=item.status==="approved"&&!item.isNominator?`<button class="btn babysitter-contact" data-id="${item.id}" type="button">Contact through MTM</button><button class="small-action danger-link babysitter-report" data-id="${item.id}" type="button">Report concern</button>`:"";
+  const statusLabels={pending:"Waiting for permission",approved:item.source==="self"?"Self-listed profile":"Approved profile",declined:"Invitation declined",removed:"Removed"};
+  const approvedActions=item.status==="approved"&&!item.isNominator&&!item.isSelfManaged?`<button class="btn babysitter-contact" data-id="${item.id}" type="button">Contact through MTM</button><button class="small-action danger-link babysitter-report" data-id="${item.id}" type="button">Report concern</button>`:"";
   const ownerActions=item.isNominator&&["pending","approved"].includes(item.status)?`<button class="btn secondary babysitter-withdraw" data-id="${item.id}" type="button">Withdraw nomination</button>`:"";
   return `<article class="babysitter-card ${esc(item.status)}"><div class="babysitter-card-head"><span>${esc(statusLabels[item.status]||item.status)}</span><small>${esc(item.generalArea)}</small></div>
     <h3>${esc(item.name)}</h3>${item.bio?`<p>${esc(item.bio)}</p>`:""}
-    <div class="babysitter-detail"><strong>Parent recommendation</strong><p>${esc(item.recommendation)}</p></div>
-    ${item.experience?`<div class="babysitter-detail"><strong>Experience described by the parent</strong><p>${esc(item.experience)}</p></div>`:""}
-    <p class="hint">Nominated by ${esc(item.nominatedBy.displayName)}${item.isNominator&&item.nomineeEmail?` • Invitation sent to ${esc(item.nomineeEmail)}`:""}</p>
+    ${item.recommendation?`<div class="babysitter-detail"><strong>Parent recommendation</strong><p>${esc(item.recommendation)}</p></div>`:""}
+    ${item.experience?`<div class="babysitter-detail"><strong>Experience</strong><p>${esc(item.experience)}</p></div>`:""}
+    ${item.ageRanges?`<div class="babysitter-detail"><strong>Age groups</strong><p>${esc(item.ageRanges)}</p></div>`:""}
+    ${item.availability?`<div class="babysitter-detail"><strong>Availability</strong><p>${esc(item.availability)}</p></div>`:""}
+    ${item.qualifications?`<div class="babysitter-detail"><strong>Qualifications or training</strong><p>${esc(item.qualifications)}</p></div>`:""}
+    <p class="hint">${item.source==="self"?"Profile created by the babysitter":`Nominated by ${esc(item.nominatedBy?.displayName||"a parent")}${item.isNominator&&item.nomineeEmail?` • Invitation sent to ${esc(item.nomineeEmail)}`:""}`}</p>
     ${item.status==="pending"?'<div class="banner"><strong>Private pending invitation:</strong> This profile is visible only to the parent who submitted it until the babysitter approves.</div>':""}
     <div class="btn-row">${approvedActions}${ownerActions}</div></article>`;
 }
@@ -2460,8 +2464,8 @@ function drawBabysitterResults(){
   const search=$("#babysitterSearch").value.trim().toLocaleLowerCase(),show=$("#babysitterView").value;
   const shown=communityBabysitters.filter(item=>{
     if(show==="approved"&&item.status!=="approved")return false;
-    if(show==="mine"&&!item.isNominator)return false;
-    return !search||`${item.name} ${item.generalArea} ${item.bio} ${item.recommendation} ${item.experience}`.toLocaleLowerCase().includes(search);
+    if(show==="mine"&&!item.isNominator&&!item.isSelfManaged)return false;
+    return !search||`${item.name} ${item.generalArea} ${item.bio} ${item.recommendation} ${item.experience} ${item.availability} ${item.ageRanges} ${item.qualifications}`.toLocaleLowerCase().includes(search);
   });
   $("#babysitterResultCount").textContent=`${shown.length} ${shown.length===1?"profile":"profiles"} found.`;
   $("#babysitterResults").innerHTML=shown.length?shown.map(babysitterCard).join(""):`<div class="empty card"><div class="big">🧑‍🍼</div><p>No babysitter profiles match that search.</p></div>`;
@@ -2482,18 +2486,57 @@ async function runBabysitterSearch(page=1){
 }
 async function renderBabysitters(){
   try{
-    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended Babysitters.");
+    let state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
+    if(!state.user){const account=await window.MTMSync.api("/v1/account");state={...state,user:account.user};await window.MTMSync.saveState(state);}
+    const myProfile=state.user?.isBabysitter?await window.MTMSync.api("/v1/community/babysitters/me"):null;
     communityBabysitters=[];
-    view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1><p>Find babysitters recommended by local parents who personally approved their public profile.</p></section>
-      <div class="banner"><strong>Permission comes first:</strong> A nomination stays private until the babysitter approves it by email. MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Families must interview, check references, confirm qualifications, and make their own care decisions.</div>
-      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button></div>
-      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, or ZIP</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, 25411…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Approved profiles</option><option value="mine">My nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location or name, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
-    $("#nominateBabysitter").onclick=openBabysitterNominationForm;$("#searchBabysitters").onclick=()=>runBabysitterSearch(1);
+    view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1><p>Search profiles created by babysitters and profiles approved after a parent nomination.</p></section>
+      <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
+      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="myBabysitterProfile" class="btn secondary" type="button">${myProfile?.profile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
+      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, ZIP, experience, or availability</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, weekends, CPR…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Public profiles</option><option value="mine">My profile and nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location, name, or service detail, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
+    $("#nominateBabysitter").onclick=openBabysitterNominationForm;
+    $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile?.profile||null,state.user);
+    $("#searchBabysitters").onclick=()=>runBabysitterSearch(1);
     $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch(1);});
-    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterPager").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your nominations.":"Enter a location or name, then press Search.";};
-  }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Recommended Babysitters</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterPager").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your profile and nominations.":"Enter a location or name, then press Search.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
+async function openMyBabysitterProfile(profile,user){
+  if(!user?.isBabysitter){
+    if(!confirm("Mark this account as a babysitter account? Creating and managing your profile is free."))return;
+    try{
+      const result=await window.MTMSync.api("/v1/account/babysitter-status",{method:"POST",body:JSON.stringify({isBabysitter:true})});
+      const state=await window.MTMSync.state();await window.MTMSync.saveState({...state,user:result.user});
+      user=result.user;
+    }catch(error){return alert(error.message);}
+  }
+  modalBody.innerHTML=`<h2>${profile?"Manage":"Create"} my babysitter profile</h2><div class="banner">Your email stays private. Parents contact you through MTM, and you decide whether to reply.</div><div class="form-grid">
+    <div class="field"><label>Public display name</label><input id="selfSitterName" maxlength="100" value="${esc(profile?.name||user.displayName||"")}"></div>
+    <div class="field"><label>General area</label><input id="selfSitterArea" maxlength="120" placeholder="City, state, or ZIP" value="${esc(profile?.generalArea||"")}"></div>
+    <div class="field"><label>Short public introduction</label><textarea id="selfSitterBio" maxlength="1200">${esc(profile?.bio||"")}</textarea></div>
+    <div class="field"><label>Experience</label><textarea id="selfSitterExperience" maxlength="1000">${esc(profile?.experience||"")}</textarea></div>
+    <div class="field"><label>Age groups</label><input id="selfSitterAges" maxlength="300" placeholder="Infants, toddlers, ages 5–12…" value="${esc(profile?.ageRanges||"")}"></div>
+    <div class="field"><label>Availability</label><textarea id="selfSitterAvailability" maxlength="500" placeholder="Weekends, evenings, school breaks…">${esc(profile?.availability||"")}</textarea></div>
+    <div class="field"><label>Qualifications or training</label><textarea id="selfSitterQualifications" maxlength="800" placeholder="CPR, first aid, AAC, sensory support…">${esc(profile?.qualifications||"")}</textarea></div>
+    <div class="btn-row"><button id="saveSelfSitter" class="btn" type="button">Save public profile</button>${profile?`<button id="removeSelfSitter" class="btn secondary" type="button">Remove profile</button>`:""}<button id="cancelSelfSitter" class="btn secondary" type="button">Cancel</button></div></div>`;
+  modal.showModal();$("#cancelSelfSitter").onclick=()=>modal.close();
+  $("#saveSelfSitter").onclick=async()=>{
+    const button=$("#saveSelfSitter");button.disabled=true;button.textContent="Saving…";
+    try{
+      await window.MTMSync.api("/v1/community/babysitters/me",{method:"POST",body:JSON.stringify({
+        publicName:$("#selfSitterName").value,generalArea:$("#selfSitterArea").value,bio:$("#selfSitterBio").value,
+        experience:$("#selfSitterExperience").value,ageRanges:$("#selfSitterAges").value,
+        availability:$("#selfSitterAvailability").value,qualifications:$("#selfSitterQualifications").value
+      })});
+      modal.close();alert("Your babysitter profile is now searchable.");renderBabysitters();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Save public profile";}
+  };
+  if($("#removeSelfSitter"))$("#removeSelfSitter").onclick=async()=>{
+    if(!confirm("Remove your babysitter profile from search? You can restore it later by saving the profile again."))return;
+    try{await window.MTMSync.api("/v1/community/babysitters/me",{method:"DELETE"});modal.close();renderBabysitters();}catch(error){alert(error.message);}
+  };
+}
 function openBabysitterNominationForm(){
   modalBody.innerHTML=`<h2>Recommend a babysitter</h2><div class="banner"><strong>The babysitter must choose.</strong> MTM will email a private approval link. Their name, recommendation, and email stay out of public search unless they approve. Their email is never displayed publicly.</div><div class="form-grid">
     <div class="field"><label>Babysitter's name</label><input id="babysitterName" maxlength="100" autocomplete="off"></div>
@@ -3620,7 +3663,7 @@ async function renderCaregiver() {
     <button id="caregiverMeetups" class="card-button"><strong>🤝 Social Meetups</strong><small>Find or create inclusive playdates, family gatherings, parent meetups, and sensory-friendly outings.</small></button>
     <button id="caregiverToys" class="card-button"><strong>🧸 Free Toy Exchange</strong><small>Offer toys your family no longer needs or find free toys offered by parents nearby.</small></button>
     <button id="caregiverRecommended" class="card-button"><strong>⭐ Recommended</strong><small>Find parent-recommended doctors, dentists, therapists, restaurants, schools, activities, and other local places.</small></button>
-    <button id="caregiverRecommendedBabysitters" class="card-button"><strong>🧑‍🍼 Recommended babysitters</strong><small>Find approved babysitter profiles or invite a babysitter you trust to choose whether they want to be listed.</small></button>
+    <button id="caregiverRecommendedBabysitters" class="card-button"><strong>🧑‍🍼 Find a babysitter</strong><small>Find approved babysitter profiles or invite a babysitter you trust to choose whether they want to be listed.</small></button>
     <button id="caregiverBabysitter" class="card-button"><strong>🧑‍🍼 Babysitter care sheet</strong><small>Pull saved care details into editable text that can be shared without an app.</small></button>
     <button id="caregiverEmergencyContacts" class="card-button"><strong>☎️ Emergency contacts</strong><small>Save multiple contacts per child for redundancy and care-sheet sharing.</small></button>
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
@@ -4187,7 +4230,7 @@ function setupDrawer() {
     ["🤝", "Social Meetups", "community"],
     ["🧸", "Toy Exchange", "toys"],
     ["⭐", "Recommended", "recommendations"],
-    ["🧑‍🍼", "Recommended Babysitters", "babysitters"],
+    ["🧑‍🍼", "Find a Babysitter", "babysitters"],
     ["💛", "Caregiver Corner", "caregiver"],
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],
