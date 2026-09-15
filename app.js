@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-product-library-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-account-recovery-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 6,
@@ -2261,7 +2261,7 @@ function openChiropracticArticleLibrary(){
     $("#chiropracticArticleCount").textContent=`Showing ${matches.length} of ${PACI_CHIROPRACTIC_ARTICLES.length} articles`;
     $("#chiropracticArticleList").innerHTML=list||'<div class="banner">No article titles match that search.</div>';
   };
-  modalBody.innerHTML=`<h2>Chiropractic articles about ADHD and autism</h2><p>These are the results currently provided by Paci Chiropractic's ADHD/Autism article page. Its heading says “Top 50,” but the page currently lists 29 articles.</p><div class="banner"><strong>External third-party material.</strong> Titles describe the source's claims and do not mean MTM endorses them. Many entries discuss individual cases, which cannot establish that chiropractic care treats autism, ADHD, or related symptoms. Chiropractic care should not replace evaluation or treatment from the child's qualified healthcare professionals.</div><div class="field"><label>Search article titles</label><input id="chiropracticArticleSearch" type="search" placeholder="Autism, ADHD, sleep, feeding…"></div><p id="chiropracticArticleCount" class="hint"></p><div id="chiropracticArticleList" class="education-links"></div><p class="hint">Index checked Sep 15, 2026. Articles open on Paci Chiropractic's website.</p><a class="btn secondary" href="https://www.pacichiropractic.com/articles/ADHD%2BAutism/" target="_blank" rel="noopener">Open the original collection</a>`;
+  modalBody.innerHTML=`<h2>Chiropractic articles about ADHD and autism</h2><div class="banner"><strong>External third-party material.</strong> Titles describe the source's claims and do not mean MTM endorses them. Many entries discuss individual cases, which cannot establish that chiropractic care treats autism, ADHD, or related symptoms. Chiropractic care should not replace evaluation or treatment from the child's qualified healthcare professionals.</div><div class="field"><label>Search article titles</label><input id="chiropracticArticleSearch" type="search" placeholder="Autism, ADHD, sleep, feeding…"></div><p id="chiropracticArticleCount" class="hint"></p><div id="chiropracticArticleList" class="education-links"></div><p class="hint">Index checked Sep 15, 2026. Articles open on Paci Chiropractic's website.</p><a class="btn secondary" href="https://www.pacichiropractic.com/articles/ADHD%2BAutism/" target="_blank" rel="noopener">Open the original collection</a>`;
   modal.showModal();
   $("#chiropracticArticleSearch").oninput=event=>draw(event.target.value);
   draw();
@@ -2381,7 +2381,7 @@ async function renderSleepSanctuary() {
   if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🧴 Magnesium: how it works, forms, and evidence</summary><div class="education-body"><p>Magnesium is essential for normal nerve and muscle function and participates in pathways involving neurotransmission and the body’s sleep-wake system. It is often described as calming because it helps regulate excitatory and inhibitory signaling, including pathways involving GABA, and is involved indirectly in melatonin biology. That biological role does <strong>not</strong> prove that extra magnesium acts as a sedative when a child already has enough.</p><div class="banner"><strong>What the sleep evidence says:</strong> Some studies in adults suggest possible modest sleep benefits, but results are conflicting and the studies are generally small or low quality. Good evidence has not established that magnesium supplements reliably lengthen deep sleep, prevent awakenings, or reduce anxiety or sensory overload in autistic children.</div><h3>Common forms caregivers may see</h3><ul><li><strong>Magnesium glycinate:</strong> magnesium bound to glycine. It is commonly marketed for sleep and is often better tolerated than forms with a stronger laxative effect, but it has not been proven to be the universally “best” sleep form for autistic children.</li><li><strong>Magnesium citrate:</strong> generally well absorbed and more likely to loosen stools. It may be used medically for constipation, but constipation treatment and sleep supplementation are different goals; diarrhea can cause dehydration or discomfort.</li><li><strong>Magnesium L-threonate:</strong> marketed for brain penetration and cognition. It is usually expensive, and evidence for pediatric sleep or autism-related benefits is insufficient.</li><li><strong>Magnesium sulfate/Epsom salts:</strong> a warm bath can be a soothing sensory routine, but clinically meaningful magnesium absorption through intact skin has not been established. Treat it as a bath preference—not an equivalent replacement for prescribed oral magnesium.</li></ul><h3>Before choosing any form</h3><ul><li>Ask what problem is being treated and whether deficiency, constipation, insomnia, pain, anxiety, or another issue needs evaluation.</li><li>Add up magnesium from supplements, antacids, laxatives, multivitamins, and prescribed products.</li><li>Review kidney disease, heart conditions, swallowing safety, diarrhea risk, and medicine interactions with the child’s clinician or pharmacist.</li><li>Use the clinician’s age-appropriate dose and timing; do not copy an adult product label or another child’s dose.</li></ul><div class="education-links"><a class="education-link" href="https://www.nccih.nih.gov/health/sleep-disorders-and-complementary-health-approaches" target="_blank" rel="noopener"><strong>Magnesium and sleep evidence</strong><span>NIH review of the limited and conflicting insomnia research.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium safety</strong><span>Age-based supplement limits, side effects, and interactions.</span><small>Open source ↗</small></a></div></div></details>`);
   if (sleepCards[6]) sleepCards[6].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🛍️ Sleep products</summary><div class="education-body"><p>Caregiver-supplied options to consider around the child’s individual sleep and sensory preferences. Check current specifications, price, availability, return terms, and safety information before purchasing.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/products/the-dreamer-blanket" target="_blank" rel="noopener"><strong>Comfrt Dreamer Blanket</strong><span>A plush, stretch blanket available in several sizes. Check the listed weight and dimensions carefully; this is not presented as a medical or pediatric weighted-sleep product.</span><small>Open product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042" target="_blank" rel="noopener"><strong>Galaxy star-and-moon projector</strong><span>A remote-controlled projector with multiple lighting effects, timer functions, and a Bluetooth speaker. Use low brightness and slow or still effects if motion or light is alerting.</span><small>Open Walmart product page ↗</small></a></div><div class="banner"><strong>Sleep safety:</strong> Products are not guaranteed treatments. Avoid loose or heavy bedding when it is not developmentally appropriate, follow safe-sleep guidance for the child’s age, and make sure the child can move, breathe, regulate temperature, and exit freely.</div></div></details>`);
   const sleepProductsSection=[...document.querySelectorAll(".sleep-sections > .education-card")].find((section)=>section.querySelector("summary")?.textContent.includes("Sleep products"));
-  sleepProductsSection?.querySelector(".education-body")?.insertAdjacentHTML("beforeend",`<h3>Amazon product links</h3><div class="banner"><strong>Amazon link notice:</strong> These are standard product links. More than Measured does not currently earn a commission from purchases. Products, sellers, prices, and availability can change.</div><div class="education-links">${amazonProductsFor("sleep").map(amazonProductLink).join("")}</div>`);
+  sleepProductsSection?.querySelector(".education-body")?.insertAdjacentHTML("beforeend",`<h3>More product links</h3><div class="banner"><strong>Shopping link notice:</strong> These links are examples, not endorsements. More than Measured does not currently earn a commission. Products, prices, sellers, and availability can change.</div><div class="education-links">${productsFor("sleep").filter(([,name])=>!["Comfrt Dreamer Blanket","Galaxy star-and-moon projector"].includes(name)).map(productLink).join("")}</div>`);
   if (!profiles.length) return;
   const routineList = $("#sleepRoutineList");
   const status = $("#sleepSaveStatus");
@@ -3176,25 +3176,62 @@ const AMAZON_PRODUCT_CATALOG=[
   ["sensory sleep","Elegant Comfort king microfiber sheet set, 4-piece","https://www.amazon.com/dp/B0C95GTT4K/"]
 ];
 
+const OTHER_PRODUCT_CATALOG=[
+  ["sensory","Comfrt kids clothing collection","https://comfrt.com/collections/kids","Comfrt","Soft matching sets and loungewear; review weight, warmth, seams, fit, and sizing."],
+  ["sensory sleep","PatPat baby bamboo-viscose pajamas","https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609","Walmart","Baby pajamas with footed and footless options; verify the current fabric, size, fit, and seller."],
+  ["sensory sleep","PatPat toddler bamboo-viscose pajama set","https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928","Walmart","Toddler pajama set; check the current size chart, waistband, seams, material, and seller."],
+  ["sensory sleep","WIBACKER two-piece bamboo-viscose pajamas","https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118","Walmart","Two-piece toddler pajamas; verify sizing, fabric blend, construction, and care directions."],
+  ["sleep sensory","Comfrt Dreamer Blanket","https://comfrt.com/products/the-dreamer-blanket","Comfrt","A plush stretch blanket; check weight and dimensions and follow age-appropriate sleep guidance."],
+  ["sleep sensory","Galaxy star-and-moon projector","https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042","Walmart","Projector with lighting effects, timer, and speaker; use settings that fit the child's sensory response."],
+  ["sleep safety","Cubby Bed","https://cubbybeds.com/","Manufacturer","Enclosed safety-bed specifications and funding resources; individual clinical review is required."],
+  ["sleep safety","The Safety Sleeper","https://safetysleeper.com/","Manufacturer","Portable enclosed-bed models and funding information; individual clinical review is required."],
+  ["sleep safety","SleepSafe Beds","https://sleepsafebed.com/","Manufacturer","Fixed safety-bed models, accessories, and insurance guidance."],
+  ["sleep safety","Beds by George","https://bedsbygeorge.com/","Manufacturer","Medical safety-bed models and funding documentation."],
+  ["speech","Proloquo2Go","https://www.assistiveware.com/products/proloquo2go","AssistiveWare","Symbol-based AAC for iPhone and iPad."],
+  ["speech","Grid by Smartbox","https://thinksmartbox.com/product/grid-for-ipad/","Smartbox","Symbol and text communication with multiple vocabulary layouts and access options."],
+  ["speech","LetMeTalk","https://www.letmetalk.info/","Developer","Picture-based AAC for building phrases; confirm current device support and privacy details."],
+  ["speech","Spoken AAC","https://spokenaac.com/","Developer","Text- and prediction-based AAC for constructing spoken messages."],
+  ["speech","Otsimo AAC","https://otsimo.com/en/aac/","Developer","Picture-based AAC; review its current platforms, price, data handling, and access features."],
+  ["speech skill","Speech Blubs","https://speechblubs.com/","Developer","Video-modeling and imitation activities for guided speech practice."],
+  ["speech skill","Otsimo learning and speech apps","https://otsimo.com/en/","Developer","Special-education games and speech-practice products."],
+  ["speech skill","Autism iHelp","https://www.autismihelp.com/","Developer","Vocabulary-focused learning activities; confirm current app-store availability."],
+  ["health","EllaOla toddler and kids multivitamins","https://ellaola.com/collections/multivitamins","Manufacturer","Age-based unflavored multivitamin powders; use only with appropriate clinical guidance."],
+  ["health","You+Yours Tasteless B Complex","https://youandyourshealth.com/","Manufacturer","Concentrated B-complex powder; verify current ingredients, dose, availability, and pediatric directions."],
+  ["health","Triquetra Kids L-Methylfolate plus B12","https://triquetrahealth.com/products/kids-methylfolate-plus-b12-cofactor","Manufacturer","Liquid 5-MTHF and methyl B12 product; verify the current label and age-based serving."],
+  ["health","JoySpring MethylBee","https://joyspringvitamins.com/products/joyspring-methylated-vitamins-for-kids","Manufacturer","Children's liquid supplement; compare the exact current label with clinician guidance."],
+  ["health","MaryRuth's Organic Toddler Multivitamin Liquid Drops","https://www.maryruthorganics.com/products/organic-toddler-multivitamin-liquid-drops","Manufacturer","Toddler multivitamin drops; review the current formula, serving, and total nutrient intake."],
+  ["health","SmartyPants kids and toddler multivitamins","https://www.smartypantsvitamins.com/collections/kids","Manufacturer","Age-specific gummy formulas; check serving size, sugar, choking risk, and duplicated nutrients."],
+  ["health","Llama Naturals Kids Multivitamin","https://www.llamanaturals.com/products/organic-kids-multivitamin-gummies","Manufacturer","Fruit-based chewable multivitamin; verify the current label and dose."],
+  ["health","Methyl-Life children's products","https://methyl-life.com/","Manufacturer","Active-folate and B12 products; confirm age, exact product, and dose with a clinician."],
+  ["health","Igennus children's multivitamins","https://igennus.com/collections/childrens-health","Manufacturer","Children's supplement collection; check current formula, allergens, sweeteners, and serving."],
+  ["health skill","UroStat for Little Ones","https://urostathealthcare.com/child-incontinence/","Medical supplier","Eligibility and home-delivery assistance for pediatric continence supplies in supported areas and plans."],
+  ["health skill","ActivStyle pediatric supplies","https://www.activstyle.com/home-medical-supplies-medicaid-covered/pediatric-supplies/","Medical supplier","State- and plan-dependent Medicaid process for pediatric continence supplies."]
+];
+
 const PRODUCT_DIRECTORY_SECTIONS=[
   ["sensory","🫧","Sensory Support"],
   ["speech","🗣️","Speech & Communication"],
   ["skill","📚","Skill Building"],
   ["sleep","🌙","Sleep"],
-  ["safety","🛟","Safety"]
+  ["safety","🛟","Safety"],
+  ["health","🩺","Health & Daily Living"]
 ];
 
-const amazonProductsFor=(category)=>AMAZON_PRODUCT_CATALOG.filter(([categories])=>categories.split(" ").includes(category));
-const amazonProductLink=([,name,url])=>`<a class="education-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><strong>${esc(name)}</strong><span>Check the current listing, seller, size, age range, price, return terms, and safety information.</span><small>Open on Amazon ↗</small></a>`;
+const PRODUCT_CATALOG=[
+  ...AMAZON_PRODUCT_CATALOG.map(([categories,name,url])=>[categories,name,url,"Amazon","Check the current listing, seller, size, age range, price, return terms, and safety information."]),
+  ...OTHER_PRODUCT_CATALOG
+];
+const productsFor=(category)=>PRODUCT_CATALOG.filter(([categories])=>categories.split(" ").includes(category));
+const productLink=([,name,url,source,description])=>`<a class="education-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><strong>${esc(name)}</strong><span>${esc(description)}</span><small>Open on ${esc(source)} ↗</small></a>`;
 
 function openAmazonProductCatalog(category,title,safetyNote="",existingGuidance=""){
-  const products=amazonProductsFor(category);
+  const products=productsFor(category);
   const draw=(query="")=>{
     const q=wordKey(query),matches=products.filter(([,name])=>!q||wordKey(name).includes(q));
     $("#amazonProductCount").textContent=`Showing ${matches.length} of ${products.length} products.`;
-    $("#amazonProductList").innerHTML=matches.length?matches.map(amazonProductLink).join(""):`<div class="empty"><p>No products match that search.</p></div>`;
+    $("#amazonProductList").innerHTML=matches.length?matches.map(productLink).join(""):`<div class="empty"><p>No products match that search.</p></div>`;
   };
-  modalBody.innerHTML=`<h2>🛍️ ${esc(title)}</h2><p>These caregiver-supplied links are shopping options, not endorsements. Choose around the child’s actual goal, age, size, motor skills, sensory preferences, cleaning needs, supervision, and product hazards.</p>${existingGuidance?`<section class="product-guidance">${existingGuidance}</section>`:""}${safetyNote?`<div class="banner">${safetyNote}</div>`:""}<h3>Amazon product links</h3><div class="banner"><strong>Amazon link notice:</strong> These are standard product links. More than Measured does not currently earn a commission from purchases. Products, sellers, prices, and availability can change.</div><div class="field"><label>Search these products</label><input id="amazonProductSearch" type="search" placeholder="Headphones, books, swing…"></div><p id="amazonProductCount" class="hint"></p><div id="amazonProductList" class="education-links"></div>`;
+  modalBody.innerHTML=`<h2>🛍️ ${esc(title)}</h2><p>These caregiver-supplied links are shopping options, not endorsements. Choose around the child’s actual goal, age, size, motor skills, sensory preferences, cleaning needs, supervision, and product hazards.</p>${existingGuidance?`<section class="product-guidance">${existingGuidance}</section>`:""}${safetyNote?`<div class="banner">${safetyNote}</div>`:""}<h3>Product links</h3><div class="banner"><strong>Shopping link notice:</strong> More than Measured does not currently earn a commission. Products, prices, sellers, and availability can change.</div><div class="field"><label>Search these products</label><input id="amazonProductSearch" type="search" placeholder="Headphones, books, swing…"></div><p id="amazonProductCount" class="hint"></p><div id="amazonProductList" class="education-links"></div>`;
   if(!modal.open)modal.showModal();draw();
   $("#amazonProductSearch").oninput=(event)=>draw(event.target.value);
 }
@@ -3205,16 +3242,16 @@ function openProductGuide(title,items,category,safetyNote=""){
 }
 
 function renderProductDirectory(){
-  const total=AMAZON_PRODUCT_CATALOG.length;
-  view.innerHTML=`<section class="hero"><h1>🛍️ Product links</h1><p>Browse all ${total} caregiver-supplied Amazon links by section.</p></section><div class="banner"><strong>Amazon link notice:</strong> These are standard product links. More than Measured does not currently earn a commission from purchases. Products, sellers, prices, and availability can change.</div><div class="card" style="margin-top:16px"><div class="field"><label>Search all products</label><input id="productDirectorySearch" type="search" placeholder="Headphones, books, pajamas…"></div><p id="productDirectoryCount" class="hint"></p></div><div id="productDirectorySections" class="tips-list"></div>`;
+  const total=PRODUCT_CATALOG.length;
+  view.innerHTML=`<section class="hero"><h1>🛍️ Product links</h1><p>Browse all ${total} product, app, manufacturer, and supplier links by section.</p></section><div class="banner"><strong>Shopping link notice:</strong> These links are examples, not endorsements. More than Measured does not currently earn a commission. Products, prices, sellers, formulas, and availability can change.</div><div class="card" style="margin-top:16px"><div class="field"><label>Search all products</label><input id="productDirectorySearch" type="search" placeholder="Headphones, AAC, pajamas, beds, vitamins…"></div><p id="productDirectoryCount" class="hint"></p></div><div id="productDirectorySections" class="tips-list"></div>`;
   const draw=(query="")=>{
     const q=wordKey(query);
-    const matches=AMAZON_PRODUCT_CATALOG.filter(([,name])=>!q||wordKey(name).includes(q));
+    const matches=PRODUCT_CATALOG.filter(([,name,,source,description])=>!q||wordKey(`${name} ${source} ${description}`).includes(q));
     $("#productDirectoryCount").textContent=`Showing ${matches.length} of ${total} products.`;
     $("#productDirectorySections").innerHTML=PRODUCT_DIRECTORY_SECTIONS.map(([category,icon,title])=>{
       const products=matches.filter(([categories])=>categories.split(" ").includes(category));
       if(!products.length)return "";
-      return `<details class="education-card" ${q?"open":""}><summary>${icon} ${esc(title)} (${products.length})</summary><div class="education-body"><div class="education-links">${products.map(amazonProductLink).join("")}</div></div></details>`;
+      return `<details class="education-card" ${q?"open":""}><summary>${icon} ${esc(title)} (${products.length})</summary><div class="education-body"><div class="education-links">${products.map(productLink).join("")}</div></div></details>`;
     }).join("")||`<div class="empty card"><p>No products match that search.</p></div>`;
   };
   draw();
