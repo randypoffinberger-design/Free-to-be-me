@@ -1,10 +1,10 @@
-const CACHE='ftbm-test-v0.10.0-account-isolation-1';
+const CACHE='ftbm-test-v0.10.0-account-isolation-2';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-test-12',
-  './sync.js?v=0.10.0-test-12',
-  './app.js?v=0.10.0-test-12',
+  './styles.css?v=0.10.0-test-13',
+  './sync.js?v=0.10.0-test-13',
+  './app.js?v=0.10.0-test-13',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
