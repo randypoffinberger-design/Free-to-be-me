@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-2-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-3-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 6,
@@ -2438,6 +2438,7 @@ function renderCommunityPager(prefix,data,goToPage){
 
 const BABYSITTER_CACHE_KEY="mtm-test-community-babysitters-v1";
 let communityBabysitters=[];
+let myBabysitterProfileId=null;
 
 async function loadBabysitters(params){
   const state=await window.MTMSync.state();
@@ -2448,7 +2449,7 @@ async function loadBabysitters(params){
 function babysitterCard(item){
   const statusLabels={pending:"Waiting for permission",approved:item.source==="self"?"Self-listed profile":"Approved profile",declined:"Invitation declined",removed:"Removed"};
   const approvedActions=item.status==="approved"&&!item.isNominator&&!item.isSelfManaged?`<button class="btn babysitter-contact" data-id="${item.id}" type="button">Contact through MTM</button><button class="small-action danger-link babysitter-report" data-id="${item.id}" type="button">Report concern</button>`:"";
-  const selfActions=item.isSelfManaged?`<button class="btn secondary babysitter-manage" data-id="${item.id}" type="button">Manage my profile</button>`:"";
+  const selfActions=item.id===myBabysitterProfileId?`<button class="btn secondary babysitter-manage" data-id="${item.id}" type="button">Manage my profile</button>`:"";
   const ownerActions=item.isNominator&&["pending","approved"].includes(item.status)?`<button class="btn secondary babysitter-withdraw" data-id="${item.id}" type="button">Withdraw nomination</button>`:"";
   return `<article class="babysitter-card ${esc(item.status)}"><div class="babysitter-card-head"><span>${esc(statusLabels[item.status]||item.status)}</span><small>${esc(item.generalArea)}</small></div>
     <h3>${esc(item.name)}</h3>${item.bio?`<p>${esc(item.bio)}</p>`:""}
@@ -2497,6 +2498,7 @@ async function renderBabysitters(){
       if(fallback)myProfileResult={profile:fallback,needsAccountLink:false};
     }
     const myProfile=myProfileResult?.profile||null,needsAccountLink=Boolean(myProfileResult?.needsAccountLink);
+    myBabysitterProfileId=myProfile?.id||null;
     communityBabysitters=[];
     view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1><p>Search profiles created by babysitters and profiles approved after a parent nomination.</p></section>
       <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
