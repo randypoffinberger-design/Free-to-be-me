@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 138844)
-Total output lines: 4325
-
 "use strict";
 
 const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-2-test", schemaVersion: 5 };
@@ -1549,7 +1546,1942 @@ function addMonthsClamped(date, months) {
     day = d.getDate();
   d.setDate(1);
   d.setMonth(d.getMonth() + months);
-  d.setDa…88844 tokens truncated…k directly whether there is a pool, pond, hot tub, creek, or open gate.</li><li>Use a properly fitted, U.S. Coast Guard-approved life jacket for boating and when the setting, child’s ability, or conditions call for it. Inflatable arm bands and pool toys are not safety devices.</li><li>Teach skills in small steps: wait for permission, enter safely, turn back to the wall, float, tread water, reach an exit, and climb out. Practice with different instructors and settings when possible because a skill learned in one pool may not automatically transfer elsewhere.</li><li>Choose an instructor who accepts AAC, gestures, breaks, sensory supports, repetition, and one-to-one lessons if a group is overwhelming. Consider practicing an unexpected fall into water while wearing ordinary clothes and shoes under qualified supervision.</li><li>Learn CPR, keep a phone nearby, know the exact location or address, and call 911 immediately for a water emergency.</li></ul>
+  d.setDate(
+    Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()),
+  );
+  return d;
+}
+function ageParts(profile, now = new Date()) {
+  const birth = profileBirthDate(profile);
+  if (!birth || birth > now) return null;
+  let years = now.getFullYear() - birth.getFullYear(),
+    cursor = new Date(birth);
+  cursor.setFullYear(birth.getFullYear() + years);
+  if (cursor > now) {
+    years--;
+    cursor = new Date(birth);
+    cursor.setFullYear(birth.getFullYear() + years);
+  }
+  let months = 0;
+  while (months < 11 && addMonthsClamped(cursor, months + 1) <= now) months++;
+  cursor = addMonthsClamped(cursor, months);
+  let seconds = Math.floor((now - cursor) / 1000),
+    days = Math.floor(seconds / 86400);
+  seconds -= days * 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds -= hours * 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds -= minutes * 60;
+  return { years, months, days, hours, minutes, seconds };
+}
+function profileDetail(profile, mode, now = new Date()) {
+  if (!profile.birthDate) return "A unique journey worth celebrating";
+  if (mode === "none") return "";
+  if (mode === "birthDate") return `Born ${fmtDate(profile.birthDate)}`;
+  const a = ageParts(profile, now);
+  if (!a) return "Birth date is in the future";
+  if (mode === "years") return `${a.years} yo`;
+  if (
+    mode === "yearsMonths" ||
+    (mode === "exact" && !hasExactBirthTime(profile))
+  )
+    return `${a.years} ${a.years === 1 ? "year" : "years"} ${a.months} ${a.months === 1 ? "month" : "months"}`;
+  return `${a.years}y ${a.months}m ${a.days}d ${String(a.hours).padStart(2, "0")}:${String(a.minutes).padStart(2, "0")}:${String(a.seconds).padStart(2, "0")}`;
+}
+async function resizeProfilePhoto(file) {
+  if (!file) return null;
+  if (!file.type.startsWith("image/"))
+    throw new Error("Please choose an image file.");
+  if (file.size > 15 * 1024 * 1024)
+    throw new Error("Please choose an image smaller than 15 MB.");
+  const src = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("The image could not be opened."));
+      el.src = src;
+    });
+    const size = Math.min(img.naturalWidth, img.naturalHeight),
+      sx = (img.naturalWidth - size) / 2,
+      sy = (img.naturalHeight - size) / 2,
+      canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 512;
+    canvas.getContext("2d").drawImage(img, sx, sy, size, size, 0, 0, 512, 512);
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+
+const DAILY_CARE_FIELDS = [
+  ["homeAddress", "Child/home address", "Where emergency responders should go"], ["pediatrician", "Pediatrician or clinic", "Name or practice"], ["pediatricianPhone", "Pediatrician phone", "Phone number"], ["preferredHospital", "Preferred hospital", "Name and location"],
+  ["medications", "Medications and timing", "Include exact caregiver-approved directions"], ["medicalNotes", "Medical needs and allergies", "Diagnoses, allergies, rescue medicine location…"], ["emergencyPlan", "Emergency plan", "What to do and when to call for help"], ["communication", "Communication", "Speech, ASL, AAC, processing time, words or gestures…"],
+  ["foodInstructions", "Food and drink instructions", "Serving, portions, brands, choking precautions…"], ["sleepInstructions", "Sleep instructions", "Routine details, wake rules, checks, safe sleep instructions…"], ["calming", "Calming and comfort", "Favorite items, activities, phrases, safe stims…"], ["sensory", "Sensory triggers and supports", "Noise, light, touch, crowds, headphones…"],
+  ["safety", "Safety and supervision", "Wandering, doors, water, pets, car, sibling safety…"], ["toileting", "Toileting care", "Schedule, cues, supplies, assistance, accidents…"], ["other", "Schedule and other instructions", "Meals, activities, screen rules, pickup details…"],
+];
+
+async function getDailyCare(profileId) {
+  const current = await getSetting(`dailyCare:${profileId}`, {}), legacy = await getSetting(`babysitterNotes:${profileId}`, {});
+  return { ...legacy, ...current };
+}
+
+async function openDailyCareProfile() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) return alert("Create a child profile first.");
+  let profileId = profiles[0].id;
+  const draw = async () => {
+    const value = await getDailyCare(profileId);
+    modalBody.innerHTML = `<h2>🧭 Daily Care & Safety</h2><p class="hint">Keep the practical information another trusted adult needs to care for this child. This central profile can be reused by babysitter, school, respite, emergency, and provider tools.</p><div class="field"><label>Child</label><select id="dailyCareProfile">${profiles.map((p) => `<option value="${p.id}" ${p.id === profileId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="form-grid">${DAILY_CARE_FIELDS.map(([key, label, placeholder]) => `<div class="field"><label>${label}</label><textarea id="dailyCare-${key}" placeholder="${esc(placeholder)}">${esc(value[key] || "")}</textarea></div>`).join("")}<button id="saveDailyCare" class="btn full" type="button">Save Daily Care & Safety profile</button></div><div class="banner"><strong>Keep this current.</strong> Review emergency contacts, allergies, medicines, rescue plans, and supervision needs whenever care changes.</div>`;
+    $("#dailyCareProfile").onchange = async (e) => { profileId = e.target.value; await draw(); };
+    $("#saveDailyCare").onclick = async () => { const next = Object.fromEntries(DAILY_CARE_FIELDS.map(([key]) => [key, $(`#dailyCare-${key}`).value.trim()])); next.updatedAt = nowISO(); await setSetting(`dailyCare:${profileId}`, next); alert("Daily Care & Safety profile saved."); };
+  };
+  await draw(); modal.showModal();
+}
+
+const DAY_BUBBLES = [
+  { id: "wake", emoji: "☀️", label: "Woke up", category: "routine" },
+  { id: "meal", emoji: "🍽️", label: "Meal or snack", category: "food" },
+  { id: "school", emoji: "🎒", label: "School", category: "activity" },
+  { id: "therapy", emoji: "🧩", label: "Therapy", category: "activity" },
+  { id: "outing", emoji: "🚗", label: "Outing", category: "activity" },
+  { id: "family", emoji: "🏡", label: "Family visit", category: "activity" },
+  { id: "medication", emoji: "💊", label: "Medication", category: "health" },
+  { id: "nap", emoji: "😴", label: "Nap", category: "sleep" },
+  { id: "bedtime", emoji: "🌙", label: "Bedtime", category: "sleep" },
+  { id: "screen", emoji: "📱", label: "Screen time", category: "screen" },
+  { id: "meltdown", emoji: "🌋", label: "Meltdown", category: "behavior", outcome: true },
+  { id: "sleep-difficulty", emoji: "🌘", label: "Trouble sleeping", category: "sleepOutcome", outcome: true },
+  { id: "regulated", emoji: "🌿", label: "Regulated and comfortable", category: "wellbeing", outcome: true },
+  { id: "win", emoji: "✨", label: "Positive moment", category: "wellbeing", outcome: true },
+];
+const SCREEN_TYPES = ["Television", "Tablet", "Phone", "Video game", "Learning app", "Video call", "Other"];
+const SCREEN_PURPOSES = ["Entertainment", "Education", "Regulation", "Communication/AAC", "Background viewing", "Other"];
+const localDayKey = (date = new Date()) => {
+  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return shifted.toISOString().slice(0, 10);
+};
+const localTimeValue = (date = new Date()) => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+const dayEventTime = (entry) => new Date(entry.occurredAt || entry.createdAt);
+const clockTime = (value) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+const durationText = (minutes) => {
+  const value = Number(minutes) || 0;
+  if (!value) return "";
+  const hours = Math.floor(value / 60), remainder = value % 60;
+  return hours ? `${hours}h${remainder ? ` ${remainder}m` : ""}` : `${remainder}m`;
+};
+async function getDayEvents() {
+  return (await getAll("notes")).filter((entry) => entry.kind === "dayEvent");
+}
+async function getDayBubbles() {
+  const custom = await getSetting("myDayCustomBubbles", []);
+  return [...DAY_BUBBLES, ...custom.filter((item) => item?.id && item?.label)];
+}
+function dayEventCard(entry, profiles, includeDate = false) {
+  const profile = profiles.find((item) => item.id === entry.profileId), details = [];
+  if (entry.durationMinutes) details.push(durationText(entry.durationMinutes));
+  if (entry.intensity) details.push(`Intensity ${entry.intensity}/5`);
+  if (entry.screenType) details.push(entry.screenType);
+  if (entry.screenPurpose) details.push(entry.screenPurpose);
+  return `<div class="day-entry card"><div class="day-entry-icon">${esc(entry.emoji || "•")}</div><div class="day-entry-body"><strong>${esc(entry.label)}</strong><span>${includeDate ? `${fmtDate(entry.occurredAt)} • ` : ""}${clockTime(entry.occurredAt)} • ${esc(profile?.name || "Child")}${details.length ? ` • ${esc(details.join(" • "))}` : ""}</span>${entry.notes ? `<p>${esc(entry.notes)}</p>` : ""}</div><div class="day-entry-actions"><button class="small-action edit-day-event" data-id="${entry.id}" type="button">Edit</button><button class="small-action danger-link delete-day-event" data-id="${entry.id}" type="button">Delete</button></div></div>`;
+}
+
+function buildDayInsights(events) {
+  const usable = events.filter((entry) => entry.occurredAt).sort((a, b) => dayEventTime(a) - dayEventTime(b));
+  const recordedDays = new Set(usable.map((entry) => localDayKey(dayEventTime(entry))));
+  if (recordedDays.size < 7) return { ready: false, days: recordedDays.size, insights: [] };
+  const predictors = usable.filter((entry) => !entry.outcome && !["behavior", "sleepOutcome", "wellbeing"].includes(entry.category));
+  const outcomes = usable.filter((entry) => entry.outcome || ["behavior", "sleepOutcome"].includes(entry.category));
+  const groups = new Map();
+  for (const predictor of predictors) {
+    const key = predictor.label.toLocaleLowerCase(), group = groups.get(key) || { label: predictor.label, count: 0, matches: new Map() };
+    group.count++;
+    const matchedOutcomes = new Set();
+    for (const outcome of outcomes) {
+      const gap = dayEventTime(outcome) - dayEventTime(predictor), windowMs = outcome.category === "sleepOutcome" ? 12 * 3600000 : 3600000;
+      if (outcome.profileId !== predictor.profileId || gap < 0 || gap > windowMs) continue;
+      const outcomeKey = outcome.label.toLocaleLowerCase();
+      if (matchedOutcomes.has(outcomeKey)) continue;
+      matchedOutcomes.add(outcomeKey);
+      const match = group.matches.get(outcomeKey) || { label: outcome.label, count: 0, window: windowMs };
+      match.count++;
+      group.matches.set(outcomeKey, match);
+    }
+    groups.set(key, group);
+  }
+  const insights = [];
+  for (const group of groups.values()) {
+    if (group.count < 3) continue;
+    for (const match of group.matches.values()) if (match.count >= 2)
+      insights.push({ predictor: group.label, outcome: match.label, matches: Math.min(match.count, group.count), total: group.count, hours: match.window / 3600000 });
+  }
+  insights.sort((a, b) => b.matches / b.total - a.matches / a.total || b.matches - a.matches);
+  return { ready: true, days: recordedDays.size, insights: insights.slice(0, 4) };
+}
+
+async function openDayEventForm(profiles, bubble, existing = null) {
+  const occurred = existing ? dayEventTime(existing) : new Date(), selectedBubble = bubble || DAY_BUBBLES.find((item) => item.id === existing?.bubbleId) || { id: existing?.bubbleId, label: existing?.label, emoji: existing?.emoji, category: existing?.category, outcome: existing?.outcome };
+  const isScreen = selectedBubble.category === "screen";
+  modalBody.innerHTML = `<h2>${existing ? "Edit" : "Log"} ${esc(selectedBubble.emoji || "")} ${esc(selectedBubble.label)}</h2><div class="form-grid"><div class="field"><label>Child</label><select id="dayProfile">${profiles.map((profile) => `<option value="${profile.id}" ${existing?.profileId === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Date</label><input id="dayDate" type="date" value="${localDayKey(occurred)}"></div><div class="field"><label>Time</label><input id="dayTime" type="time" value="${localTimeValue(occurred)}"></div></div><div class="field"><label>Duration in minutes <span class="hint">(optional)</span></label><input id="dayDuration" type="number" min="0" max="1440" inputmode="numeric" value="${existing?.durationMinutes || ""}"></div>${isScreen ? `<div class="form-grid two-col"><div class="field"><label>Screen or activity</label><select id="screenType">${SCREEN_TYPES.map((item) => `<option ${existing?.screenType === item ? "selected" : ""}>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="screenPurpose">${SCREEN_PURPOSES.map((item) => `<option ${existing?.screenPurpose === item ? "selected" : ""}>${item}</option>`).join("")}</select></div></div>` : ""}<div class="field"><label>Intensity <span class="hint">(optional)</span></label><select id="dayIntensity"><option value="">Not recorded</option>${[1,2,3,4,5].map((n) => `<option value="${n}" ${Number(existing?.intensity) === n ? "selected" : ""}>${n}${n === 1 ? " — low" : n === 5 ? " — high" : ""}</option>`).join("")}</select></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="dayNotes" placeholder="What happened, what helped, or anything worth remembering…">${esc(existing?.notes || "")}</textarea></div><button id="saveDayEvent" class="btn full" type="button">Save to My Day</button></div>`;
+  modal.showModal();
+  if (!existing && myDayFilterProfile !== "all" && profiles.some((profile) => profile.id === myDayFilterProfile)) $("#dayProfile").value = myDayFilterProfile;
+  $("#saveDayEvent").onclick = async () => {
+    const date = $("#dayDate").value, time = $("#dayTime").value;
+    if (!date || !time) return alert("Choose a date and time.");
+    const occurredAt = new Date(`${date}T${time}:00`).toISOString(), timestamp = nowISO();
+    await put("notes", { ...(existing || {}), id: existing?.id || uid(), kind: "dayEvent", profileId: $("#dayProfile").value, bubbleId: selectedBubble.id, label: selectedBubble.label, emoji: selectedBubble.emoji || "•", category: selectedBubble.category || "activity", outcome: Boolean(selectedBubble.outcome), occurredAt, durationMinutes: Number($("#dayDuration").value) || null, intensity: Number($("#dayIntensity").value) || null, notes: $("#dayNotes").value.trim(), screenType: isScreen ? $("#screenType").value : null, screenPurpose: isScreen ? $("#screenPurpose").value : null, createdAt: existing?.createdAt || timestamp, updatedAt: timestamp, syncStatus: "local" });
+    myDayFilterDate = date;
+    modal.close();
+    navigate(currentRoute === "screenTime" ? "screenTime" : "myDay");
+  };
+}
+
+async function openCustomBubbleForm() {
+  const current = await getSetting("myDayCustomBubbles", []);
+  modalBody.innerHTML = `<h2>➕ Create a custom bubble</h2><div class="form-grid"><div class="field"><label>Name</label><input id="customBubbleName" maxlength="40" placeholder="Grandma's house"></div><div class="field"><label>Icon or emoji</label><input id="customBubbleEmoji" maxlength="8" placeholder="🏡"></div><div class="field"><label>Type</label><select id="customBubbleCategory"><option value="activity">Activity or event</option><option value="food">Food or drink</option><option value="health">Health or medication</option><option value="sleep">Sleep event</option><option value="behavior">Behavior or response</option><option value="sleepOutcome">Sleep difficulty</option><option value="wellbeing">Positive or comfortable moment</option></select></div><button id="saveCustomBubble" class="btn full" type="button">Add bubble</button></div>${current.length ? `<h3>Custom bubbles</h3><div class="list">${current.map((bubble) => `<div class="list-item"><div><strong>${esc(bubble.emoji || "🔹")} ${esc(bubble.label)}</strong><div class="hint">${esc(bubble.category)}</div></div><button class="small-action danger-link delete-custom-bubble" data-id="${esc(bubble.id)}" type="button">Delete</button></div>`).join("")}</div>` : ""}`;
+  modal.showModal();
+  $("#saveCustomBubble").onclick = async () => {
+    const label = $("#customBubbleName").value.trim();
+    if (!label) return alert("Enter a bubble name.");
+    const category = $("#customBubbleCategory").value, current = await getSetting("myDayCustomBubbles", []);
+    current.push({ id: `custom-${uid()}`, label, emoji: $("#customBubbleEmoji").value.trim() || "🔹", category, outcome: ["behavior", "sleepOutcome", "wellbeing"].includes(category) });
+    await setSetting("myDayCustomBubbles", current);
+    modal.close();
+    renderMyDay();
+  };
+  document.querySelectorAll(".delete-custom-bubble").forEach((button) => button.onclick = async () => {
+    const bubble = current.find((item) => item.id === button.dataset.id);
+    if (!bubble || !confirm(`Delete the “${bubble.label}” bubble? Existing timeline entries will remain.`)) return;
+    await setSetting("myDayCustomBubbles", current.filter((item) => item.id !== bubble.id));
+    await openCustomBubbleForm();
+  });
+}
+
+async function renderMyDay() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) {
+    view.innerHTML = `<div class="empty card"><div class="big">🫧</div><h2>Create a child profile first</h2><p>My Day connects each event to the child it belongs to.</p><button class="btn" data-go="child">Create profile</button></div>`;
+    bindRouteButtons(); return;
+  }
+  if (!myDayFilterDate) myDayFilterDate = localDayKey();
+  const bubbles = await getDayBubbles(), allEvents = await getDayEvents(), selectedEvents = allEvents.filter((entry) => localDayKey(dayEventTime(entry)) === myDayFilterDate && (myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile)).sort((a, b) => dayEventTime(a) - dayEventTime(b));
+  const insightEvents = allEvents.filter((entry) => myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile), insight = buildDayInsights(insightEvents);
+  view.innerHTML = `<section class="hero"><h1>🫧 My Day</h1><p>Tap a bubble to record what happened and when. Over time, MTM can show possible patterns without claiming that one event caused another.</p></section><div class="card day-picker"><div class="form-grid two-col"><div class="field"><label>Child</label><select id="myDayProfile"><option value="all">All children</option>${profiles.map((profile) => `<option value="${profile.id}" ${myDayFilterProfile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="myDayDate" type="date" value="${myDayFilterDate}"></div></div></div><h2 class="section-title">What happened?</h2><div class="day-bubbles">${bubbles.map((bubble) => `<button class="day-bubble day-${esc(bubble.category)}" data-bubble-id="${esc(bubble.id)}" type="button"><span>${esc(bubble.emoji || "•")}</span><strong>${esc(bubble.label)}</strong></button>`).join("")}<button id="addCustomBubble" class="day-bubble day-custom" type="button"><span>＋</span><strong>Custom bubble</strong></button></div><div class="btn-row"><button class="btn secondary" data-go="screenTime">Open screen-time tracker</button></div><h2 class="section-title">Timeline</h2><div class="day-timeline">${selectedEvents.length ? selectedEvents.map((entry) => dayEventCard(entry, profiles)).join("") : `<div class="empty card"><p>No events recorded for this day.</p></div>`}</div><h2 class="section-title">Possible patterns</h2>${!insight.ready ? `<div class="card"><p>Record events on at least seven different days before MTM looks for possible patterns.</p><p class="hint">Days recorded: ${insight.days} of 7</p></div>` : insight.insights.length ? `<div class="pattern-list">${insight.insights.map((item) => `<div class="card pattern-card"><strong>${esc(item.outcome)} followed ${esc(item.predictor)}</strong><p>Logged within ${item.hours === 1 ? "1 hour" : `${item.hours} hours`} ${item.matches} of ${item.total} recorded times.</p></div>`).join("")}</div>` : `<div class="card"><p>No repeated pattern meets the display threshold yet. Keep recording ordinary days as well as difficult ones.</p></div>`}<div class="banner pattern-disclaimer"><strong>Correlation is not causation.</strong> These summaries only compare what was recorded. Missing entries, routines, illness, environment, and other factors can change the result.</div>`;
+  $("#myDayProfile").onchange = (event) => { myDayFilterProfile = event.target.value; renderMyDay(); };
+  $("#myDayDate").onchange = (event) => { myDayFilterDate = event.target.value || localDayKey(); renderMyDay(); };
+  document.querySelectorAll("[data-bubble-id]").forEach((button) => button.onclick = () => openDayEventForm(profiles, bubbles.find((bubble) => bubble.id === button.dataset.bubbleId)));
+  $("#addCustomBubble").onclick = openCustomBubbleForm;
+  document.querySelectorAll(".edit-day-event").forEach((button) => button.onclick = () => { const entry = allEvents.find((item) => item.id === button.dataset.id), bubble = bubbles.find((item) => item.id === entry?.bubbleId) || entry; if (entry) openDayEventForm(profiles, bubble, entry); });
+  document.querySelectorAll(".delete-day-event").forEach((button) => button.onclick = async () => { const entry = allEvents.find((item) => item.id === button.dataset.id); if (!entry || !confirm(`Delete “${entry.label}”?`)) return; await createSnapshot(`Before deleting My Day entry ${entry.label}`); await deleteItem("notes", entry.id); renderMyDay(); });
+  bindRouteButtons();
+}
+
+const ACTIVE_SCREEN_TIMER_KEY = "mtmTestActiveScreenTimer";
+function getActiveScreenTimer() { try { return JSON.parse(localStorage.getItem(ACTIVE_SCREEN_TIMER_KEY) || "null"); } catch { return null; } }
+async function openScreenTimerForm(profiles) {
+  modalBody.innerHTML = `<h2>▶️ Start screen-time timer</h2><div class="form-grid"><div class="field"><label>Child</label><select id="timerProfile">${profiles.map((profile) => `<option value="${profile.id}">${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Screen or activity</label><select id="timerType">${SCREEN_TYPES.map((item) => `<option>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="timerPurpose">${SCREEN_PURPOSES.map((item) => `<option>${item}</option>`).join("")}</select></div><button id="beginScreenTimer" class="btn full" type="button">Start timer</button></div>`;
+  modal.showModal();
+  $("#beginScreenTimer").onclick = () => { localStorage.setItem(ACTIVE_SCREEN_TIMER_KEY, JSON.stringify({ profileId: $("#timerProfile").value, screenType: $("#timerType").value, screenPurpose: $("#timerPurpose").value, startedAt: nowISO() })); modal.close(); renderScreenTime(); };
+}
+async function stopScreenTimer() {
+  const active = getActiveScreenTimer(); if (!active) return;
+  const endedAt = new Date(), startedAt = new Date(active.startedAt), minutes = Math.max(1, Math.round((endedAt - startedAt) / 60000));
+  await put("notes", { id: uid(), kind: "dayEvent", profileId: active.profileId, bubbleId: "screen", label: "Screen time", emoji: "📱", category: "screen", outcome: false, occurredAt: active.startedAt, durationMinutes: minutes, intensity: null, notes: "", screenType: active.screenType, screenPurpose: active.screenPurpose, createdAt: nowISO(), updatedAt: nowISO(), syncStatus: "local" });
+  localStorage.removeItem(ACTIVE_SCREEN_TIMER_KEY); renderScreenTime();
+}
+async function renderScreenTime() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) { view.innerHTML = `<div class="empty card"><h2>Create a child profile first</h2><button class="btn" data-go="child">Create profile</button></div>`; bindRouteButtons(); return; }
+  const events = (await getDayEvents()).filter((entry) => entry.category === "screen").sort((a, b) => dayEventTime(b) - dayEventTime(a)), today = localDayKey(), weekStart = Date.now() - 7 * 86400000;
+  const todayMinutes = events.filter((entry) => localDayKey(dayEventTime(entry)) === today && entry.screenPurpose !== "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), weekMinutes = events.filter((entry) => dayEventTime(entry).getTime() >= weekStart && entry.screenPurpose !== "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), aacMinutes = events.filter((entry) => dayEventTime(entry).getTime() >= weekStart && entry.screenPurpose === "Communication/AAC").reduce((sum, entry) => sum + (Number(entry.durationMinutes) || 0), 0), active = getActiveScreenTimer();
+  view.innerHTML = `<section class="hero"><h1>📱 Screen time</h1><p>Record screen use by activity and purpose. Communication and AAC are reported separately from recreational screen time.</p></section>${active ? `<div class="card active-screen-timer"><strong>Timer running</strong><span id="screenTimerElapsed"></span><p>${esc(profiles.find((profile) => profile.id === active.profileId)?.name || "Child")} • ${esc(active.screenType)} • ${esc(active.screenPurpose)}</p><button id="stopScreenTimer" class="btn" type="button">Stop and save</button></div>` : `<div class="btn-row"><button id="startScreenTimer" class="btn" type="button">Start timer</button><button id="manualScreenEntry" class="btn secondary" type="button">Add manually</button></div>`}<div class="screen-summary"><div class="card"><strong>${durationText(todayMinutes) || "0m"}</strong><span>Today, excluding AAC</span></div><div class="card"><strong>${durationText(weekMinutes) || "0m"}</strong><span>Past 7 days, excluding AAC</span></div><div class="card"><strong>${durationText(aacMinutes) || "0m"}</strong><span>Past 7 days, communication/AAC</span></div></div><div class="banner"><strong>These totals describe recorded use.</strong> They do not judge whether screen time was helpful or harmful. Content, purpose, participation, sleep, movement, and the individual child all matter.</div><h2 class="section-title">Recent entries</h2><div class="day-timeline">${events.length ? events.slice(0, 20).map((entry) => dayEventCard(entry, profiles, true)).join("") : `<div class="empty card"><p>No screen time recorded yet.</p></div>`}</div>`;
+  if (active) { const update = () => { const seconds = Math.max(0, Math.floor((Date.now() - new Date(active.startedAt)) / 1000)), hours = Math.floor(seconds / 3600), minutes = Math.floor((seconds % 3600) / 60), remainder = seconds % 60; $("#screenTimerElapsed").textContent = `${hours ? `${hours}:` : ""}${String(minutes).padStart(hours ? 2 : 1, "0")}:${String(remainder).padStart(2, "0")}`; }; update(); screenTimerInterval = setInterval(update, 1000); $("#stopScreenTimer").onclick = stopScreenTimer; }
+  else { $("#startScreenTimer").onclick = () => openScreenTimerForm(profiles); $("#manualScreenEntry").onclick = () => openDayEventForm(profiles, DAY_BUBBLES.find((item) => item.id === "screen")); }
+  document.querySelectorAll(".edit-day-event").forEach((button) => button.onclick = () => { const entry = events.find((item) => item.id === button.dataset.id); if (entry) openDayEventForm(profiles, DAY_BUBBLES.find((item) => item.id === "screen"), entry); });
+  document.querySelectorAll(".delete-day-event").forEach((button) => button.onclick = async () => { const entry = events.find((item) => item.id === button.dataset.id); if (!entry || !confirm("Delete this screen-time entry?")) return; await createSnapshot("Before deleting screen-time entry"); await deleteItem("notes", entry.id); renderScreenTime(); });
+}
+
+function renderAutismMyths() {
+  const myths = [
+    ["Autism looks the same in everyone", "Autistic people have different strengths, support needs, communication styles, sensory experiences, interests, and daily-living abilities. A profile that fits one person cannot define another."],
+    ["Autistic people lack empathy", "Empathy is not one single skill. Someone may feel another person's emotions strongly while having difficulty reading an expression, knowing what response is expected, or showing care in a familiar way."],
+    ["Autism comes from bad parenting", "Autism is a developmental disability related to differences in the brain. Parenting style does not create autism."],
+    ["Every autistic person is a savant", "Some autistic people have exceptional skills, and many do not. Ordinary strengths and interests deserve respect without expecting a rare talent."],
+    ["Nonspeaking means not understanding", "Speech is only one way to communicate. A person may use AAC, typing, signs, pictures, gestures, movement, or behavior. Speech ability does not reveal everything a person understands."],
+    ["AAC prevents speech", "AAC gives a person another reliable way to communicate. It can be used with speech and should not be withheld while waiting to see whether speech develops."],
+    ["All stimming should be stopped", "Stimming can help with regulation, concentration, expression, or sensory needs. Support is needed when an action is unsafe or causing harm, but harmless stimming does not need to be removed for appearance."],
+    ["Eye contact proves someone is listening", "A person can listen without looking into someone's eyes. Forced eye contact can consume attention or cause discomfort, leaving less capacity for the conversation itself."],
+    ["Children grow out of autism", "Autism is lifelong. Skills, needs, coping strategies, and outward traits can change, and some people learn to mask differences, but that is not the same as no longer being autistic."],
+    ["A meltdown is a tantrum", "A meltdown is an overwhelmed response, not a calculated demand. Reduce demands and sensory load, protect safety, and allow recovery before trying to discuss what happened."],
+  ];
+  view.innerHTML = `<section class="hero"><h1>🧠 ASD myths and misconceptions</h1><p>Plain answers to common assumptions that can affect how autistic people are understood and supported.</p></section><div class="education-sections myth-list">${myths.map(([myth, fact]) => `<details class="education-card"><summary>Myth: ${esc(myth)}</summary><div class="education-body"><p>${esc(fact)}</p></div></details>`).join("")}</div><div class="education-links myth-sources"><a class="education-link" href="https://www.nimh.nih.gov/health/topics/autism-spectrum-disorders-asd" target="_blank" rel="noopener"><strong>National Institute of Mental Health</strong><span>Autism overview, characteristics, and support.</span><small>Clinical source ↗</small></a><a class="education-link" href="https://www.asha.org/public/speech/disorders/aac/" target="_blank" rel="noopener"><strong>American Speech-Language-Hearing Association</strong><span>AAC methods, assessment, and communication support.</span><small>Clinical source ↗</small></a><a class="education-link" href="https://www.autism.org.uk/advice-and-guidance/what-is-autism" target="_blank" rel="noopener"><strong>National Autistic Society</strong><span>Autism, communication, sensory differences, and varied support needs.</span><small>Community source ↗</small></a></div><div class="banner"><strong>Use this section to question assumptions, not the person.</strong> Individual autistic people and their chosen communication should guide how they are described and supported.</div>`;
+}
+
+async function renderChild() {
+  const p = await getAll("profiles"),
+    a = await getAll("achievements"),
+    w = await getAll("words"),
+    profileDisplay = await getSetting("profileDisplay", "birthDate");
+  if (!p.length) {
+    view.innerHTML = `<div class="empty card"><div class="big">🌱</div><h2>Start your child’s journey</h2><p>Create a profile before adding real progress data.</p><div class="btn-row" style="justify-content:center"><button id="addProfile" class="btn">Create profile</button></div></div>`;
+    $("#addProfile").onclick = openProfileForm;
+    return;
+  }
+  view.innerHTML = `<div class="btn-row"><button id="addProfile" class="btn secondary">Add another child</button><button id="addAchievement" class="btn">Celebrate a new Win</button></div>
+  <h2 class="section-title">Child profiles</h2>
+  <div class="list">${p.map((x) => `<div class="profile-card card"><div class="avatar">${x.photoData ? `<img src="${x.photoData}" alt="${esc(x.name)} profile photo">` : esc(x.emoji || "🌟")}</div><div class="meta"><h3>${esc(x.name)}</h3><p class="profile-detail" data-profile-id="${x.id}">${esc(profileDetail(x, profileDisplay))}</p></div><button class="small-action edit-profile" data-id="${x.id}" type="button">Edit</button></div>`).join("")}</div>
+  <h2 class="section-title">Progress tools</h2>
+  <div class="grid">
+    <button id="dailyCareProfile" class="card-button"><span class="emoji">🧭</span><strong>Daily Care & Safety</strong><small>Central instructions for caregivers, emergencies, school, respite, and babysitters.</small></button>
+    <button id="viewAchievements" class="card-button"><span class="emoji">✨</span><strong>Wins</strong><small>${a.length} saved. Tap to view or edit.</small></button>
+    <button id="viewWords" class="card-button"><span class="emoji">🗣️</span><strong>Words & phrases</strong><small>${w.length} saved.</small></button>
+    <button id="providerSummary" class="card-button"><span class="emoji">📄</span><strong>Provider summary</strong><small>Share progress over time.</small></button>
+  </div>`;
+  document.querySelectorAll(".profile-card").forEach((card, index) => {
+    const profile = p[index], meta = card.querySelector(".meta");
+    if (profile?.specialInterest) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Special interest:</strong> ${esc(profile.specialInterest)}</p>`);
+    if (profile?.currentFocus) meta.insertAdjacentHTML("beforeend", `<p class="profile-extra"><strong>Currently working on:</strong> ${esc(profile.currentFocus)}</p>`);
+  });
+  view.insertAdjacentHTML("beforeend", `<h2 class="section-title">Growth tools</h2><div class="grid"><button class="card-button" data-go="myDay"><span class="emoji">🫧</span><strong>My Day</strong><small>Tap event bubbles, build a daily timeline, and watch for possible patterns over time.</small></button><button class="card-button" data-go="screenTime"><span class="emoji">📱</span><strong>Screen time</strong><small>Use a timer or manual entries and keep communication/AAC totals separate.</small></button><button class="card-button" data-go="food"><span class="emoji">🍽️</span><strong>Food diary</strong><small>Track foods and meals by comfort level, then build gentle variety ideas.</small></button></div>`);
+  $("#addProfile").onclick = openProfileForm;
+  $("#dailyCareProfile").onclick = openDailyCareProfile;
+  document
+    .querySelectorAll(".edit-profile")
+    .forEach(
+      (b) =>
+        (b.onclick = () =>
+          openProfileForm(p.find((x) => x.id === b.dataset.id))),
+    );
+  $("#addAchievement").onclick = () => openAchievementForm(p);
+  $("#viewAchievements").onclick = () => openAchievements(a, p);
+  $("#viewWords").onclick = () => navigate("vocabulary");
+  $("#providerSummary").onclick = () => openProviderReport(p);
+  bindRouteButtons();
+  if (profileDisplay === "exact") {
+    const updateAges = () =>
+      document.querySelectorAll(".profile-detail").forEach((el) => {
+        const profile = p.find((x) => x.id === el.dataset.profileId);
+        if (profile) el.textContent = profileDetail(profile, "exact");
+      });
+    profileAgeTimer = setInterval(updateAges, 1000);
+  }
+}
+
+function openAchievements(items, profiles) {
+  const names = Object.fromEntries(profiles.map((p) => [p.id, p.name]));
+  const sorted = [...items].sort(
+    (a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt),
+  );
+  modalBody.innerHTML = `<h2>✨ Wins</h2>
+  ${sorted.length ? `<div class="list">${sorted.map((x) => `<div class="list-item win-item"><div style="font-size:1.7rem">🎉</div><div class="win-content"><strong>${esc(x.title)}</strong><div class="hint">${esc(names[x.profileId] || "Child")} • ${esc(x.category || "Win")} • ${fmtDate(x.date || x.createdAt)}</div>${x.notes ? `<p style="margin-bottom:0">${esc(x.notes)}</p>` : ""}</div><button class="small-action edit-win" data-id="${x.id}" type="button">Edit</button></div>`).join("")}</div>` : `<div class="empty"><div class="big">🌱</div><p>No Wins have been saved yet.</p></div>`}
+  <button id="closeAchievements" class="btn full" type="button" style="margin-top:14px">Close</button>`;
+  modal.showModal();
+  document.querySelectorAll(".edit-win").forEach(
+    (button) =>
+      (button.onclick = () =>
+        openAchievementForm(
+          profiles,
+          items.find((item) => item.id === button.dataset.id),
+        )),
+  );
+  $("#closeAchievements").onclick = () => modal.close();
+}
+
+function openProfileForm(item = null) {
+  const selected = item?.emoji || "🌟",
+    storedTime = hasExactBirthTime(item || {}) ? item.birthTime.split(":") : [],
+    storedHour = storedTime.length ? Number(storedTime[0]) : null,
+    displayHour = storedHour === null ? "" : String(storedHour % 12 || 12),
+    meridiem = storedHour !== null && storedHour >= 12 ? "PM" : "AM";
+  modalBody.innerHTML = `<h2>${item ? "Edit" : "Create"} child profile</h2><div class="form-grid"><div class="field"><label>Name</label><input id="pName" value="${esc(item?.name || "")}" autocomplete="off"></div><div class="field"><label>Birth date <span class="hint">(optional)</span></label><input id="pBirth" type="date" value="${item?.birthDate || ""}"></div><fieldset class="birth-time-field"><legend>Birth time <span class="hint">(optional)</span></legend><div><label>Hour<input id="pHour" type="number" min="1" max="12" inputmode="numeric" value="${displayHour}"></label><label>Minute<input id="pMinute" type="number" min="0" max="59" inputmode="numeric" value="${storedTime[1] || ""}"></label><label>Second<input id="pSecond" type="number" min="0" max="59" inputmode="numeric" value="${storedTime[2] || ""}"></label><label>AM/PM<select id="pMeridiem"><option ${meridiem === "AM" ? "selected" : ""}>AM</option><option ${meridiem === "PM" ? "selected" : ""}>PM</option></select></label></div><span class="hint">Enter hour, minute, and second to enable the live exact-age display. Leave all three blank if the time is unknown.</span></fieldset><fieldset class="symbol-picker"><legend>Profile symbol</legend>${PROFILE_SYMBOLS.map((symbol) => `<label><input type="radio" name="pEmoji" value="${symbol}" ${symbol === selected ? "checked" : ""}><span>${symbol}</span></label>`).join("")}</fieldset><div class="field"><label>Child photo <span class="hint">(optional)</span></label><input id="pPhoto" type="file" accept="image/*"><span class="hint">Stored only in this app and included in complete backups.</span></div><div id="photoPreview" class="profile-photo-preview ${item?.photoData ? "" : "hidden"}">${item?.photoData ? `<img src="${item.photoData}" alt="Current profile photo">` : ""}</div>${item?.photoData ? '<label class="check-option"><input id="removePhoto" type="checkbox"> Remove current photo</label>' : ""}<button id="saveProfile" class="btn full" type="button">Save profile</button></div>`;
+  modal.showModal();
+  $("#pName").closest(".field").insertAdjacentHTML("afterend", `<div class="field"><label>Special interest <span class="hint">(optional)</span></label><input id="pInterest" value="${esc(item?.specialInterest || "")}" placeholder="Trains, letters, animals…"></div><div class="field"><label>Currently working on <span class="hint">(optional)</span></label><input id="pCurrentFocus" value="${esc(item?.currentFocus || "")}" placeholder="Using utensils, transitions…"></div>`);
+  $("#pPhoto").onchange = () => {
+    const file = $("#pPhoto").files[0];
+    if (!file) return;
+    const preview = $("#photoPreview");
+    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Selected profile photo preview">`;
+    preview.classList.remove("hidden");
+  };
+  $("#saveProfile").onclick = async () => {
+    const name = $("#pName").value.trim();
+    if (!name) return alert("Please enter a name.");
+    const values = [
+        $("#pHour").value,
+        $("#pMinute").value,
+        $("#pSecond").value,
+      ],
+      anyTime = values.some((v) => v !== ""),
+      completeTime = values.every((v) => v !== "");
+    if (anyTime && !completeTime)
+      return alert(
+        "Enter the birth hour, minute, and second, or leave all three blank.",
+      );
+    if (anyTime && !$("#pBirth").value)
+      return alert("Please enter a birth date before adding a birth time.");
+    let birthTime = null;
+    if (completeTime) {
+      let [hour, minute, second] = values.map(Number);
+      if (
+        hour < 1 ||
+        hour > 12 ||
+        minute < 0 ||
+        minute > 59 ||
+        second < 0 ||
+        second > 59
+      )
+        return alert("Please enter a valid birth time.");
+      if ($("#pMeridiem").value === "PM" && hour !== 12) hour += 12;
+      if ($("#pMeridiem").value === "AM" && hour === 12) hour = 0;
+      birthTime = [hour, minute, second]
+        .map((v) => String(v).padStart(2, "0"))
+        .join(":");
+    }
+    const button = $("#saveProfile");
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      const file = $("#pPhoto").files[0],
+        photoData = file
+          ? await resizeProfilePhoto(file)
+          : $("#removePhoto")?.checked
+            ? null
+            : item?.photoData || null;
+      await put("profiles", {
+        ...item,
+        id: item?.id || uid(),
+        name,
+        specialInterest: $("#pInterest").value.trim(),
+        currentFocus: $("#pCurrentFocus").value.trim(),
+        birthDate: $("#pBirth").value || null,
+        birthTime: $("#pBirth").value ? birthTime : null,
+        emoji:
+          document.querySelector('input[name="pEmoji"]:checked')?.value || "🌟",
+        photoData,
+        createdAt: item?.createdAt || nowISO(),
+        updatedAt: nowISO(),
+        syncStatus: "local",
+      });
+      modal.close();
+      renderChild();
+    } catch (error) {
+      alert(error.message);
+      button.disabled = false;
+      button.textContent = "Save profile";
+    }
+  };
+}
+function openAchievementForm(p, item = null) {
+  const categories = [
+    "Communication",
+    "Learning",
+    "Daily living",
+    "Motor skills",
+    "Sensory & regulation",
+    "Social connection",
+    "Other",
+  ];
+  modalBody.innerHTML = `<h2>${item ? "Edit Win" : "Celebrate a new Win"}</h2><div class="form-grid"><div class="field"><label>Child</label><select id="aProfile">${p.map((x) => `<option value="${x.id}" ${item?.profileId === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>What happened?</label><input id="aTitle" value="${esc(item?.title || "")}" placeholder="Used a new sentence"></div><div class="field"><label>Category</label><select id="aCategory">${categories.map((category) => `<option ${item?.category === category ? "selected" : ""}>${esc(category)}</option>`).join("")}</select></div><div class="field"><label>Date</label><input id="aDate" type="date" value="${item?.date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Notes</label><textarea id="aNotes" placeholder="What helped? What made this moment special?">${esc(item?.notes || "")}</textarea></div><button id="saveAchievement" class="btn full" type="button">${item ? "Save changes" : "🎉 You did it! Save Win"}</button></div>`;
+  modal.showModal();
+  $("#saveAchievement").onclick = async () => {
+    const t = $("#aTitle").value.trim();
+    if (!t) return alert("Please describe the Win.");
+    await put("achievements", {
+      ...item,
+      id: item?.id || uid(),
+      profileId: $("#aProfile").value,
+      title: t,
+      category: $("#aCategory").value,
+      date: $("#aDate").value,
+      notes: $("#aNotes").value.trim(),
+      createdAt: item?.createdAt || nowISO(),
+      updatedAt: nowISO(),
+      syncStatus: "local",
+    });
+    modal.close();
+    alert(item ? "Win updated!" : "🎉 Win saved!");
+    renderChild();
+  };
+}
+
+const BIRTHDAY_MESSAGES=[
+  "Happy {birthday}, {name}! Your village is celebrating the wonderful, one-of-a-kind person you are today.",
+  "Happy {birthday}, {name}! May your day be filled with favorite things, comfortable moments, happy surprises, and plenty of reasons to smile.",
+  "Today your whole village cheers for you, {name}. Keep growing in your own wonderful way—you are loved exactly as you are.",
+  "Happy {birthday}, {name}! Your smile, your spirit, and all the little things that make you unmistakably you deserve a celebration.",
+  "{name}, today is all about you! Your unique journey is worth celebrating every step of the way.",
+  "Happy {birthday}, {name}! Your way of seeing the world brings something beautiful that nobody else could bring.",
+  "To the amazing {name}: another year means even more discoveries, memories, laughter, and Wins to celebrate. Happy {birthday}!",
+  "Happy {birthday}, {name}! May this year bring safe places, joyful discoveries, kind people, and plenty of time for what you love most.",
+  "{name}, you are more than milestones, measurements, or expectations. Your village celebrates all of you today. Happy {birthday}!",
+  "Happy {birthday}, {name}! Your personality, passions, laughter, and determination make the world more interesting and meaningful.",
+  "Today we celebrate the wonderful adventure of being {name}. Happy {birthday}—keep shining in the way only you can.",
+  "Happy {birthday}, {name}! You have already created more beautiful memories than anyone could ever measure.",
+  "To {name}: may your {birthday} feel comfortable, exciting in all the right ways, and full of the people and things that make you happiest.",
+  "Happy {birthday}, {name}! Your voice, choices, comfort, and happiness matter. Your village is always in your corner.",
+  "Another year of becoming even more wonderfully you. Happy {birthday}, {name}!",
+  "Happy {birthday} to one extraordinary kid! {name}, you make ordinary moments special simply by being part of them.",
+  "{name}, your joy is worth sharing, your interests are worth celebrating, and your progress belongs to you. Have a beautiful {birthday}!",
+  "Happy {birthday}, {name}! May your new year bring patience when things are hard, confidence when you are ready, and celebration for every Win.",
+  "To {name} on your {birthday}: you are not behind, too much, or not enough. You are wonderfully yourself, right on your own path.",
+  "Happy {birthday}, {name}! May today give you room to move, play, rest, laugh, explore, and celebrate in the way that feels best.",
+  "The best thing about today is celebrating someone as special as {name}. Happy {birthday} to a child loved beyond measure.",
+  "Happy {birthday}, {name}! Your courage, curiosity, connection, and wonder give your village so many reasons to cheer.",
+  "{name}, your story is still beginning, and it is already filled with so many beautiful moments. Happy {birthday}!",
+  "Happy {birthday}, {name}! Your village is proud of who you are today—not only of who you may become tomorrow.",
+  "Today the candles are for {name}! Happy {birthday} to someone whose unique journey makes the whole village brighter.",
+];
+function birthdayOrdinal(value){const n=Number(value);if(!n)return "birthday";const suffix=n%10===1&&n%100!==11?"st":n%10===2&&n%100!==12?"nd":n%10===3&&n%100!==13?"rd":"th";return `${n}${suffix} birthday`;}
+function birthdayToday(profile, today = new Date()) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(profile.birthDate || "");
+  if (!match) return false;
+  return Number(match[2]) === today.getMonth() + 1 && Number(match[3]) === today.getDate();
+}
+function birthdayAge(profile, today = new Date()) {
+  const birthYear = Number((profile.birthDate || "").slice(0, 4));
+  return birthYear ? today.getFullYear() - birthYear : null;
+}
+async function showBirthdayGreetingsIfNeeded() {
+  if (birthdayGreetingsShown) return;
+  birthdayGreetingsShown = true;
+  const today = new Date();
+  const birthdayProfiles = (await getAll("profiles")).filter((profile) => birthdayToday(profile, today));
+  if (!birthdayProfiles.length) return;
+  const greetings = birthdayProfiles.map((profile) => {
+    const template = BIRTHDAY_MESSAGES[Math.floor(Math.random() * BIRTHDAY_MESSAGES.length)];
+    return {
+      profile,
+      message: template
+        .replaceAll("{name}", profile.name || "Birthday star")
+        .replaceAll("{birthday}", birthdayOrdinal(birthdayAge(profile, today))),
+    };
+  });
+  const showNext = (index) => {
+    const greeting = greetings[index];
+    if (!greeting) return;
+    modalBody.innerHTML = `<div class="birthday-greeting"><div class="birthday-confetti" aria-hidden="true">🎈 🎂 🎉</div><h2>Happy Birthday, ${esc(greeting.profile.name || "Birthday star")}!</h2><p>${esc(greeting.message)}</p><p class="birthday-signoff">With love,<br><strong>Your More than Measured™ village 💛</strong></p><button id="closeBirthdayGreeting" class="btn full" type="button">${index + 1 < greetings.length ? "Celebrate and continue" : "Celebrate!"}</button></div>`;
+    modal.showModal();
+    $("#closeBirthdayGreeting").onclick = () => {
+      modal.close();
+      showNext(index + 1);
+    };
+  };
+  showNext(0);
+}
+
+function openFoodClaimsGuide() { openInfoGuide("🥛 Food dyes, sugar, dairy & A2 milk", `<p>Food can affect comfort, digestion, sleep, energy, and behavior in any child, but food dyes, sugar, dairy, or A1 milk have not been shown to cause autism. Removing them is not an established treatment for autism itself.</p><h3>Food dyes</h3><p>FDA says most children have no adverse effects from approved color additives, although some evidence suggests certain children may be sensitive. If you notice a repeatable change, record the exact product, dye, amount, timing, symptoms, sleep, illness, and other possible triggers. Labels may list Red 40, Yellow 5, Yellow 6, or Blue 1.</p><h3>Sugar</h3><p>Sugar does not cause autism. A high-sugar eating pattern can crowd out nutrients and affect teeth, appetite, and energy. Exciting situations where sweets are served can also change behavior, so look for repeatable individual patterns rather than assuming activity or distress came from sugar.</p><h3>Dairy, milk allergy, and lactose intolerance</h3><p>A true cow’s-milk allergy is an immune reaction to milk protein and can be serious or life-threatening. Lactose intolerance is difficulty digesting milk sugar and more often causes gas, bloating, diarrhea, nausea, or abdominal pain. These are different conditions. Removing dairy can reduce protein, calcium, vitamin D, calories, and safe-food options, so broad restriction should involve the child’s clinician or pediatric dietitian.</p><h3>What is A2 dairy?</h3><p>Most ordinary cow’s milk contains both A1 and A2 forms of a protein called beta-casein. A2 milk comes from cows selected to produce only the A2 form. It is still cow’s milk, has broadly similar nutrition, and usually contains lactose unless the label also says lactose-free.</p><ul><li>Small human trials suggest A2 milk may cause less digestive discomfort than conventional milk for some people, but findings are mixed and do not establish an autism-specific benefit.</li><li>A2 milk does <strong>not</strong> treat autism and should not be presented as improving core autistic traits.</li><li>It is not a treatment for proven lactose intolerance because ordinary A2 milk still contains lactose.</li><li>It is <strong>not safe for a cow’s-milk allergy</strong>; it still contains milk proteins capable of causing an allergic reaction.</li><li>If a clinician says a cautious trial is appropriate, record the product, amount, symptoms, timing, stool pattern, and other changes rather than changing several foods at once.</li></ul><h3>A safer way to investigate</h3><ul><li>Get urgent help for trouble breathing, throat or tongue swelling, faintness, or a rapidly worsening reaction.</li><li>Use this Food Diary’s allergy, reaction, and sensitivity fields to record patterns.</li><li>Do not deliberately re-expose a child to a suspected allergen without medical guidance.</li><li>Consider constipation, reflux, dental pain, infection, sleep loss, hunger, and medication effects before blaming one ingredient.</li></ul><div class="education-links"><a class="education-link" href="https://www.fda.gov/consumers/consumer-updates/how-safe-are-color-additives" target="_blank" rel="noopener"><strong>FDA color-additive safety</strong><span>Current evidence, sensitivities, reactions, and labeling.</span><small>Official source ↗</small></a><a class="education-link" href="https://www.niddk.nih.gov/health-information/digestive-diseases/lactose-intolerance/symptoms-causes" target="_blank" rel="noopener"><strong>Lactose intolerance and milk allergy</strong><span>NIDDK explains the different causes and symptoms.</span><small>Official source ↗</small></a><a class="education-link" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11215337/" target="_blank" rel="noopener"><strong>A2 milk clinical trial</strong><span>A randomized crossover trial showing mixed gastrointestinal results.</span><small>Research source ↗</small></a></div>`); }
+
+async function renderFoodDiary() {
+  const profiles = await getAll("profiles");
+  if (!profiles.length) { view.innerHTML = `<div class="empty card"><h2>Create a child profile first</h2><button class="btn" data-go="child">Create profile</button></div>`; bindRouteButtons(); return; }
+  let profileId = profiles[0].id, entries = [], editingId = null;
+  const key = () => `foodDiary:${profileId}`;
+  view.innerHTML = `<section class="hero"><h1>🍽️ Food Diary</h1><p>Record foods, meals, reactions, and preferences without turning eating into a test.</p></section><div class="banner sleep-note"><strong>Allergy safety:</strong> Trouble breathing, throat or tongue swelling, faintness, or a rapidly worsening reaction can be an emergency. Follow the child’s emergency plan and call emergency services.</div><div class="card tool-form"><div class="field"><label>Child</label><select id="foodProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Entry type</label><select id="foodKind"><option value="food">Food</option><option value="meal">Meal</option><option value="snack">Snack</option><option value="condiment">Condiment</option><option value="drink">Drink</option></select></div><div class="field"><label>Name</label><input id="foodName" placeholder="Chicken nugget, ketchup, or milk"></div><div class="field"><label>Eating category</label><select id="foodCategory"><option value="safe">Safe</option><option value="sometimes">Occasionally eats</option><option value="not">Absolutely not</option></select></div><div class="field"><label>Date observed</label><input id="foodDate" type="date" value="${isoToday()}"></div><div class="field"><label>Allergy, reaction, or sensitivity</label><select id="foodResponse"><option value="none">No known reaction</option><option value="allergy">Known food allergy</option><option value="reaction">Possible allergic reaction</option><option value="sensitivity">Sensitivity or intolerance</option></select></div></div><div class="field"><label>Reaction details <span class="hint">(optional)</span></label><textarea id="foodReactionDetails" placeholder="Symptoms, amount eaten, how quickly it started, treatment, and clinician guidance"></textarea></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="foodNotes" placeholder="Brand, texture, temperature, presentation, or what changed"></textarea></div><div class="btn-row"><button id="saveFood" class="btn" type="button">Add to diary</button><button id="cancelFoodEdit" class="btn secondary hidden" type="button">Cancel edit</button></div></div><div class="btn-row"><button id="mealIdeas" class="btn secondary">Generate variety ideas</button></div><h2 class="section-title">Foods by acceptance</h2><div id="foodList" class="food-category-list"></div>`;
+  view.querySelector(".hero").insertAdjacentHTML("afterend", `<div class="grid section-grid"><button id="foodClaimsGuide" class="card-button"><span class="emoji">🥛</span><strong>Food dyes, sugar, dairy & A2 milk</strong><small>Evidence, individual reactions, A2 dairy, and safer ways to investigate.</small></button></div>`);
+  $("#foodClaimsGuide").onclick = openFoodClaimsGuide;
+  const load = async () => { entries = await getSetting(key(), []); draw(); };
+  const persist = () => setSetting(key(), entries);
+  const labels = { safe: "Safe", sometimes: "Occasionally eats", not: "Absolutely not" };
+  const responseLabels = { allergy: "Known allergy", reaction: "Possible reaction", sensitivity: "Sensitivity/intolerance" };
+  const snackIcon = `<svg class="food-kind-icon" viewBox="0 0 36 36" role="img" aria-label="Snack"><path d="M19 3h12l2 5-2 18H17L15 8z" fill="#f1a85f" stroke="#8d5638" stroke-width="1.5"/><path d="m16 8 3-3 3 3 3-3 3 3 3-3 2 3" fill="none" stroke="#fff3d5" stroke-width="1.5"/><circle cx="24" cy="15" r="3" fill="#fff3d5"/><path d="M3 17h23c0 9-4.5 14-11.5 14S3 26 3 17Z" fill="#7fc4bd" stroke="#316d70" stroke-width="1.5"/><path d="M2 17h25" stroke="#316d70" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+  const condimentIcon = `<svg class="food-kind-icon" viewBox="0 0 36 36" role="img" aria-label="Condiment bottle"><path d="M14 3h8v5l3 4v17c0 2-1.5 3.5-3.5 3.5h-7c-2 0-3.5-1.5-3.5-3.5V12l3-4Z" fill="#8ccbc4" fill-opacity=".48" stroke="#346f72" stroke-width="1.7"/><path d="M14 3h8v4h-8z" fill="#cf6f5c" stroke="#8e4138" stroke-width="1.4"/><path d="M13 16h10v9H13z" fill="#fff3d5" stroke="#d5a753" stroke-width="1.2"/><path d="M15.5 20.5h5" stroke="#cf6f5c" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+  const mealIcon = `<svg class="food-kind-icon" viewBox="0 0 36 36" role="img" aria-label="Meal with plate, bowl, and glass"><circle cx="12.5" cy="22" r="10" fill="#fff9e9" stroke="#3f7180" stroke-width="1.6"/><circle cx="12.5" cy="22" r="6.5" fill="#f4cf83" fill-opacity=".45" stroke="#79a7ae" stroke-width="1"/><path d="M17 7h10c0 5-2 8-5 8s-5-3-5-8Z" fill="#7fc4bd" stroke="#316d70" stroke-width="1.4"/><path d="M16.5 7h11" stroke="#316d70" stroke-width="2" stroke-linecap="round"/><path d="M29 5h5l-.7 12.5c-.1 1.5-1.1 2.5-1.8 2.5s-1.7-1-1.8-2.5Z" fill="#a9d9e8" fill-opacity=".55" stroke="#477a8a" stroke-width="1.3"/><path d="M30.1 12h3.2" stroke="#6ab8cf" stroke-width="1.4"/><path d="M31.5 20v8m-3 1h6" stroke="#477a8a" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+  const kindInfo = { food:["🍽️","Food"], meal:[mealIcon,"Meal"], snack:[snackIcon,"Snack"], condiment:[condimentIcon,"Condiment"], drink:["🥤","Drink"] };
+  const resetForm=()=>{editingId=null;$("#foodKind").value="food";$("#foodName").value="";$("#foodCategory").value="safe";$("#foodDate").value=isoToday();$("#foodResponse").value="none";$("#foodReactionDetails").value="";$("#foodNotes").value="";$("#saveFood").textContent="Add to diary";$("#cancelFoodEdit").classList.add("hidden");};
+  const draw = () => { $("#foodList").innerHTML = ["safe","sometimes","not"].map((category)=>{const items=[...entries].filter((x)=>x.category===category).sort((a,b)=>a.name.localeCompare(b.name));return `<section class="food-category-block ${category}"><h3>${labels[category]} <span>${items.length}</span></h3><div class="list">${items.length?items.map((x)=>{const [icon,kindLabel]=kindInfo[x.kind]||kindInfo.food;const response=responseLabels[x.response]||"";return `<div class="list-item food-item"><div><strong>${icon} ${esc(x.name)}</strong><div class="hint">${kindLabel}${x.date?` • ${fmtDate(x.date)}`:""}${response?` • <span class="food-alert">${esc(response)}</span>`:""}</div>${x.reactionDetails?`<p><strong>Reaction:</strong> ${esc(x.reactionDetails)}</p>`:""}${x.notes?`<p>${esc(x.notes)}</p>`:""}</div><div><button class="small-action edit-food" data-id="${x.id}">Edit</button><button class="small-action danger-link delete-food" data-id="${x.id}">Delete</button></div></div>`;}).join(""):`<div class="empty"><p>Nothing in this group yet.</p></div>`}</div></section>`;}).join("");
+    document.querySelectorAll(".edit-food").forEach((b) => b.onclick = () => { const x=entries.find((e)=>e.id===b.dataset.id);editingId=x.id;$("#foodKind").value=x.kind||"food";$("#foodName").value=x.name;$("#foodCategory").value=x.category||"safe";$("#foodDate").value=x.date||"";$("#foodResponse").value=x.response||"none";$("#foodReactionDetails").value=x.reactionDetails||"";$("#foodNotes").value=x.notes||"";$("#saveFood").textContent="Update entry";$("#cancelFoodEdit").classList.remove("hidden");$("#foodName").focus();window.scrollTo({top:0,behavior:"smooth"}); });
+    document.querySelectorAll(".delete-food").forEach((b) => b.onclick = async () => { const x=entries.find((e)=>e.id===b.dataset.id); if (!confirm(`Delete “${x.name}”?`)) return; entries=entries.filter((e)=>e.id!==x.id); await persist(); draw(); });
+  };
+  $("#foodProfile").onchange = async (e) => { profileId=e.target.value; resetForm(); await load(); };
+  $("#cancelFoodEdit").onclick=resetForm;
+  $("#saveFood").onclick = async () => { const name=$("#foodName").value.trim(); if(!name) return alert("Enter a food, meal, snack, condiment, or drink name."); const values={kind:$("#foodKind").value,name,category:$("#foodCategory").value,date:$("#foodDate").value,response:$("#foodResponse").value,reactionDetails:$("#foodReactionDetails").value.trim(),notes:$("#foodNotes").value.trim(),updatedAt:nowISO()};if(editingId){Object.assign(entries.find((x)=>x.id===editingId),values);}else{entries.push({id:uid(),...values,createdAt:nowISO()});}await persist();resetForm();draw(); };
+  $("#mealIdeas").onclick = () => { const safe=entries.filter((x)=>x.kind==="food"&&x.category==="safe"), sometimes=entries.filter((x)=>x.kind==="food"&&x.category==="sometimes"); if(!safe.length) return alert("Add at least one safe individual food first."); const ideas=Array.from({length:Math.min(6,Math.max(3,safe.length))},(_,i)=>{ const anchor=safe[i%safe.length].name, second=safe[(i+1)%safe.length]?.name, learning=sometimes[i%sometimes.length]?.name; return `${anchor}${second&&second!==anchor?` + ${second}`:""}${learning?`, with a tiny no-pressure side of ${learning}`:""}`; }); modalBody.innerHTML=`<h2>🥗 Gentle variety ideas</h2><p class="hint">These combinations use this child’s saved foods. They are presentation ideas—not a nutrition assessment or a promise that the child will eat them.</p><div class="list">${ideas.map((x)=>`<div class="list-item"><span>${esc(x)}</span></div>`).join("")}</div><div class="banner">Keep at least one reliable food available. A pediatrician or feeding-qualified dietitian can assess growth, nutrients, swallowing, allergies, pain, or severe restriction.</div>`; modal.showModal(); };
+  await load();
+}
+
+const LIFE_SKILL_SUGGESTIONS = [
+  ["Self-care", "Washed hands", "Completes some or all steps: turns on water, uses soap, scrubs, rinses, and dries.", true],
+  ["Self-care", "Brushed teeth", "Tolerates or participates in getting the toothbrush, adding toothpaste, brushing, rinsing, and putting supplies away.", true],
+  ["Self-care", "Brushed hair", "Tolerates brushing or completes part of the routine with their preferred brush and support.", false],
+  ["Self-care", "Washed body", "Washes selected body areas in the bath or shower with the level of prompting that currently helps.", true],
+  ["Self-care", "Washed hair", "Participates in wetting, shampooing, rinsing, or drying hair while communicating sensory needs.", false],
+  ["Self-care", "Used the toilet", "Recognizes or responds to a toileting cue and completes one or more parts of the bathroom routine.", true],
+  ["Self-care", "Wiped nose", "Gets a tissue, wipes or blows their nose, and throws the tissue away with needed support.", false],
+  ["Dressing", "Got dressed", "Chooses clothing or puts on one or more items in the correct order.", true],
+  ["Dressing", "Put on shoes", "Finds the correct shoes, places them on the correct feet, and manages fasteners as able.", true],
+  ["Dressing", "Managed a zipper", "Connects, pulls, opens, or closes a zipper with decreasing support.", false],
+  ["Dressing", "Managed buttons or snaps", "Opens or closes buttons or snaps on clothing, a practice board, or a bag.", false],
+  ["Eating & drinking", "Used utensils", "Uses a spoon, fork, adaptive utensil, or child-safe knife for part of a meal.", true],
+  ["Eating & drinking", "Drank from a straw cup", "Seals lips around a straw and drinks safely from a preferred cup.", false],
+  ["Eating & drinking", "Drank from an open cup", "Takes supported or independent sips while controlling the cup.", true],
+  ["Eating & drinking", "Helped prepare food", "Completes a safe step such as pouring, stirring, spreading, washing produce, or choosing an ingredient.", false],
+  ["Home routines", "Cleaned up toys", "Returns one or more items to their places using a model, picture, song, or verbal cue as needed.", true],
+  ["Home routines", "Put dirty clothes away", "Places clothing in a hamper or other expected location.", false],
+  ["Home routines", "Helped with laundry", "Sorts colors, moves clothing, matches socks, folds an item, or puts clothing away.", false],
+  ["Home routines", "Helped set the table", "Carries or places safe table items by following a model or visual guide.", false],
+  ["Home routines", "Followed a visual routine", "Checks a picture or written schedule and completes the next step with less prompting.", true],
+  ["Communication & regulation", "Asked for help", "Uses speech, a sign, gesture, picture, or AAC to request assistance.", true],
+  ["Communication & regulation", "Asked for a break", "Communicates the need to pause before or during a difficult activity.", true],
+  ["Communication & regulation", "Made a choice", "Chooses between objects, pictures, spoken options, signs, or AAC selections.", true],
+  ["Communication & regulation", "Waited for a turn", "Waits briefly with a clear cue, timer, or visual while another person takes a turn.", false],
+  ["Communication & regulation", "Moved between activities", "Transitions with a warning, timer, finished box, visual schedule, or preferred transition object.", false],
+  ["Safety", "Stopped at a boundary", "Stops at a door, curb, gate, parking lot, or other practiced boundary with support.", true],
+  ["Safety", "Held a caregiver's hand", "Accepts a hand, wrist strap, stroller, cart, or another individually appropriate safety support.", false],
+  ["Safety", "Crossed a street safely with support", "Stops, stays with the caregiver, checks traffic as able, and crosses when directed.", true],
+  ["Safety", "Shared identifying information", "Communicates their name or caregiver information by speech, card, bracelet, or AAC as appropriate.", false],
+  ["Community", "Waited during an appointment", "Uses a preferred activity, visual, or regulation support while waiting for part of a visit.", false],
+  ["Community", "Completed a store routine", "Stays with the caregiver, helps find an item, places it in the cart, or participates in checkout.", false],
+  ["Community", "Ordered or requested an item", "Uses their preferred communication method to request something in a store or restaurant.", false],
+  ["Learning & play", "Completed a simple two-step task", "Follows two related steps using words, pictures, modeling, or gestures.", false],
+  ["Learning & play", "Played alongside or with another person", "Shares space, materials, attention, or turns in a way that feels comfortable and meaningful.", false],
+  ["Learning & play", "Put materials away after an activity", "Recognizes that an activity is finished and returns materials to a container or shelf.", false]
+];
+async function renderLifeSkills() {
+  const profiles=await getAll("profiles"); if(!profiles.length){view.innerHTML=`<div class="empty card"><h2>Create a child profile first</h2><button class="btn" data-go="child">Create profile</button></div>`;bindRouteButtons();return;}
+  let profileId=profiles[0].id, skills=[]; const key=()=>`lifeSkills:${profileId}`;
+  const suggestionOptions=[...new Set(LIFE_SKILL_SUGGESTIONS.map(([category])=>category))].map((category)=>`<optgroup label="${esc(category)}">${LIFE_SKILL_SUGGESTIONS.filter(([group])=>group===category).map(([,name,example])=>`<option value="${esc(name)}">${esc(name)} — ${esc(example)}</option>`).join("")}</optgroup>`).join("");
+  view.innerHTML=`<section class="hero"><h1>🌟 Life Skills</h1><p>Track everyday skills, the support that helps, and progress at your child’s pace—not someone else’s timeline.</p></section><div class="banner"><strong>A skill does not have to be all-or-nothing.</strong> Add the skill when your child begins participating, then use the status and notes to record prompts, sensory supports, communication methods, and the steps they can complete.</div><div class="card"><div class="field"><label>Child</label><select id="lifeProfile">${profiles.map((p)=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Choose a suggested skill</label><select id="suggestedLifeSkill"><option value="">Browse examples by category…</option>${suggestionOptions}</select></div><button id="addSuggestedLifeSkill" class="btn full" type="button">Add selected skill</button><p class="hint">The example will appear inside the skill card as a starting point. Adapt it to how your child completes the skill.</p><div class="field" style="margin-top:14px"><label>Or add a custom skill</label><div class="inline-field"><input id="newLifeSkill" placeholder="Enter any skill your family wants to track"><button id="addLifeSkill" class="btn" type="button">Add custom</button></div></div><button id="addStarterSkills" class="btn secondary full" style="margin-top:10px" type="button">Add core starter skills</button></div><div id="lifeSkillList" class="list" style="margin-top:14px"></div>`;
+  const persist=()=>setSetting(key(),skills), load=async()=>{skills=await getSetting(key(),[]);draw();};
+  const draw=()=>{$("#lifeSkillList").innerHTML=skills.length?skills.map((x)=>{const suggested=LIFE_SKILL_SUGGESTIONS.find(([,name])=>wordKey(name)===wordKey(x.name));const category=x.category||suggested?.[0]||"Custom skill";const example=x.example||suggested?.[2]||"This is a custom skill. Use the notes to describe what it looks like for your child and what support helps.";return `<details class="term-card"><summary>${esc(x.name)} <span class="category-chip">${esc(x.status||"Not started")}</span></summary><div class="education-body"><p><strong>${esc(category)}</strong></p><div class="banner"><strong>What this can look like:</strong><br>${esc(example)}</div><div class="field"><label>Status</label><select class="life-status" data-id="${x.id}"><option ${x.status==="Not started"?"selected":""}>Not started</option><option ${x.status==="Practicing"?"selected":""}>Practicing</option><option ${x.status==="With help"?"selected":""}>With help</option><option ${x.status==="Independent"?"selected":""}>Independent</option></select></div><div class="field"><label>Date reached <span class="hint">(optional)</span></label><input class="life-date" data-id="${x.id}" type="date" value="${x.date||""}"></div><div class="field"><label>Notes</label><textarea class="life-notes" data-id="${x.id}" placeholder="Prompts, sensory supports, steps completed, what helped, or what changed">${esc(x.notes||"")}</textarea></div><div class="btn-row"><button class="small-action save-life" data-id="${x.id}">Save</button><button class="small-action danger-link delete-life" data-id="${x.id}">Delete</button></div></div></details>`;}).join(""):`<div class="empty card"><p>No life skills added yet. Choose an example above or create your own.</p></div>`;document.querySelectorAll(".save-life").forEach((b)=>b.onclick=async()=>{const x=skills.find((s)=>s.id===b.dataset.id);x.status=document.querySelector(`.life-status[data-id="${x.id}"]`).value;x.date=document.querySelector(`.life-date[data-id="${x.id}"]`).value;x.notes=document.querySelector(`.life-notes[data-id="${x.id}"]`).value.trim();await persist();draw();});document.querySelectorAll(".delete-life").forEach((b)=>b.onclick=async()=>{if(!confirm("Delete this skill?"))return;skills=skills.filter((x)=>x.id!==b.dataset.id);await persist();draw();});};
+  const add=(name,category="",example="")=>{if(!name||skills.some((x)=>wordKey(x.name)===wordKey(name)))return false;skills.push({id:uid(),name,category,example,status:"Not started",date:"",notes:""});return true;};
+  $("#lifeProfile").onchange=async(e)=>{profileId=e.target.value;await load();};
+  $("#addSuggestedLifeSkill").onclick=async()=>{const name=$("#suggestedLifeSkill").value;if(!name)return alert("Choose a suggested skill first.");const suggested=LIFE_SKILL_SUGGESTIONS.find(([,item])=>item===name);if(!add(name,suggested[0],suggested[2]))return alert("That skill is already in this child's tracker.");$("#suggestedLifeSkill").value="";await persist();draw();};
+  $("#addLifeSkill").onclick=async()=>{const name=$("#newLifeSkill").value.trim();if(!name)return;if(!add(name))return alert("That skill is already in this child's tracker.");$("#newLifeSkill").value="";await persist();draw();};
+  $("#addStarterSkills").onclick=async()=>{LIFE_SKILL_SUGGESTIONS.filter(([, , ,starter])=>starter).forEach(([category,name,example])=>add(name,category,example));await persist();draw();};
+  await load();
+}
+
+const DISABILITY_PARKING_STATE_LINKS = [
+  ["AL", "Alabama", "Alabama Department of Revenue", "https://www.revenue.alabama.gov/motor-vehicle/disability-access-parking-placards/"],
+  ["AK", "Alaska", "Alaska Division of Motor Vehicles", "https://dmv.alaska.gov/vehicle-services/plates/disabled-parking-permits/"],
+  ["AZ", "Arizona", "Arizona Department of Transportation", "https://azdot.gov/mvd/services/vehicle-services/plates-and-placards/disability-symbol-disability-license-plate"],
+  ["AR", "Arkansas", "Arkansas Department of Finance and Administration", "https://www.dfa.arkansas.gov/office/motor-vehicle/disabled-placards/"],
+  ["CA", "California", "California Department of Motor Vehicles", "https://www.dmv.ca.gov/portal/vehicle-registration/license-plates-decals-and-placards/disabled-person-parking-placards-plates/"],
+  ["CO", "Colorado", "Colorado Division of Motor Vehicles", "https://dmv.colorado.gov/persons-disabilities"],
+  ["CT", "Connecticut", "Connecticut Department of Motor Vehicles", "https://portal.ct.gov/dmv/vehicle-services/disabled-parking-permits"],
+  ["DE", "Delaware", "Delaware Division of Motor Vehicles", "https://dmv.de.gov/VehicleServices/other/index.shtml?dc=ve_reg_placard"],
+  ["DC", "District of Columbia", "District of Columbia Department of Motor Vehicles", "https://dmv.dc.gov/service/parking-placards-disability-vehicles"],
+  ["FL", "Florida", "Florida Highway Safety and Motor Vehicles", "https://www.flhsmv.gov/motor-vehicles-tags-titles/disabled-person-parking-permits/"],
+  ["GA", "Georgia", "Georgia Department of Revenue", "https://dor.georgia.gov/disabled-persons-license-plates-and-parking-permits"],
+  ["HI", "Hawaii", "Hawaii Disability and Communication Access Board", "https://health.hawaii.gov/dcab/parking/"],
+  ["ID", "Idaho", "Idaho Transportation Department", "https://itd.idaho.gov/dmv/registrations-plates-titles/license-plates/"],
+  ["IL", "Illinois", "Illinois Secretary of State", "https://www.ilsos.gov/departments/vehicles/disabled_parking/home.html"],
+  ["IN", "Indiana", "Indiana Bureau of Motor Vehicles", "https://www.in.gov/bmv/registration-plates/vehicle-registrations/disability-plates-and-placards/"],
+  ["IA", "Iowa", "Iowa Department of Transportation", "https://iowadot.gov/mvd/vehicleregistration/Persons-with-disabilities"],
+  ["KS", "Kansas", "Kansas Department of Revenue", "https://www.ksrevenue.gov/dovdisabled.html"],
+  ["KY", "Kentucky", "Kentucky Transportation Cabinet", "https://drive.ky.gov/Vehicles/Pages/Disabled-Parking-Permits.aspx"],
+  ["LA", "Louisiana", "Louisiana Office of Motor Vehicles", "https://expresslane.dps.louisiana.gov/disabled-parking-placards/"],
+  ["ME", "Maine", "Maine Bureau of Motor Vehicles", "https://www.maine.gov/sos/bmv/registration/disability.html"],
+  ["MD", "Maryland", "Maryland Motor Vehicle Administration", "https://mva.maryland.gov/vehicles/Pages/Disability-Placards.aspx"],
+  ["MA", "Massachusetts", "Massachusetts Registry of Motor Vehicles", "https://www.mass.gov/how-to/apply-for-a-disability-placard-or-license-plate"],
+  ["MI", "Michigan", "Michigan Department of State", "https://www.michigan.gov/sos/vehicle/disabled-parking"],
+  ["MN", "Minnesota", "Minnesota Driver and Vehicle Services", "https://dps.mn.gov/divisions/dvs/Pages/disability-parking-certificates.aspx"],
+  ["MS", "Mississippi", "Mississippi Department of Revenue", "https://www.dor.ms.gov/tagstitles/disabled-parking-placards"],
+  ["MO", "Missouri", "Missouri Department of Revenue", "https://dor.mo.gov/motor-vehicle/disabled-plates-placards.html"],
+  ["MT", "Montana", "Montana Motor Vehicle Division", "https://mvdmt.gov/vehicle-registration/parking-permits/"],
+  ["NE", "Nebraska", "Nebraska Department of Motor Vehicles", "https://dmv.nebraska.gov/dvr/handicap-parking-permits"],
+  ["NV", "Nevada", "Nevada Department of Motor Vehicles", "https://dmv.nv.gov/platesdisabled.htm"],
+  ["NH", "New Hampshire", "New Hampshire Division of Motor Vehicles", "https://www.dmv.nh.gov/vehicles-boats-or-titles/disability-plates-placards"],
+  ["NJ", "New Jersey", "New Jersey Motor Vehicle Commission", "https://www.nj.gov/mvc/vehicles/disability.htm"],
+  ["NM", "New Mexico", "New Mexico Motor Vehicle Division", "https://www.mvd.newmexico.gov/vehicles/placards-and-plates/parking-placards/"],
+  ["NY", "New York", "New York Department of Motor Vehicles", "https://dmv.ny.gov/more-info/parking-people-disabilities"],
+  ["NC", "North Carolina", "North Carolina Division of Motor Vehicles", "https://www.ncdot.gov/dmv/title-registration/license-plates/Pages/disability-placards-plates.aspx"],
+  ["ND", "North Dakota", "North Dakota Department of Transportation", "https://www.dot.nd.gov/driver/vehicle/plates/parking-privileges"],
+  ["OH", "Ohio", "Ohio Bureau of Motor Vehicles", "https://www.bmv.ohio.gov/vr-sp-disability.aspx"],
+  ["OK", "Oklahoma", "Service Oklahoma", "https://oklahoma.gov/service/popular-services/handicap-parking-permits.html"],
+  ["OR", "Oregon", "Oregon Driver and Motor Vehicle Services", "https://www.oregon.gov/odot/dmv/pages/driverid/disparking.aspx"],
+  ["PA", "Pennsylvania", "Commonwealth of Pennsylvania", "https://www.pa.gov/services/dmv/apply-for-a-person-with-disability-parking-placard.html"],
+  ["RI", "Rhode Island", "Rhode Island Division of Motor Vehicles", "https://dmv.ri.gov/registrations-plates-titles/disabled-parking-placards"],
+  ["SC", "South Carolina", "South Carolina Department of Motor Vehicles", "https://www.scdmvonline.com/Vehicle-Owners/Disabled-Plates-Placards"],
+  ["SD", "South Dakota", "South Dakota Department of Revenue", "https://dor.sd.gov/individuals/motor-vehicle/cars-trucks-vans/disabled-person-parking-permits/"],
+  ["TN", "Tennessee", "Tennessee Department of Revenue", "https://www.tn.gov/revenue/title-and-registration/license-plates/disabled-plates-placards.html"],
+  ["TX", "Texas", "Texas Department of Motor Vehicles", "https://www.txdmv.gov/motorists/disabled-parking-placards-plates"],
+  ["UT", "Utah", "Utah Division of Motor Vehicles", "https://dmv.utah.gov/plates/disabled"],
+  ["VT", "Vermont", "Vermont Department of Motor Vehicles", "https://dmv.vermont.gov/registrations/license-plates/disabled-parking"],
+  ["VA", "Virginia", "Virginia Department of Motor Vehicles", "https://www.dmv.virginia.gov/vehicles/disabled-parking"],
+  ["WA", "Washington", "Washington Department of Licensing", "https://dol.wa.gov/vehicles-and-boats/vehicle-registration/license-plates/get-or-renew-disabled-parking-permits"],
+  ["WV", "West Virginia", "West Virginia Division of Motor Vehicles", "https://transportation.wv.gov/DMV/Pages/Person-with-a-Disability.aspx"],
+  ["WI", "Wisconsin", "Wisconsin Department of Transportation", "https://wisconsindot.gov/Pages/dmv/vehicles/dsbld-prkg/default.aspx"],
+  ["WY", "Wyoming", "Wyoming Department of Transportation", "https://www.dot.state.wy.us/home/driver_license_records/disabled-parking-placards.html"]
+];
+
+function openPlacardGuide() {
+  modalBody.innerHTML = `<h2>♿ Disability parking placards</h2><p>Parking placard rules are state-specific and often focus on walking or cardiopulmonary limitations. An autism diagnosis by itself may not qualify. Some states have separate communication-disability or safety-alert programs.</p><ol><li>Select the caregiver's state below and open its current official agency page.</li><li>Ask the child's clinician whether the child's functional limitation meets that state's exact legal criteria.</li><li>Describe function and safety accurately; do not assume elopement automatically fits a mobility definition.</li><li>Use a placard only when the eligible person is being transported and state rules permit it.</li></ol><div class="field"><label for="placardState"><strong>Select a state</strong></label><select id="placardState"><option value="">Choose a state…</option>${DISABILITY_PARKING_STATE_LINKS.map(([code, name]) => `<option value="${code}">${name}</option>`).join("")}</select></div><div id="placardStateResult" aria-live="polite"><div class="banner">Choose a state to display its official disability-parking page.</div></div><p class="hint">Official pages and forms can move or change. If a link is updated, search the named state agency's site for “disability parking placard.” Outside links require internet access.</p>`;
+  modal.showModal();
+  $("#placardState").onchange = (event) => {
+    const selected = DISABILITY_PARKING_STATE_LINKS.find(([code]) => code === event.target.value);
+    const result = $("#placardStateResult");
+    if (!selected) {
+      result.innerHTML = `<div class="banner">Choose a state to display its official disability-parking page.</div>`;
+      return;
+    }
+    const [, name, agency, url] = selected;
+    result.innerHTML = `<div class="education-links"><a class="education-link" href="${url}" target="_blank" rel="noopener"><strong>${esc(name)} disability-parking information</strong><span>${esc(agency)}</span><small>Open official state page ↗</small></a></div>`;
+  };
+}
+
+async function renderHealthWellness(){
+  const profiles=await getAll("profiles");
+  view.innerHTML=`<section class="hero"><h1>🩺 Health & Wellness</h1><p>Prepare, document, and ask better questions without treating autism itself as an illness to cure.</p></section><div class="banner sleep-note"><strong>General education only.</strong> Lab testing, supplements, medications, vaccine decisions, gastrointestinal treatment, and equipment must be individualized by qualified clinicians.</div><div class="grid section-grid"><button id="medicalLetter" class="card-button"><span class="emoji">📄</span><strong>Medical necessity letter</strong><small>Editable equipment and supply request template.</small></button><button id="apptPrep" class="card-button"><span class="emoji">📋</span><strong>Prepare for an appointment</strong><small>Build and save a doctor or therapy visit sheet.</small></button><button id="providerReport" class="card-button"><span class="emoji">📊</span><strong>Generate provider report</strong><small>Summarize profile, communication, Wins, life skills, food, and potty records.</small></button><button id="apptNotes" class="card-button"><span class="emoji">📝</span><strong>After-appointment notes</strong><small>Save instructions, decisions, referrals, and follow-up.</small></button><button id="labGuide" class="card-button"><span class="emoji">🧪</span><strong>Routine and symptom-guided labs</strong><small>What is routine, what is not, and questions to ask.</small></button><button id="mthfrGuide" class="card-button"><span class="emoji">🧬</span><strong>MTHFR explained</strong><small>Heterozygous, homozygous, compound variants, testing, folate, and homocysteine.</small></button><button id="foodClaimsGuide" class="card-button"><span class="emoji">🥛</span><strong>Food dyes, sugar & dairy</strong><small>What evidence says, individual reactions, and safer ways to investigate concerns.</small></button><button id="gutGuide" class="card-button"><span class="emoji">🫃</span><strong>Gut health</strong><small>Constipation, reflux, diarrhea, feeding, pain, and when to seek help.</small></button><button id="probioticGuide" class="card-button"><span class="emoji">🦠</span><strong>Probiotics & prebiotics</strong><small>What evidence can and cannot tell us.</small></button><button id="vitaminGuide" class="card-button"><span class="emoji">🍊</span><strong>Vitamins & selective eating</strong><small>Deficiency risk, food-first support, testing, and supplement safety.</small></button><button id="placardGuide" class="card-button"><span class="emoji">♿</span><strong>Disability parking placard</strong><small>Why autism alone may not meet mobility-based state rules.</small></button></div>`;
+  $("#mthfrGuide").insertAdjacentHTML("afterend",`<button id="methylProductsGuide" class="card-button"><span class="emoji">🥄</span><strong>MTHFR Methylated Supplement Comparison</strong><small>Powders, liquids, chewables, label checks, and pediatric safety.</small></button>`);
+  queueMicrotask(()=>$("#foodClaimsGuide")?.remove());
+  $("#medicalLetter").onclick=()=>openMedicalNecessityLetter(profiles);$("#apptPrep").onclick=()=>openAppointmentPrep(profiles);$("#providerReport").onclick=()=>openProviderReport(profiles);$("#apptNotes").onclick=()=>openAppointmentNotes(profiles);$("#methylProductsGuide").onclick=openMethylatedProductsGuide;
+  $("#labGuide").onclick=()=>openInfoGuide("🧪 Routine and symptom-guided labs",`<p>There is no single “autism lab panel.” Autistic children generally need the same preventive care as other children, plus testing guided by diet, symptoms, growth, medications, family history, and examination.</p><h3>Often considered when clinically indicated</h3><ul><li>CBC and iron studies when intake is limited, fatigue or pallor is present, or restless sleep is suspected.</li><li>Lead testing based on age, housing, exposure, local requirements, or developmental risk.</li><li>Vitamin D, B12, folate, vitamin B6, zinc, metabolic testing, thyroid testing, celiac screening, or other studies only when history or examination supports them.</li><li>Medication monitoring specific to the medicine being used.</li></ul><h3>Vitamin B6 (pyridoxine / PLP)</h3><p>Vitamin B6 helps the body use protein and carbohydrates, make hemoglobin, support immune function, and make chemicals used by the nervous system. It is important for health, but a B6 level is <strong>not</strong> an autism test, and B6 has not been established as a treatment for autism itself.</p><h4>When might a clinician consider testing?</h4><p>B6 testing is not routinely needed for every child. A clinician may consider it when a child has a very restricted diet, poor absorption, certain medicines or medical conditions, unexplained anemia, skin or mouth changes, numbness or tingling, weakness, confusion, or seizures alongside other concerning findings. Those symptoms can have many causes, so they should not be used to diagnose a B6 problem at home.</p><h4>What test is used?</h4><p>A blood test may measure <strong>pyridoxal 5'-phosphate (PLP)</strong>, the main active form of B6. Some laboratories use other blood or urine measurements. Results need to be interpreted using that laboratory's reference range, the child's age, symptoms, diet, medicines, supplements, and the reason the test was ordered. Homocysteine can be affected by B6, folate, and B12, but it cannot identify which vitamin is responsible by itself.</p><h4>Low versus high B6</h4><ul><li><strong>Low B6:</strong> The next step is to look for the reason—such as limited intake, malabsorption, illness, or a medicine effect—rather than simply choosing a large dose.</li><li><strong>High intake:</strong> Food sources do not usually cause toxicity, but repeated high-dose supplements can cause sensory nerve damage, including burning, tingling, numbness, pain, or trouble with balance and coordination.</li><li>Count B6 from every multivitamin, B-complex, magnesium blend, fortified drink, gummy, and separate supplement before adding more. “Activated” P5P products still contain vitamin B6 and are not automatically risk-free.</li></ul><div class="banner"><strong>Do not use high-dose B6 as a trial.</strong> A child's clinician or pharmacist should review the child's age, result, diet, medicines, and total supplement intake before recommending a product or dose. New weakness, walking trouble, persistent numbness or burning, or a first or prolonged seizure needs prompt medical evaluation.</div><div class="education-links"><a class="education-link" href="https://ods.od.nih.gov/factsheets/VitaminB6-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH vitamin B6 fact sheet</strong><span>Functions, food sources, deficiency, interactions, intake levels, and toxicity.</span><small>Official source ↗</small></a><a class="education-link" href="https://medlineplus.gov/lab-tests/vitamin-b-test/" target="_blank" rel="noopener"><strong>MedlinePlus vitamin B testing</strong><span>Why B-vitamin tests may be ordered and what testing involves.</span><small>Official source ↗</small></a></div><p>Genetic testing may be offered as part of etiologic evaluation, but it does not confirm or rule out autism. Ask what question each test is meant to answer and how the result would change care.</p><div class="banner">Seek urgent care for severe dehydration, breathing difficulty, a first or prolonged seizure, black or bloody stool, severe abdominal pain, or a sudden loss of consciousness.</div>`);
+  $("#mthfrGuide").onclick=()=>openInfoGuide("🧬 Understanding MTHFR results",`<p><strong>MTHFR</strong> is a gene that gives the body instructions for an enzyme involved in processing folate and homocysteine. Everyone normally has two copies—one inherited from each biological parent. The two common variants usually reported are <strong>C677T</strong> and <strong>A1298C</strong>.</p><h3>Heterozygous, homozygous, and compound heterozygous</h3><div class="benefit-compare"><div><strong>Heterozygous</strong><span>One usual copy and one variant copy at a location—for example, C677T. A single common variant is unlikely by itself to cause health problems.</span></div><div><strong>Homozygous</strong><span>Two matching variant copies—for example, two C677T copies (often reported as 677TT) or two A1298C copies.</span></div></div><p><strong>Compound heterozygous</strong> means one C677T copy and one A1298C copy. Two C677T copies or a compound result can contribute to elevated homocysteine in some people. Two A1298C copies generally do not explain elevated homocysteine by themselves.</p><h3>What a result does—and does not—mean</h3><ul><li>A common variant does not diagnose autism, explain every symptom, guarantee high homocysteine, or prove that a person cannot use folic acid.</li><li>These common variants are different from rare, severe MTHFR deficiency that can cause homocystinuria and requires specialist care.</li><li>Most people do not need common-variant testing. When homocysteine is elevated, clinicians also consider B-vitamin status, diet, thyroid or kidney disease, age, medicines, and other conditions.</li><li>CDC states that people with MTHFR variants can process folic acid. A clinician may sometimes choose 5-MTHF, but a result alone is not a reason to megadose methylfolate or other vitamins.</li><li>MTHFR status alone is not a vaccine contraindication and does not predict a universal reaction to over-the-counter medicine. Medication questions belong with the prescriber or pharmacist.</li></ul><h3>How to read an “active” or “methylated” B-complex label</h3><p>If a clinician specifically recommends an active-form B-complex, these are the ingredient names caregivers commonly see on the Supplement Facts label. “Methylated” is often used loosely in marketing: not every item below contains a methyl group, but each is an active or coenzyme form.</p><div class="benefit-compare"><div><strong>Folate — vitamin B9</strong><span>Look for <strong>L-methylfolate</strong>, <strong>L-5-MTHF</strong>, <strong>5-MTHF</strong>, or <strong>Metafolin®</strong>. These identify supplemental 5-MTHF rather than folic acid.</span></div><div><strong>Vitamin B12</strong><span><strong>Methylcobalamin</strong> is a methylated B12 form. <strong>Adenosylcobalamin</strong>, sometimes labeled <strong>dibencozide</strong>, is another coenzyme form. Cyanocobalamin is a different, commonly used form.</span></div><div><strong>Vitamin B6</strong><span><strong>Pyridoxal-5-phosphate</strong>, <strong>pyridoxal 5'-phosphate</strong>, <strong>PLP</strong>, or <strong>P5P</strong> identifies the active coenzyme form. Pyridoxine HCl is another supplemental B6 form.</span></div><div><strong>Vitamin B2 — riboflavin</strong><span><strong>Riboflavin-5-phosphate</strong>, <strong>riboflavin 5'-phosphate</strong>, <strong>R5P</strong>, or sometimes <strong>FMN</strong> identifies a coenzyme form.</span></div></div><div class="banner"><strong>“Active form” does not automatically mean “better,” “safer,” or required.</strong> Common MTHFR variants are not a blanket reason to avoid folic acid, and they do not prove that cyanocobalamin, pyridoxine HCl, or ordinary riboflavin cannot be used. The right form and dose depend on the actual deficiency, diet, symptoms, medicines, age, laboratory results, and clinician guidance.</div><h3>Check the dose—not only the ingredient name</h3><ul><li>Compare the amount per serving with the child's age and the clinician's intended dose. A product can use preferred-sounding forms and still contain unnecessarily large amounts.</li><li>Add together every source, including multivitamins, B-complexes, gummies, drinks, magnesium blends, fortified foods, and separate supplements.</li><li>P5P is still vitamin B6. Excess supplemental B6 can cause nerve injury, including burning, tingling, numbness, pain, weakness, or problems with balance and coordination.</li><li>High folate intake can complicate recognition of vitamin B12 deficiency, so folate and B12 should be considered together when clinically relevant.</li><li>Ask a pharmacist to check medication interactions and bring the exact Supplement Facts label—not only the front-of-bottle claims—to appointments.</li></ul><h3>Questions to bring to the clinician</h3><ul><li>Was this a validated clinical test or a direct-to-consumer report?</li><li>Which exact variant and genotype were found?</li><li>Is homocysteine actually elevated, and were folate and vitamin B12 assessed?</li><li>Is a supplement treating a documented deficiency or another specific clinical problem?</li><li>Why was this form chosen, what dose is appropriate, and when should labs or symptoms be reassessed?</li><li>Could supplements interact with medicines or hide a vitamin B12 deficiency?</li></ul><div class="education-links"><a class="education-link" href="https://medlineplus.gov/lab-tests/mthfr-gene-test/" target="_blank" rel="noopener"><strong>MedlinePlus MTHFR gene test</strong><span>Common variants, testing, and result interpretation.</span><small>Official health source ↗</small></a><a class="education-link" href="https://www.cdc.gov/folic-acid/data-research/mthfr/index.html" target="_blank" rel="noopener"><strong>CDC MTHFR and folic acid facts</strong><span>Why common variants do not mean folic acid must be avoided.</span><small>Official health source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH vitamin B12 fact sheet</strong><span>B12 forms, absorption, deficiency, safety, and interactions.</span><small>Official health source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/VitaminB6-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH vitamin B6 fact sheet</strong><span>B6 forms, deficiency, dosing, interactions, and nerve-toxicity risk.</span><small>Official health source ↗</small></a></div>`);
+  $("#foodClaimsGuide").onclick=()=>openInfoGuide("🥛 Food dyes, sugar, dairy & autism",`<p>Food can affect comfort, energy, sleep, digestion, and behavior in any child, but no food or ingredient has been shown to cause autism—and removing dyes, sugar, or dairy is not an established treatment for autism itself.</p><h3>Food dyes</h3><p>FDA says most children have no behavioral effects from approved color additives, although some evidence suggests certain children may be sensitive. If you notice a repeatable change, record the exact product, dye, amount, timing, symptoms, sleep, illness, and other possible triggers. Labels may list names such as Red 40, Yellow 5, Yellow 6, or Blue 1.</p><h3>Sugar</h3><p>Sugar does not cause autism. A high-sugar pattern can crowd out nutrients and affect teeth, appetite, and energy, while the excitement and setting around sweets can also change behavior. Look for a repeatable individual pattern rather than assuming every active or difficult moment came from sugar.</p><h3>Dairy and casein</h3><p>A true milk allergy involves the immune system and can be serious. Lactose intolerance is different and more often causes gas, bloating, pain, or diarrhea. Research on gluten-free or casein-free diets for core autism features has produced mixed results. Removing dairy can reduce calcium, vitamin D, protein, calories, and safe-food options, so involve the child’s clinician or feeding-qualified dietitian before a broad elimination diet.</p><h3>A safer way to investigate</h3><ul><li>Get urgent help for trouble breathing, throat or tongue swelling, faintness, or a rapidly worsening reaction.</li><li>Use the Food Diary’s allergy/reaction and sensitivity fields to record patterns.</li><li>Change one thing at a time when medically safe, use a planned time window, and agree beforehand on what improvement would count.</li><li>Do not deliberately re-expose a child to a suspected allergen without medical guidance.</li><li>Rule out constipation, reflux, dental pain, infection, sleep loss, hunger, and medication effects.</li></ul><div class="education-links"><a class="education-link" href="https://www.fda.gov/food/color-additives-information-consumers/color-additives-questions-and-answers-consumers" target="_blank" rel="noopener"><strong>FDA color-additive questions and answers</strong><span>Labeling, current evidence, and reporting reactions.</span><small>Official source ↗</small></a><a class="education-link" href="https://www.nccih.nih.gov/health/autism" target="_blank" rel="noopener"><strong>NIH: autism and complementary approaches</strong><span>Special-diet evidence, nutrition monitoring, and supplement safety.</span><small>Official source ↗</small></a></div>`);
+  $("#gutGuide").onclick=()=>openInfoGuide("🫃 Gut health and autism",`<p>Constipation, reflux, diarrhea, abdominal pain, food restriction, and toileting difficulties can be more common in autistic children. Pain may appear as sleep changes, agitation, reduced eating, pressing the abdomen, posturing, or a sudden behavior change when a child cannot describe it directly.</p><ul><li>Track stool pattern, pain, appetite, fluids, foods, medicines, sleep, and behavior.</li><li>Do not assume every symptom is “just autism” or pursue an autism cure through detoxes, extreme diets, or unproven testing.</li><li>Ask about constipation even when stool occurs daily; retention can still be present.</li><li>Feeding therapy and a pediatric dietitian may help when texture, chewing, swallowing, growth, allergy, or nutrient concerns exist.</li></ul>`);
+  $("#probioticGuide").onclick=()=>openInfoGuide("🦠 Probiotics and prebiotics",`<p>Probiotics are live microorganisms; prebiotics are fibers that feed certain gut microbes. Effects are strain- and condition-specific. Current evidence does not support choosing a probiotic to treat core autism features or behavior.</p><ul><li>Discuss the actual goal—such as a particular antibiotic-associated diarrhea risk or diagnosed GI condition—with the clinician.</li><li>Food sources can include yogurt with live cultures and tolerated fiber-rich foods.</li><li>Products vary and may cause gas or bloating. Serious infections are rare but are a concern for premature, severely ill, or immunocompromised children.</li></ul><p><a href="https://www.nccih.nih.gov/health/probiotics-usefulness-and-safety" target="_blank" rel="noopener">NIH probiotic safety and evidence ↗</a></p><div class="banner">There is no evidence-based “best probiotic for autistic kids” as a group.</div>`);
+  $("#vitaminGuide").onclick=()=>openInfoGuide("🍊 Vitamins and selective eating",`<p>Autistic children do not have a separate universal vitamin requirement. Needs depend on age, diet, growth, medical conditions, and proven deficiencies. Selective eating can increase risk when whole food groups are absent.</p><ul><li>Bring a three-day food record and brand names to the pediatrician or pediatric dietitian.</li><li>Ask whether growth and diet suggest checking iron, vitamin D, B12, folate, or other nutrients.</li><li>Choose a supplement only for a defined purpose. More is not better; iron, vitamin A, vitamin D, zinc, and other nutrients can be harmful in excess.</li><li>Look for independent quality testing and review gummies as both medicine and a choking/cavity risk.</li></ul><p><a href="https://ods.od.nih.gov/factsheets/list-all/" target="_blank" rel="noopener">NIH vitamin and mineral fact sheets ↗</a></p>`);
+  $("#placardGuide").onclick=openPlacardGuide;
+}
+
+function openMethylatedProductsGuide(){
+  const products=[
+    ["Unflavored powders","Simple Spectrum Nutritional Support","Unflavored multi-nutrient powder marketed for children with autism or sensory needs. Its current label lists active folate and B6 forms plus magnesium; it contains many ingredients, so check every dose and avoid stacking.","https://simplespectrumsupplement.com/products/simple-spectrum-nutritional-support-supplement"],
+    ["Unflavored powders","EllaOla Toddler or Kids Essential Multivitamin","Single-serve unflavored powder with separate age-based toddler and 4+ formulas. Verify the current folate/B12 forms, full nutrient amounts, and age directions on the label.","https://ellaola.com/collections/multivitamins"],
+    ["Unflavored powders","You+Yours Tasteless B Complex","A concentrated B-complex powder advertised as tasteless. Confirm current availability, ingredient forms, scoop size, and pediatric directions directly with the manufacturer before use.","https://youandyourshealth.com/"],
+    ["Liquid options","Triquetra Kids L-Methylfolate 5-MTHF + Methyl B12","This liquid option contains L-methylfolate (active B9) with methylcobalamin (active B12) and is available in berry and unflavored varieties. Verify the current Supplement Facts and age-based serving before use.","https://triquetrahealth.com/products/kids-methylfolate-plus-b12-cofactor"],
+    ["Liquid options","JoySpring MethylBee","The current direct product page lists 5-MTHF, methyl B12, and P5P (active B6) for children age 3+. It is not a complete multivitamin and the current page does not list active B2 as a featured ingredient.","https://joyspringvitamins.com/products/joyspring-methylated-vitamins-for-kids"],
+    ["Liquid options","MaryRuth's Organic Toddler Multivitamin Liquid Drops","This is a broader toddler multivitamin, not a complete methylated B-complex. Its current label lists methylcobalamin B12 but no folate; B6 is pyridoxine HCl and B2 is ordinary riboflavin. Use the direct product page and exact current label.","https://www.maryruthorganics.com/products/organic-toddler-multivitamin-liquid-drops"],
+    ["Chewables and gummies","SmartyPants Kids or Toddler Multi & Omegas","Gummy formulas vary by age and product. Check serving size—often more than one gummy—added sugars, choking risk, and nutrients already supplied elsewhere.","https://www.smartypantsvitamins.com/collections/kids"],
+    ["Chewables and gummies","Llama Naturals Kids Multivitamin","Fruit-based chewable marketed without added sugar. Whole-food sourcing does not guarantee that every B vitamin is present in a particular active form; verify the current label and dose.","https://www.llamanaturals.com/products/organic-kids-multivitamin-gummies"],
+    ["Chewables and gummies","Methyl-Life children's products","Products emphasize active folate/B12 forms. Confirm that the exact product is intended for the child's age and review the dose with a clinician.","https://methyl-life.com/"],
+    ["Chewables and gummies","Igennus children's multivitamins","Formulas and regional availability may change. Confirm the child's age range, active forms, allergen statement, sweeteners, and serving amount on the current label.","https://igennus.com/collections/childrens-health"]
+  ];
+  const groups=[...new Set(products.map(([group])=>group))];
+  queueMicrotask(()=>{
+    const compareHeading=[...modalBody.querySelectorAll("h3")].find((item)=>item.textContent==="How to compare two products");
+    compareHeading?.insertAdjacentHTML("beforebegin",`<h3>What the current liquid labels show</h3><div class="benefit-compare"><div><strong>Triquetra Kids</strong><span><strong>5-MTHF/B9:</strong> listed<br><strong>Methyl B12:</strong> listed<br><strong>P5P/B6 and R5P/B2:</strong> verify the current Supplement Facts rather than assuming they are included.</span></div><div><strong>JoySpring MethylBee</strong><span><strong>5-MTHF/B9:</strong> listed<br><strong>Methyl B12:</strong> listed<br><strong>P5P/B6:</strong> listed<br><strong>R5P/B2:</strong> not listed as a featured active.</span></div><div><strong>MaryRuth's Toddler Drops</strong><span><strong>Folate/B9:</strong> not listed on the current label<br><strong>Methyl B12:</strong> listed<br><strong>B6:</strong> pyridoxine HCl, not P5P<br><strong>B2:</strong> riboflavin, not R5P.</span></div></div><p class="hint">Direct manufacturer pages checked August 15, 2026. Formulas can change; the bottle's current Supplement Facts panel controls.</p>`);
+  });
+  openInfoGuide("🥄 Comparing active-form and methylated supplements",`<p>These are examples caregivers may encounter—not MtM endorsements and not treatments for autism or speech delay. A product can be easy to hide in food and still be the wrong dose, duplicate another supplement, interact with medicine, or contain an ingredient a child does not need.</p><div class="banner"><strong>Use the exact current label.</strong> Formulas, serving sizes, ages, flavors, and ingredient forms change. Front-label words such as “methylated,” “bioavailable,” “clean,” “for autism,” or “whole food” do not prove that a product is safer, better absorbed, or clinically necessary for a particular child.</div>${groups.map((group)=>`<h3>${group}</h3><div class="education-links">${products.filter(([g])=>g===group).map(([,name,description,url])=>`<a class="education-link" href="${url}" target="_blank" rel="noopener"><strong>${name}</strong><span>${description}</span><small>Check current product ↗</small></a>`).join("")}</div>`).join("")}<h3>How to compare two products</h3><ul><li>Photograph the full Supplement Facts and other-ingredients panels. Compare amounts <strong>per full serving</strong>, not only ingredient names.</li><li>Match the exact age range. Do not copy a scoop, drop, or gummy count from another product or an older label.</li><li>Add all sources of folate, B12, B6, riboflavin, magnesium, vitamin D, vitamin A, zinc, iron, and other nutrients across powders, gummies, fortified drinks, and medicines.</li><li>Look for independent quality testing, allergen information, sugar or sweeteners, flavor, texture, choking risk, storage directions, and whether it can be mixed without affecting the full dose.</li><li>Ask what documented deficiency or clinical goal the product is meant to address and when symptoms, diet, or laboratory values will be reassessed.</li></ul><h3>About “methyl sensitivity”</h3><p>Online reports sometimes describe hyperactivity, anxiety, irritability, or mood changes after starting methylfolate or methylcobalamin. Those symptoms are real reasons to stop and seek clinical advice, but they do not diagnose a universal “methyl sensitivity,” prove an MTHFR problem, or identify the responsible ingredient. A multi-ingredient product makes the cause especially difficult to know.</p><ul><li>Do not conduct a home challenge by repeatedly provoking symptoms or by improvising a fraction of a scoop that the label does not support.</li><li>Ask a pediatric clinician or pharmacist whether the dose, another ingredient, an interaction, illness, sleep loss, or another cause fits better.</li><li>Folinic acid, hydroxocobalamin, and adenosylcobalamin are different forms sometimes chosen for specific reasons; they are not automatically “detox” remedies or safer for every child.</li><li>Seek urgent help for trouble breathing, facial or tongue swelling, fainting, severe confusion, a seizure, or rapidly worsening symptoms.</li></ul><div class="banner"><strong>Extra B6 caution:</strong> P5P is still vitamin B6. Repeated excess supplemental B6 can injure sensory nerves. New burning, tingling, numbness, weakness, balance trouble, or coordination changes need medical review.</div><div class="education-links"><a class="education-link" href="https://ods.od.nih.gov/factsheets/Folate-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH folate fact sheet</strong><span>Needs by age, forms, upper limits, interactions, and safety.</span><small>Official source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/VitaminB6-HealthProfessional/" target="_blank" rel="noopener"><strong>NIH vitamin B6 fact sheet</strong><span>Requirements, products, interactions, and nerve-toxicity risk.</span><small>Official source ↗</small></a><a class="education-link" href="https://www.cdc.gov/folic-acid/data-research/mthfr/index.html" target="_blank" rel="noopener"><strong>CDC MTHFR facts</strong><span>Why common MTHFR variants do not mean folic acid cannot be processed.</span><small>Official source ↗</small></a></div><p class="hint">General education only. A pediatrician, pharmacist, or pediatric dietitian should review the child's diet, growth, diagnoses, medicines, laboratory results, and total supplement intake before a new regimen begins.</p>`);
+}
+
+function renderSensorySupport(){view.innerHTML=`<section class="hero"><h1>🫧 Sensory Support</h1><p>Understand what the nervous system may be asking for—and make participation safer and more comfortable.</p></section><div class="grid section-grid"><button id="sensoryNeeds" class="card-button"><span class="emoji">🧠</span><strong>Eight sensory systems</strong><small>Seeking, avoiding, noticing late, and changing needs.</small></button><button id="sensoryVisualGuides" class="card-button"><span class="emoji">🖼️</span><strong>Sensory visual guides</strong><small>Sensory differences, regulation, grooming, hygiene, and safer sensory-input ideas.</small></button><button id="sensoryCheck" class="card-button"><span class="emoji">🧭</span><strong>Sensory pattern check-in</strong><small>A caregiver reflection—not a diagnostic assessment.</small></button><button id="spdGuide" class="card-button"><span class="emoji">🧩</span><strong>SPD and autism</strong><small>How sensory processing differences overlap with ASD.</small></button><button id="triggerGuide" class="card-button"><span class="emoji">✂️</span><strong>Common sensory triggers</strong><small>Water, clothing, haircuts, grass, nails, teeth, hair, and more.</small></button><button id="materialPreferences" class="card-button"><span class="emoji">🧵</span><strong>Clothing & bedding materials</strong><small>Save comfortable fabrics, difficult textures, seams, tags, fit, and bedding preferences.</small></button><button id="fabricGuide" class="card-button"><span class="emoji">👕</span><strong>Why clothing and fabrics can feel different</strong><small>Seams, tags, denim, socks, fit, temperature, and practical alternatives.</small></button><button id="sensoryProducts" class="card-button"><span class="emoji">🛍️</span><strong>Sensory products</strong><small>Categories, safety questions, and why observation comes first.</small></button></div>`;
+$("#sensoryNeeds").onclick=()=>openInfoGuide("🧠 The sensory systems",`<p>A child can seek one kind of input and avoid another—and the same input can feel different depending on sleep, illness, stress, hunger, environment, and control.</p><ul><li><strong>Sight:</strong> light, color, motion, visual clutter.</li><li><strong>Sound:</strong> volume, pitch, sudden or layered noise.</li><li><strong>Touch:</strong> fabric, grooming, messy play, light or firm contact.</li><li><strong>Taste and smell:</strong> food, products, rooms, people.</li><li><strong>Vestibular:</strong> movement, balance, spinning, head position.</li><li><strong>Proprioception:</strong> muscles and joints; pushing, carrying, climbing, firm pressure.</li><li><strong>Interoception:</strong> internal cues such as hunger, thirst, pain, temperature, and toileting.</li></ul><p>“Seeker” and “avoider” are useful shorthand, not permanent personality types.</p>`);
+$("#sensoryVisualGuides").onclick=()=>openInfoGuide("🖼️ Sensory visual guides",`${visualGuideFigure("sensory-differences.webp","Understanding sensory differences")}${visualGuideFigure("sensory-regulation-strategies.webp","10 sensory strategies for regulation")}${visualGuideFigure("sensory-inputs-regulation.webp","10 sensory inputs that may support regulation")}${visualGuideFigure("when-grooming-feels-painful.webp","When grooming feels painful")}${visualGuideFigure("when-daily-hygiene-feels-overwhelming.webp","When daily hygiene feels overwhelming")}`);
+$("#sensoryCheck").onclick=openSensoryCheckIn;$("#spdGuide").onclick=()=>openInfoGuide("🧩 Sensory processing differences and ASD",`<p>Sensory reactivity is part of the diagnostic description of autism, but sensory differences also occur in ADHD, anxiety, developmental disabilities, trauma, and people without a diagnosis. “Sensory Processing Disorder” is a term commonly used by occupational therapists and families, but it is not a standalone diagnosis in the DSM-5-TR.</p><p>An occupational therapist can assess how sensory and motor differences affect sleep, feeding, grooming, play, school, safety, and daily living. Useful support focuses on function and comfort rather than making harmless autistic behavior disappear.</p>`);
+$("#triggerGuide").onclick=()=>openInfoGuide("✂️ Why everyday activities can feel huge",`<ul><li><strong>Water:</strong> temperature, pressure, echo, splashing, unpredictability—or wonderfully consistent full-body input.</li><li><strong>Clothing:</strong> seams, tags, waist pressure, fabric, static, heat, or a change from familiar clothing.</li><li><strong>Haircuts:</strong> buzzing near the ears, falling hair, cape pressure, mirrors, strangers, touch, and not knowing when it ends.</li><li><strong>Grass and materials:</strong> sharp, damp, itchy, unstable, sticky, or visually overwhelming sensations.</li><li><strong>Nail cutting:</strong> hand restraint, pressure, vibration, fear of pain, and the sound or sight of clipping.</li><li><strong>Teeth brushing:</strong> taste, foam, gag reflex, bristle feel, mouth pain, and motor planning.</li><li><strong>Hair brushing:</strong> scalp pain, pulling, static, sound, and loss of control.</li></ul><h3>What helps</h3><p>Rule out pain first. Offer choices, preview the steps, use visual timers, practice on a doll, allow breaks, change tools or setting, and stop when distress shows that the plan needs to change. Gradual exposure should build safety and control, not force endurance.</p>`);
+$("#fabricGuide").onclick=()=>openInfoGuide("👕 Clothing, fabrics, and sensory comfort",`<p>Clothing touches the body for hours. For a child whose nervous system notices touch very strongly, a sock seam, tag, stiff waistband, wrinkle, or rough fiber may stay impossible to tune out. It can feel distracting, itchy, painful, hot, restrictive, or unpredictable—not merely annoying.</p><h3>Why one material may work and another may not</h3><ul><li><strong>Seams and tags:</strong> raised stitching, toe seams, labels, embroidery backs, and appliqués can create repeated pressure or scratching.</li><li><strong>Texture:</strong> soft cotton or smooth jersey may feel predictable, while wool, lace, stiff denim, sequins, or coarse synthetic fibers may feel sharp or abrasive. Another child may actively prefer textured or fuzzy fabric.</li><li><strong>Fit and pressure:</strong> one child may prefer loose clothing that barely touches the skin; another may feel more secure in snug stretch fabric. Tight cuffs, collars, waistbands, and elastic can also become painful.</li><li><strong>Heat, moisture, and static:</strong> fabric weight, breathability, sweat, wet cuffs, static electricity, and temperature changes can turn tolerable clothing into intolerable clothing.</li><li><strong>Movement and sound:</strong> denim can resist bending; coats can restrict shoulders; fabrics can swish, crackle, bunch, twist, or pull.</li><li><strong>Smell:</strong> detergent, fabric softener, new-clothing chemicals, fragrance, or damp fabric may be the actual problem.</li></ul><h3>Practical things to try</h3><ul><li>Choose tagless labels, flat seams, seamless socks, soft waistbands, and simple fasteners when the child prefers them.</li><li>Try socks inside out, remove a tag carefully at its stitching, cover a rough spot, or layer a tolerated shirt beneath a uniform.</li><li>Wash new clothes before wearing and use a detergent and rinse routine the child tolerates.</li><li>Offer choices between two acceptable items and let the child feel fabric before buying when possible.</li><li>Buy duplicates of comfortable basics and note the exact brand, model, fabric blend, and size.</li><li>Do not assume cotton, bamboo, fleece, compression, or “sensory-friendly” branding will suit every child. The child’s response is the test.</li><li>Check for eczema, rash, injury, tight sizing, ingrown nails, blisters, temperature problems, or other pain before treating refusal as behavioral.</li></ul><div class="banner"><strong>Comfort is functional support.</strong> Accommodating a harmless clothing need can preserve energy for communication, school, play, and daily life. The goal is not to force the child to tolerate pain.</div><div class="education-links"><a class="education-link" href="https://www.autism.org.uk/learn/knowledge-hub/professional-practice/running-an-autism-friendly-product-focus-group-a-c" target="_blank" rel="noopener"><strong>Autistic-led clothing feedback</strong><span>National Autistic Society findings about seams, labels, fit, texture, and individual variation.</span><small>Open source ↗</small></a></div>`);
+$("#materialPreferences").onclick=openMaterialPreferences;
+$("#sensoryProducts").onclick=()=>openInfoGuide("🛍️ Sensory products",`<p>These caregiver-supplied shopping options may be useful for children who prefer soft, stretchy, breathable, or predictable clothing. They are not endorsements or guaranteed to suit every sensory profile. Confirm the current material blend, seams, tags, fit, care instructions, seller, return policy, and size chart.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/collections/kids" target="_blank" rel="noopener"><strong>Comfrt kids collection</strong><span>Kids’ matching sets and soft loungewear options. Review fabric weight, warmth, fit, cuffs, seams, and sizing with the child’s preferences in mind.</span><small>Open collection ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609" target="_blank" rel="noopener"><strong>PatPat baby bamboo-viscose pajamas</strong><span>A snug-fit, two-way-zip baby pajama listing with footed and footless options. Confirm age, fit, zipper protection, fabric content, and current seller details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928" target="_blank" rel="noopener"><strong>PatPat toddler bamboo-viscose pajama set</strong><span>A snug-fit short-sleeve top and pants set listed for toddler sizes. Check the current size chart, waistband, seams, graphics, and material details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118" target="_blank" rel="noopener"><strong>WIBACKER two-piece bamboo-viscose pajamas</strong><span>A snug-fit two-piece toddler pajama listing. Verify current sizing, fabric blend, construction, seller, and care directions before ordering.</span><small>Open Walmart product page ↗</small></a></div><h3>Programs that may help with sensory equipment</h3><p>Availability, location, qualifying diagnosis or disability, requested item, and application windows differ. Ask whether shipping, installation, professional recommendations, and replacement costs are included.</p><div class="education-links"><a class="education-link" href="https://autismwish.org/" target="_blank" rel="noopener"><strong>AutismWish Embracing Autism Grant</strong><span>Applications and gifting opportunities for sensory items and therapeutic tools; current selection and membership rules are listed by the program.</span><small>Program page ↗</small></a><a class="education-link" href="https://handsinautism.iu.edu/partnerships/state/kappa-inc/sensory-kits.html" target="_blank" rel="noopener"><strong>HANDS in Autism sensory kits</strong><span>Indiana University program with a request option for a free personal-use sensory kit, subject to current availability and distribution rules.</span><small>Program page ↗</small></a><a class="education-link" href="https://zanesinc.org/" target="_blank" rel="noopener"><strong>Zane’s Inc. Family Support Fund</strong><span>Quarterly assistance for eligible children and adults with special needs in 20 Northeast Ohio counties, including adaptive equipment and therapy.</span><small>Regional program ↗</small></a></div><div class="banner"><strong>The child’s response is the test.</strong> “Bamboo,” “soft,” “snug,” or “sensory-friendly” wording does not guarantee comfort. A grant award also does not prove that an item is appropriate. Stop using clothing or equipment that causes overheating, restricted movement, skin irritation, pain, unsafe positioning, or distress.</div>`);}
+
+async function openMaterialPreferences(){const profiles=await getAll("profiles");if(!profiles.length)return alert("Create a child profile first.");let profileId=profiles[0].id;const draw=async()=>{const value=await getSetting(`materialPreferences:${profileId}`,{});modalBody.innerHTML=`<h2>🧵 Clothing & bedding preferences</h2><p class="hint">Texture preferences can change with temperature, illness, stress, fit, and the child’s control over the situation. Record observations rather than forcing tolerance.</p><div class="form-grid"><div class="field"><label>Child</label><select id="materialProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Comfortable clothing materials</label><textarea id="comfortableClothing" placeholder="Soft cotton, fleece, smooth athletic fabric…">${esc(value.comfortableClothing||"")}</textarea></div><div class="field"><label>Difficult clothing materials</label><textarea id="difficultClothing" placeholder="Wool, denim, lace, stiff collars…">${esc(value.difficultClothing||"")}</textarea></div><div class="field"><label>Fit, seams, tags, and fasteners</label><textarea id="clothingDetails" placeholder="Loose or snug, tagless, flat seams, elastic waist, no buttons…">${esc(value.clothingDetails||"")}</textarea></div><div class="field"><label>Preferred bedding</label><textarea id="preferredBedding" placeholder="Jersey sheets, cool blanket, smooth pillowcase…">${esc(value.preferredBedding||"")}</textarea></div><div class="field"><label>Bedding to avoid</label><textarea id="avoidBedding" placeholder="Flannel, scratchy blankets, top sheet, heavy comforter…">${esc(value.avoidBedding||"")}</textarea></div><div class="field"><label>Temperature, pressure, and other notes</label><textarea id="materialNotes" placeholder="Sleeps cool, dislikes wrinkles, seeks compression…">${esc(value.notes||"")}</textarea></div><button id="saveMaterialPreferences" class="btn full">Save preferences</button></div>`;$("#materialProfile").onchange=async(e)=>{profileId=e.target.value;await draw();};$("#saveMaterialPreferences").onclick=async()=>{await setSetting(`materialPreferences:${profileId}`,{comfortableClothing:$("#comfortableClothing").value.trim(),difficultClothing:$("#difficultClothing").value.trim(),clothingDetails:$("#clothingDetails").value.trim(),preferredBedding:$("#preferredBedding").value.trim(),avoidBedding:$("#avoidBedding").value.trim(),notes:$("#materialNotes").value.trim(),updatedAt:nowISO()});alert("Material preferences saved.");};};await draw();modal.showModal();}
+
+function openSensoryCheckIn(){const qs=[["Seeks movement such as spinning, jumping, or climbing","seek"],["Avoids swings, stairs, or feet leaving the ground","avoid"],["Enjoys pushing, crashing, carrying, or firm pressure","seek"],["Pulls away from light touch, grooming, seams, or messy hands","avoid"],["Makes sounds, watches moving objects, or seeks bright patterns repeatedly","seek"],["Covers ears or becomes distressed by ordinary or sudden sounds","avoid"],["Seeks strong flavors, smells, chewing, or mouthing","seek"],["Avoids foods or places because of taste or smell","avoid"],["Notices hunger, thirst, pain, or toileting cues very late","mixed"],["Needs different input depending on the day or setting","mixed"]];modalBody.innerHTML=`<h2>🧭 Sensory pattern check-in</h2><p class="hint">Check what is often true. This cannot diagnose a sensory condition.</p><div class="form-grid">${qs.map(([q,t],i)=>`<label class="check-option"><input type="checkbox" data-pattern="${t}" id="sensoryQ${i}"> ${q}</label>`).join("")}<button id="scoreSensory" class="btn">Show reflection</button><div id="sensoryResult"></div></div>`;modal.showModal();$("#scoreSensory").onclick=()=>{const checked=[...document.querySelectorAll("[data-pattern]:checked")],scores={seek:0,avoid:0,mixed:0};checked.forEach((x)=>scores[x.dataset.pattern]++);let label="No clear pattern yet",text="Observe across several settings and states.";if(scores.seek&&scores.avoid){label="A mixed sensory pattern",text="The child appears to seek some input and avoid other input. That is very common.";}else if(scores.seek>scores.avoid){label="More seeking signs selected",text="The child may use extra movement, pressure, sound, or other input to feel organized.";}else if(scores.avoid>scores.seek){label="More avoiding signs selected",text="Some input may feel too intense, unpredictable, or painful.";}$("#sensoryResult").innerHTML=`<div class="banner"><strong>${label}</strong><br>${text} Look for what happens before, during, and after an activity and discuss functional concerns with an occupational therapist.</div>`;};}
+
+function renderAsdFriendlyFun(){view.innerHTML=`<section class="hero"><h1>🎡 ASD Friendly Fun</h1><p>Find places that explain their supports before your family arrives.</p></section><details class="education-card" open><summary>🏞️ Free lifetime federal recreation Access Pass</summary><div class="education-body"><p>U.S. citizens or permanent residents of any age with a medically determined permanent disability that severely limits one or more major life activities may qualify for the free lifetime Interagency Access Pass. Autism can qualify when the required functional criteria and documentation are met; a diagnosis label alone is not the test.</p><p>The pass covers entrance or standard amenity fees at participating federal lands. It does not automatically cover concessions, every camping fee, tours, or special permits. In-person issuance is free; online or mail orders can have processing or shipping costs.</p><div class="education-links"><a class="education-link" href="https://www.nps.gov/subjects/accessibility/interagency-access-pass.htm" target="_blank" rel="noopener"><strong>National Park Service Access Pass</strong><span>Current eligibility, documentation, benefits, and application options.</span><small>Open official page ↗</small></a></div></div></details><details class="education-card"><summary>📍 Find sensory-inclusive and autism-certified places</summary><div class="education-body"><p>Certification programs differ. Useful details include staff training, sensory guides, quiet spaces, sensory bags, flexible entry or re-entry, visual stories, accessible communication, and honest descriptions of noise, crowds, lights, waiting, and exits.</p><div class="education-links"><a class="education-link" href="https://www.kulturecity.org/sensory-inclusive/" target="_blank" rel="noopener"><strong>KultureCity venue finder</strong><span>Search trained Sensory Inclusive venues and available supports.</span><small>Search ↗</small></a><a class="education-link" href="https://autismtravel.com/" target="_blank" rel="noopener"><strong>AutismTravel directory</strong><span>IBCCES-trained and certified destinations, attractions, and businesses.</span><small>Search ↗</small></a><a class="education-link" href="https://www.nps.gov/aboutus/accessibility.htm" target="_blank" rel="noopener"><strong>National Park accessibility</strong><span>Open each park’s accessibility page before traveling.</span><small>Explore ↗</small></a></div><div class="local-fun-search"><input id="funLocation" placeholder="City, state, or ZIP code"><button id="searchFun" class="btn">Search local events</button></div><p class="hint">This opens a current web search because one-time library, museum, fair, movie, and community events change too quickly for an offline list.</p></div></details><details class="education-card"><summary>🚢 Autism-friendly cruising</summary><div class="education-body"><p>Royal Caribbean advertises autism-friendly services including priority boarding, dietary accommodations, flexible youth grouping, toy lending, sensory-friendly films, and a social story. Autism on the Seas offers extra staffed sailings on selected cruises. Services vary by ship and sailing; obtain accommodations in writing before paying.</p><ul><li>Ask about supervision limits, toileting policies, wandering safeguards, muster drills, dining, quiet spaces, medical care, port accessibility, and cancellation terms.</li><li>Certification does not guarantee every employee or situation will meet the child’s needs.</li></ul><div class="education-links"><a class="education-link" href="https://www.royalcaribbean.com/experience/accessible-cruising/autism-friendly-ships" target="_blank" rel="noopener"><strong>Royal Caribbean autism-friendly ships</strong><span>Current services and advance-notice instructions.</span><small>Open ↗</small></a><a class="education-link" href="https://autismontheseas.com/" target="_blank" rel="noopener"><strong>Autism on the Seas</strong><span>Selected staffed cruises and resort vacations.</span><small>Open ↗</small></a></div></div></details><details class="education-card"><summary>🎬 Sensory-friendly films</summary><div class="education-body"><p>These showings commonly keep lights partially raised, lower the sound, skip some previews, and allow guests to move or vocalize. Confirm details and showtimes with the individual theater.</p><div class="education-links"><a class="education-link" href="https://www.amctheatres.com/programs/sensory-friendly-films" target="_blank" rel="noopener"><strong>AMC Sensory Friendly Films</strong><span>Participating theaters and current scheduled films.</span><small>Find showings ↗</small></a><a class="education-link" href="https://www.regmovies.com/promotions/my-way-matinee" target="_blank" rel="noopener"><strong>Regal My Way Matinee</strong><span>Current sensory-friendly family screenings.</span><small>Find showings ↗</small></a></div></div></details>`;$("#searchFun").onclick=()=>{const place=$("#funLocation").value.trim();if(!place)return alert("Enter a city, state, or ZIP code.");open(`https://www.google.com/search?q=${encodeURIComponent(`autism sensory friendly events near ${place}`)}`,"_blank","noopener");};}
+
+function openMedicalNecessityLetter(profiles){const names=profiles.map((p)=>p.name).join(" / ")||"[CHILD NAME]";const text=`[DATE]\n\nTo: [INSURANCE PLAN / MEDICAID / DME SUPPLIER]\nRe: Medical necessity for [ITEM OR SERVICE]\nPatient: ${names}\nDOB: [DATE OF BIRTH]\nMember ID: [ID]\n\nI am the treating [CLINICIAN TYPE] for [CHILD NAME]. The child has [RELEVANT DIAGNOSES AND FUNCTIONAL LIMITATIONS]. Because of these limitations, the child experiences [SPECIFIC SAFETY, HEALTH, HYGIENE, POSITIONING, COMMUNICATION, OR DAILY-LIVING PROBLEM].\n\nI am prescribing [EXACT ITEM, MODEL, SIZE, QUANTITY, OR SERVICE]. This item is medically necessary because it will [EXPLAIN HOW IT ADDRESSES THE DOCUMENTED PROBLEM]. Less costly or less restrictive alternatives tried or considered include [LIST], which were not sufficient because [REASON].\n\nWithout this item, the child is at risk for [SPECIFIC, DOCUMENTED CONSEQUENCES]. The requested item will be used [WHERE / HOW / HOW OFTEN], with caregiver supervision and training as required.\n\nPlease approve [ITEM]. Supporting records include [EVALUATION, SAFETY LOG, PHOTOS/MEASUREMENTS IF APPROPRIATE, THERAPY NOTES, DENIAL HISTORY]. Please contact me at [PHONE/FAX] with questions.\n\nSincerely,\n[CLINICIAN NAME, CREDENTIALS, NPI, SIGNATURE]` ;modalBody.innerHTML=`<h2>📄 Medical necessity letter</h2><p class="hint">The treating clinician must review, personalize, place on appropriate letterhead, and sign this. Approval is never guaranteed.</p><textarea id="medicalLetterText" class="template-letter">${esc(text)}</textarea><div class="btn-row"><button id="copyMedicalLetter" class="btn">Copy</button><button id="downloadMedicalLetter" class="btn secondary">Download .txt</button></div>`;modal.showModal();$("#copyMedicalLetter").onclick=async()=>{await navigator.clipboard.writeText($("#medicalLetterText").value);alert("Letter copied.");};$("#downloadMedicalLetter").onclick=()=>downloadBlob(new Blob([$("#medicalLetterText").value],{type:"text/plain"}),"Medical-Necessity-Letter-Template.txt");}
+
+async function openAppointmentPrep(profiles){if(!profiles.length)return alert("Create a child profile first.");let profileId=profiles[0].id;const draw=async()=>{const x=await getSetting(`appointmentPrep:${profileId}`,{});modalBody.innerHTML=`<h2>📋 Appointment preparation</h2><div class="form-grid"><div class="field"><label>Child</label><select id="prepProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Visit type and date</label><input id="prepVisit" value="${esc(x.visit||"")}" placeholder="Developmental pediatrics — Oct. 12"></div><div class="field"><label>Top three concerns</label><textarea id="prepConcerns">${esc(x.concerns||"")}</textarea></div><div class="field"><label>Changes since last visit</label><textarea id="prepChanges">${esc(x.changes||"")}</textarea></div><div class="field"><label>Medicines, supplements, allergies</label><textarea id="prepMeds">${esc(x.meds||"")}</textarea></div><div class="field"><label>Questions and decisions needed</label><textarea id="prepQuestions">${esc(x.questions||"")}</textarea></div><button id="savePrep" class="btn">Save sheet</button></div>`;$("#prepProfile").onchange=async(e)=>{profileId=e.target.value;await draw();};$("#savePrep").onclick=async()=>{await setSetting(`appointmentPrep:${profileId}`,{visit:$("#prepVisit").value.trim(),concerns:$("#prepConcerns").value.trim(),changes:$("#prepChanges").value.trim(),meds:$("#prepMeds").value.trim(),questions:$("#prepQuestions").value.trim(),updatedAt:nowISO()});alert("Appointment sheet saved.");};};await draw();modal.showModal();}
+
+async function openProviderReport(profiles){if(!profiles.length)return alert("Create a child profile first.");const p=profiles[0],words=(await getAll("words")).filter((x)=>x.profileId===p.id),wins=(await getAll("achievements")).filter((x)=>x.profileId===p.id),potty=(await getAll("pottyLogs")).filter((x)=>x.profileId===p.id),food=await getSetting(`foodDiary:${p.id}`,[]),skills=await getSetting(`lifeSkills:${p.id}`,[]),learning=await getSetting(`learningSnapshot:${p.id}`,{});const byType=(t)=>words.filter((x)=>(x.entryType||"word")===t);const report=`MORE THAN MEASURED — CAREGIVER-GENERATED SUMMARY\nGenerated: ${new Date().toLocaleString()}\nChild: ${p.name}\nBirth: ${p.birthDate||"Not entered"}\nSpecial interest: ${p.specialInterest||"Not entered"}\nCurrently working on: ${p.currentFocus||"Not entered"}\n\nCOMMUNICATION\nWords: ${byType("word").length} total; ${byType("word").filter((x)=>x.speak).length} say; ${byType("word").filter((x)=>x.identify).length} identify; ${byType("word").filter((x)=>x.asl).length} ASL\nSentences: ${byType("sentence").length}; Letters: ${byType("letter").length}; Numbers: ${byType("number").length}\n\nRECENT WINS\n${wins.sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,15).map((x)=>`- ${x.date||"Undated"}: ${x.title}`).join("\n")||"None entered"}\n\nLEARNING SNAPSHOT\nStrengths: ${learning.strengths||"Not entered"}\nStruggles/barriers: ${learning.struggles||"Not entered"}\nWhat helps: ${learning.helps||"Not entered"}\n\nLIFE SKILLS\n${skills.map((x)=>`- ${x.name}: ${x.status}${x.date?` (${x.date})`:""}`).join("\n")||"None entered"}\n\nFOOD DIARY\nSafe: ${food.filter((x)=>x.category==="safe").map((x)=>x.name).join(", ")||"None entered"}\nOccasional: ${food.filter((x)=>x.category==="sometimes").map((x)=>x.name).join(", ")||"None entered"}\nNot accepted: ${food.filter((x)=>x.category==="not").map((x)=>x.name).join(", ")||"None entered"}\n\nPOTTY TRACKER\nRecorded days: ${potty.length}\nPotty pees: ${potty.reduce((n,x)=>n+Number(x.pees||0),0)}; potty poops: ${potty.reduce((n,x)=>n+Number(x.poops||0),0)}; accidents: ${potty.reduce((n,x)=>n+Number(x.accidents||0),0)}\n\nThis caregiver-generated report is not a medical record or diagnosis. Verify details with the caregiver and clinical record.`;modalBody.innerHTML=`<h2>📊 Provider report</h2><div class="field"><label>Child</label><select id="reportProfile">${profiles.map((x)=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div><textarea id="providerReportText" class="template-letter">${esc(report)}</textarea><div class="btn-row"><button id="copyProviderReport" class="btn">Copy</button><button id="downloadProviderReport" class="btn secondary">Download .txt</button></div>`;modal.showModal();$("#reportProfile").onchange=()=>{modal.close();openProviderReport([profiles.find((x)=>x.id===$("#reportProfile").value),...profiles.filter((x)=>x.id!==$("#reportProfile").value)]);};$("#copyProviderReport").onclick=async()=>{await navigator.clipboard.writeText($("#providerReportText").value);alert("Report copied.");};$("#downloadProviderReport").onclick=()=>downloadBlob(new Blob([$("#providerReportText").value],{type:"text/plain"}),`${p.name.replace(/[^a-z0-9]+/gi,"-")}-Provider-Report.txt`);}
+
+async function openAppointmentNotes(profiles){if(!profiles.length)return alert("Create a child profile first.");let profileId=profiles[0].id,notes=await getSetting(`appointmentNotes:${profileId}`,[]);const draw=()=>{modalBody.innerHTML=`<h2>📝 After-appointment notes</h2><div class="form-grid"><div class="field"><label>Child</label><select id="noteProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Date</label><input id="noteDate" type="date" value="${isoToday()}"></div><div class="field"><label>Provider / visit</label><input id="noteProvider"></div><div class="field"><label>What was decided</label><textarea id="noteBody"></textarea></div><div class="field"><label>Next steps and follow-up</label><textarea id="noteFollow"></textarea></div><button id="saveApptNote" class="btn">Save note</button></div><div class="list">${notes.sort((a,b)=>b.date.localeCompare(a.date)).map((x)=>`<div class="list-item"><div><strong>${esc(x.provider||"Appointment")}</strong><div class="hint">${fmtDate(x.date)}</div><p>${esc(x.body)}</p>${x.follow?`<p><strong>Next:</strong> ${esc(x.follow)}</p>`:""}</div></div>`).join("")}</div>`;$("#noteProfile").onchange=async(e)=>{profileId=e.target.value;notes=await getSetting(`appointmentNotes:${profileId}`,[]);draw();};$("#saveApptNote").onclick=async()=>{notes.push({id:uid(),date:$("#noteDate").value,provider:$("#noteProvider").value.trim(),body:$("#noteBody").value.trim(),follow:$("#noteFollow").value.trim(),createdAt:nowISO()});await setSetting(`appointmentNotes:${profileId}`,notes);draw();};};draw();modal.showModal();}
+
+const EXAMPLE_SLEEP_ROUTINE = [
+  ["45 minutes before", "Begin up to 30 minutes of active or heavy-work play if it helps this child: running, jumping, climbing, pushing, pulling, carrying, or outdoor play."],
+  ["15 minutes before", "Shift clearly into wind-down: dim lights, reduce conversation and screens, and choose a familiar low-stimulation activity."],
+  ["Wind-down", "Try a warm bath or wash-up if water is calming. Follow with pajamas and tolerated lotion or gentle pressure only if the child enjoys it."],
+  ["Set the room", "Use the child’s preferred safe temperature, darkness or night-light, bedding texture, and quiet or steady background sound."],
+  ["Connection", "Choose one calm activity such as cuddling, a familiar book, quiet music, coloring, a puzzle, or blocks."],
+  ["Bedtime", "Use the same short goodnight phrase and final visual-schedule step, then provide the safest approved sleep space for this child."],
+];
+
+async function renderSleepSanctuary() {
+  const profiles = await getAll("profiles");
+  let profileId = profiles[0]?.id || "";
+  let routine = [];
+  let preferences = {};
+  const sleepSetting = (name) => `sleep:${name}:${profileId}`;
+  const profileOptions = profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  view.innerHTML = `<section class="hero sleep-hero"><h1>🌙 Sleep Sanctuary</h1><p>Gentle, practical tools for learning what helps your child rest. There is no single perfect bedtime—and sleep trouble is never a child or caregiver failure.</p></section>
+  <div class="banner sleep-note"><strong>Start with safety and possible causes.</strong> Loud snoring, pauses or gasping, unusual nighttime movements, pain, reflux, constipation, itching, seizures, restless legs, or a sudden sleep change deserve a conversation with the child’s healthcare professional.</div>
+
+  <h2 class="section-title">Understand sleep first</h2><div class="sleep-sections">
+  <details class="education-card" open><summary>🧠 Why can sleep be harder for autistic children?</summary><div class="education-body"><p>Autistic children can have sleep challenges for many overlapping reasons. Their internal sleep-wake timing may work differently; sensory input that fades into the background for someone else may remain impossible to ignore; and anxiety, transitions, communication differences, or a strong need for predictability can make settling harder.</p><ul><li><strong>Sensory differences:</strong> seams, temperature, light, household sounds, smells, or the feeling of bedding may be calming one night and overwhelming another.</li><li><strong>Body-clock differences:</strong> melatonin timing and circadian rhythms may not line up neatly with the family schedule.</li><li><strong>Difficulty shifting gears:</strong> stopping a preferred activity and moving through several bedtime steps can be a major transition.</li><li><strong>Communication and interoception:</strong> a child may not yet be able to explain pain, hunger, fear, needing the bathroom, or that their body does not feel sleepy.</li><li><strong>Co-occurring needs:</strong> anxiety, ADHD, reflux, constipation, eczema, seizures, sleep apnea, restless legs, medication effects, or other health issues can interfere with sleep.</li></ul><p>Not every autistic child has sleep problems, and one child may have more than one cause. A simple sleep log can help a clinician notice patterns instead of guessing.</p><div class="education-links"><a class="education-link" href="https://www.aan.com/Guidelines/home/GuidelineDetail/988" target="_blank" rel="noopener"><strong>Autism and sleep guideline</strong><span>American Academy of Neurology guidance for families and clinicians.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🕯️ Example bedtime routine</summary><div class="education-body"><p>Use the order as a starting point, not a rule. The exact clock time matters less than a predictable sequence that fits when your child is actually becoming sleepy.</p><ol class="sleep-example">${EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => `<li><strong>${time}</strong><span>${esc(text)}</span></li>`).join("")}</ol><p>Try a picture schedule, keep spoken directions short, and change one part at a time. If a “calming” activity wakes your child up, believe what their body is showing you and move or replace it.</p></div></details>
+
+  <details class="education-card" open><summary>🧩 Build your bedtime routine</summary><div class="education-body"><p>Create a separate routine for each child. Every change is saved to this device and included in a complete backup.</p>${profiles.length ? `<div class="field"><label>Child</label><select id="sleepProfile">${profileOptions}</select></div><div id="sleepRoutineList" class="sleep-routine-list"></div><div class="sleep-step-form"><div class="field"><label>Time (optional)</label><input id="sleepStepTime" placeholder="7:30 PM"></div><div class="field"><label>Routine step</label><input id="sleepStepText" placeholder="Read one familiar book"></div></div><div class="btn-row"><button id="addSleepStep" class="btn" type="button">Add step</button><button id="useSleepExample" class="btn secondary" type="button">Use example routine</button></div><p id="sleepSaveStatus" class="hint" role="status"></p>` : `<div class="empty"><div class="big">🌱</div><p>Create a child profile before building a saved routine.</p><button class="btn" data-go="child">Create profile</button></div>`}</div></details>
+
+  <details class="education-card"><summary>🛏️ Make the sleep environment work better</summary><div class="education-body"><p>A supportive room is usually dim, quiet, comfortable, and predictable—but your child’s sensory preferences matter more than a generic checklist.</p><ul><li>Keep wake time and the wind-down sequence as consistent as family life allows.</li><li>Dim lights and pause screens about an hour before bed; charge devices outside the sleeping area when possible.</li><li>Try blackout curtains, a night-light, a fan, or steady background sound based on the child’s response.</li><li>Check pajamas, sheets, tags, seams, mattress feel, and temperature instead of assuming behavior is “bedtime resistance.”</li><li>Use beds only as the manufacturer intends. Follow age-specific safe-sleep guidance, especially for babies and young children.</li></ul><div class="education-links"><a class="education-link" href="https://www.healthychildren.org/English/healthy-living/sleep/Pages/healthy-sleep-habits-how-many-hours-does-your-child-need.aspx" target="_blank" rel="noopener"><strong>Healthy sleep habits</strong><span>American Academy of Pediatrics guidance on routines, screens, activity, and bedrooms.</span><small>Open source ↗</small></a><a class="education-link" href="https://www.autismspeaks.org/tool-kit/atnair-p-strategies-improve-sleep-children-autism" target="_blank" rel="noopener"><strong>Autism sleep strategies toolkit</strong><span>A practical family toolkit from the Autism Treatment Network.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🧴 Magnesium vs. melatonin</summary><div class="education-body"><div class="sleep-compare"><div><h3>Melatonin</h3><p>Melatonin is a hormone involved in sleep timing. For some autistic children, clinician-guided melatonin can help after routines and contributing health issues have been addressed. Timing and product quality matter, and long-term safety information in children is limited.</p><ul><li>Talk with the child’s clinician before starting it; do not choose a dose from the internet or another child.</li><li>In the U.S. it is sold as a supplement, so the amount can differ from the label. Ask about a quality-verified product.</li><li>Treat gummies like medicine and lock them away. Possible effects include sleepiness, headache, dizziness, or irritability.</li></ul></div><div><h3>Magnesium</h3><p>Magnesium is an essential nutrient, but that does not make a supplement a proven treatment for childhood insomnia or autism-related sleep problems. A clinician may address a true deficiency; routine use for sleep has much less supporting evidence.</p><ul><li>Food sources and supplements are not interchangeable.</li><li>Supplements can cause diarrhea, nausea, and cramping, can interact with medicines, and can be dangerous in excess or with kidney problems.</li><li>Ask the child’s clinician or pharmacist before using it and keep supplements out of reach.</li></ul></div></div><div class="banner"><strong>Neither is the automatic first step.</strong> Current autism sleep guidance starts by checking medical and medication causes and using behavioral sleep strategies. A clinician can then help decide whether melatonin is appropriate.</div><div class="education-links"><a class="education-link" href="https://aasm.org/advocacy/position-statements/melatonin-use-in-children-and-adolescents-health-advisory/" target="_blank" rel="noopener"><strong>Melatonin health advisory</strong><span>American Academy of Sleep Medicine safety guidance.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium fact sheet</strong><span>NIH supplement safety, interactions, and age-based limits.</span><small>Open source ↗</small></a></div></div></details>
+
+  <details class="education-card"><summary>🏥 Medical and safety beds</summary><div class="education-body"><p>A medical or enclosed safety bed may be considered when ordinary beds and less restrictive safety changes do not adequately address a documented risk such as entrapment, falls, injury, or nighttime wandering. It is not simply a sensory purchase.</p><ul><li>Work with the prescribing clinician, occupational or physical therapist, and a durable-medical-equipment supplier to match the bed to the child’s actual risks.</li><li>Insurance or Medicaid may require a prescription, letter of medical necessity, safety history, measurements, and proof that less costly alternatives were considered. Denials can sometimes be appealed.</li><li>Ask about ventilation, gap and entrapment testing, emergency release, evacuation, monitoring, cleaning, warranty, growth limits, and whether enclosure is considered a restraint in your setting.</li><li>Never improvise a canopy, tent, rail, net, or restraint, and never modify the bed outside the manufacturer’s instructions.</li></ul><div class="banner"><strong>Product links are examples, not endorsements or affiliate links.</strong> Eligibility, contraindications, funding, and safe use must be reviewed for the individual child.</div><div class="education-links"><a class="education-link" href="https://cubbybeds.com/" target="_blank" rel="noopener"><strong>Cubby Bed</strong><span>Enclosed safety-bed information, specifications, and funding resources.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://safetysleeper.com/" target="_blank" rel="noopener"><strong>The Safety Sleeper</strong><span>Portable enclosed-bed models and funding information.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://sleepsafebed.com/" target="_blank" rel="noopener"><strong>SleepSafe Beds</strong><span>Fixed safety-bed models, accessories, and insurance guidance.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://bedsbygeorge.com/" target="_blank" rel="noopener"><strong>Beds by George</strong><span>Medical safety-bed models and funding documentation.</span><small>Visit manufacturer ↗</small></a><a class="education-link" href="https://www.fda.gov/medical-devices/general-hospital-devices-and-supplies/hospital-beds" target="_blank" rel="noopener"><strong>Hospital-bed safety</strong><span>FDA information about entrapment risks and safe bed use.</span><small>Open safety source ↗</small></a></div></div></details>
+
+  <details class="education-card" open><summary>💜 Discover your child’s preferences</summary><div class="education-body"><p>Observe rather than assume. Try one safe change for several nights when possible, note what happened, and invite the child’s choice or assent in whatever way they communicate.</p>${profiles.length ? `<div class="field"><label>Child</label><select id="sleepPrefProfile">${profileOptions}</select></div><div class="sleep-pref-grid"><div class="field"><label>Temperature</label><select id="sleepTemp"><option value="">Not sure yet</option><option>Cool</option><option>Neutral</option><option>Warm</option><option>Changes from night to night</option></select></div><div class="field"><label>Pressure or compression</label><select id="sleepPressure"><option value="">Not sure yet</option><option>No compression</option><option>Light tucked-in feeling</option><option>Firm pressure</option><option>Changes from night to night</option></select></div><div class="field"><label>Fabric and texture</label><input id="sleepTexture" placeholder="Smooth cotton, fleece, no seams…"></div><div class="field"><label>Light</label><select id="sleepLight"><option value="">Not sure yet</option><option>Very dark</option><option>Night-light</option><option>Door cracked</option><option>Hall light</option></select></div><div class="field"><label>Sound</label><input id="sleepSound" placeholder="Silence, fan, white noise, music…"></div><div class="field"><label>Movement before bed</label><input id="sleepMovement" placeholder="Rocking, swinging, stretching, none…"></div></div><div class="field"><label>What we noticed</label><textarea id="sleepNotes" placeholder="What helped, what did not, and signs your child was comfortable or uncomfortable"></textarea></div><button id="saveSleepPreferences" class="btn full" type="button">Save preferences</button><p id="sleepPrefStatus" class="hint" role="status"></p>` : `<div class="empty"><p>Create a child profile to save a preference worksheet.</p></div>`}<div class="banner"><strong>Weighted or compression products need extra care.</strong> They are not right for every child. Ask the child’s clinician or occupational therapist about individual risks, use only age-appropriate products as directed, and never use a product that prevents the child from moving, breathing freely, or removing it independently. Do not use weighted sleep products for infants.</div></div></details>
+  </div>`;
+
+  bindRouteButtons();
+  const sleepCards = document.querySelectorAll(".sleep-sections > .education-card");
+  if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("beforebegin", `<details class="education-card"><summary>🌙 Your family’s 45-minute routine, safely adapted</summary><div class="education-body"><h3>First 30 minutes: active play</h3><p>Running, jumping, climbing, pushing, pulling, carrying, or outdoor play may help some children settle. Other children become more alert, so move active play earlier when it delays sleep. Daylight and activity during the day also support a healthy sleep schedule.</p><h3>Final 15 minutes: lower stimulation</h3><p>Dim lights and choose a familiar calm activity: cuddling, a puzzle, coloring, drawing, blocks, quiet music, or a gentle show if that works in real family life. A warm bath, tolerated lotion, or gentle firm touch may be calming when the child enjoys it.</p><h3>Sound and night-lights</h3><p>A sound machine can mask unpredictable noise and become a familiar cue; it does not calm every nervous system. Keep it away from the child’s head and at the lowest useful volume. A dim projector or night-light may soothe one child and keep another awake. Avoid bright or rapidly moving patterns after settling begins.</p><h3>Temperature, pressure, and safe stimming</h3><p>Many children prefer a cooler room, but comfort is individual. Compression sheets, sleep socks, and cushioned products require correct sizing, free breathing and movement, and the ability to exit. If rocking or head banging occurs, ask the child’s clinician or occupational therapist about injury reduction that preserves safe regulation.</p><div class="banner"><strong>Do not improvise a sleep enclosure.</strong> Use only the mattress, padding, rails, and enclosure approved by the manufacturer for that exact sleep product. Added mattresses or makeshift barriers can create dangerous gaps. Medical-bed coverage requires individual medical necessity and varies by plan.</div><h3>Magnesium baths and lotions</h3><p>Magnesium flakes, lotions, and tallow products have not been established as reliable treatments for childhood insomnia, and skin absorption and product quality vary. If the child takes oral magnesium or magnesium-containing medicine, ask the clinician or pharmacist before adding any other magnesium product.</p></div></details>`);
+  if (sleepCards[4]) sleepCards[4].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🧴 Magnesium: how it works, forms, and evidence</summary><div class="education-body"><p>Magnesium is essential for normal nerve and muscle function and participates in pathways involving neurotransmission and the body’s sleep-wake system. It is often described as calming because it helps regulate excitatory and inhibitory signaling, including pathways involving GABA, and is involved indirectly in melatonin biology. That biological role does <strong>not</strong> prove that extra magnesium acts as a sedative when a child already has enough.</p><div class="banner"><strong>What the sleep evidence says:</strong> Some studies in adults suggest possible modest sleep benefits, but results are conflicting and the studies are generally small or low quality. Good evidence has not established that magnesium supplements reliably lengthen deep sleep, prevent awakenings, or reduce anxiety or sensory overload in autistic children.</div><h3>Common forms caregivers may see</h3><ul><li><strong>Magnesium glycinate:</strong> magnesium bound to glycine. It is commonly marketed for sleep and is often better tolerated than forms with a stronger laxative effect, but it has not been proven to be the universally “best” sleep form for autistic children.</li><li><strong>Magnesium citrate:</strong> generally well absorbed and more likely to loosen stools. It may be used medically for constipation, but constipation treatment and sleep supplementation are different goals; diarrhea can cause dehydration or discomfort.</li><li><strong>Magnesium L-threonate:</strong> marketed for brain penetration and cognition. It is usually expensive, and evidence for pediatric sleep or autism-related benefits is insufficient.</li><li><strong>Magnesium sulfate/Epsom salts:</strong> a warm bath can be a soothing sensory routine, but clinically meaningful magnesium absorption through intact skin has not been established. Treat it as a bath preference—not an equivalent replacement for prescribed oral magnesium.</li></ul><h3>Before choosing any form</h3><ul><li>Ask what problem is being treated and whether deficiency, constipation, insomnia, pain, anxiety, or another issue needs evaluation.</li><li>Add up magnesium from supplements, antacids, laxatives, multivitamins, and prescribed products.</li><li>Review kidney disease, heart conditions, swallowing safety, diarrhea risk, and medicine interactions with the child’s clinician or pharmacist.</li><li>Use the clinician’s age-appropriate dose and timing; do not copy an adult product label or another child’s dose.</li></ul><div class="education-links"><a class="education-link" href="https://www.nccih.nih.gov/health/sleep-disorders-and-complementary-health-approaches" target="_blank" rel="noopener"><strong>Magnesium and sleep evidence</strong><span>NIH review of the limited and conflicting insomnia research.</span><small>Open source ↗</small></a><a class="education-link" href="https://ods.od.nih.gov/factsheets/Magnesium-Consumer/" target="_blank" rel="noopener"><strong>Magnesium safety</strong><span>Age-based supplement limits, side effects, and interactions.</span><small>Open source ↗</small></a></div></div></details>`);
+  if (sleepCards[6]) sleepCards[6].insertAdjacentHTML("afterend", `<details class="education-card"><summary>🛍️ Sleep products</summary><div class="education-body"><p>Caregiver-supplied options to consider around the child’s individual sleep and sensory preferences. Check current specifications, price, availability, return terms, and safety information before purchasing.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/products/the-dreamer-blanket" target="_blank" rel="noopener"><strong>Comfrt Dreamer Blanket</strong><span>A plush, stretch blanket available in several sizes. Check the listed weight and dimensions carefully; this is not presented as a medical or pediatric weighted-sleep product.</span><small>Open product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042" target="_blank" rel="noopener"><strong>Galaxy star-and-moon projector</strong><span>A remote-controlled projector with multiple lighting effects, timer functions, and a Bluetooth speaker. Use low brightness and slow or still effects if motion or light is alerting.</span><small>Open Walmart product page ↗</small></a></div><div class="banner"><strong>Sleep safety:</strong> Products are not guaranteed treatments. Avoid loose or heavy bedding when it is not developmentally appropriate, follow safe-sleep guidance for the child’s age, and make sure the child can move, breathe, regulate temperature, and exit freely.</div></div></details>`);
+  if (!profiles.length) return;
+  const routineList = $("#sleepRoutineList");
+  const status = $("#sleepSaveStatus");
+  const prefFields = { temperature: "#sleepTemp", pressure: "#sleepPressure", texture: "#sleepTexture", light: "#sleepLight", sound: "#sleepSound", movement: "#sleepMovement", notes: "#sleepNotes" };
+  const showSaved = (el, message) => { el.textContent = message; setTimeout(() => { if (el.textContent === message) el.textContent = ""; }, 2200); };
+  const saveRoutine = async () => { await setSetting(sleepSetting("routine"), routine); showSaved(status, "Routine saved on this device."); };
+  const drawRoutine = () => {
+    routineList.innerHTML = routine.length ? routine.map((step, index) => `<div class="sleep-routine-row"><div><strong>${esc(step.time || "Any time")}</strong><span>${esc(step.text)}</span></div><div class="sleep-row-actions"><button type="button" data-sleep-up="${index}" aria-label="Move up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-sleep-down="${index}" aria-label="Move down" ${index === routine.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-sleep-edit="${index}">Edit</button><button type="button" data-sleep-delete="${index}">Delete</button></div></div>`).join("") : `<div class="empty"><p>No routine steps saved yet.</p></div>`;
+    routineList.querySelectorAll("[data-sleep-up]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepUp); [routine[i - 1], routine[i]] = [routine[i], routine[i - 1]]; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-down]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepDown); [routine[i + 1], routine[i]] = [routine[i], routine[i + 1]]; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-edit]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepEdit); const text = prompt("Edit this routine step", routine[i].text); if (text === null || !text.trim()) return; const time = prompt("Edit the optional time", routine[i].time || "") ; if (time === null) return; routine[i] = { ...routine[i], text: text.trim(), time: time.trim() }; await saveRoutine(); drawRoutine(); });
+    routineList.querySelectorAll("[data-sleep-delete]").forEach((b) => b.onclick = async () => { const i = Number(b.dataset.sleepDelete); if (!confirm(`Delete “${routine[i].text}”?`)) return; routine.splice(i, 1); await saveRoutine(); drawRoutine(); });
+  };
+  const loadChildSleep = async () => {
+    routine = await getSetting(sleepSetting("routine"), []);
+    preferences = await getSetting(sleepSetting("preferences"), {});
+    drawRoutine();
+    Object.entries(prefFields).forEach(([key, selector]) => { $(selector).value = preferences[key] || ""; });
+    $("#sleepProfile").value = profileId;
+    $("#sleepPrefProfile").value = profileId;
+  };
+  $("#sleepProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
+  $("#sleepPrefProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
+  $("#addSleepStep").onclick = async () => { const text = $("#sleepStepText").value.trim(); if (!text) return alert("Please enter a routine step."); routine.push({ id: uid(), time: $("#sleepStepTime").value.trim(), text }); $("#sleepStepTime").value = ""; $("#sleepStepText").value = ""; await saveRoutine(); drawRoutine(); };
+  $("#useSleepExample").onclick = async () => { if (routine.length && !confirm("Replace this child’s current routine with the example?")) return; routine = EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => ({ id: uid(), time, text })); await saveRoutine(); drawRoutine(); };
+  $("#saveSleepPreferences").onclick = async () => { preferences = Object.fromEntries(Object.entries(prefFields).map(([key, selector]) => [key, $(selector).value.trim()])); await setSetting(sleepSetting("preferences"), preferences); showSaved($("#sleepPrefStatus"), "Preferences saved on this device."); };
+  await loadChildSleep();
+}
+
+const FRIENDLY_PLACES={
+  "🛝 Outdoor playgrounds":[
+    ["Shane’s Inspiration Playground","4730 Crystal Springs Dr, Los Angeles, CA 90027","Why families may find it ASD-friendly: quiet nature-themed areas, a barefoot sensory walking path, PECS communication boards for nonspeaking children, and an open layout that avoids tight blind corners and helps caregivers maintain clear sightlines.","https://recreation.parks.lacity.gov/playgrounds/griffithUAPk"],
+    ["Harper’s Playground at Arbor Lodge Park","Portland, OR 97217","Why families may find it ASD-friendly: a socially inviting, nature-rich design that uses wood, stone, smooth rubber surfacing, sound tubes for auditory play, and calming sand-and-water features instead of relying only on bright plastic and loud metal equipment.","https://www.harpersplayground.org/playgrounds/harpers-playground/"],
+    ["Friendship Hill Inclusive Playground","410 S Carroll St, Wabash, IN 46992","Why families may find it ASD-friendly: an elevated observation area for broad caregiver sightlines; high-contrast color zones that help children visually map the park; predictable poured-rubber surfacing; quieter composite climbers; and supportive high-back swings for rhythmic vestibular input.","https://www.cityofwabash.com/egov/apps/locations/facilities.egov?id=26&view=detail"],
+    ["Anna & Abby’s Yard at Rogers Park","2421 17th Ave, Forest Grove, OR 97116","Why families may find it ASD-friendly: a low-stimulation biophilic setting built around wood, stone, grass, and living plants; Wilder the Dragon and oversized stones for climbing and proprioceptive input; flush-to-ground spinning equipment; wide grassy berms and shaded areas for de-escalation; and a planted canopy that can soften surrounding noise.","https://www.harpersplayground.org/playgrounds/anna-abbys-yard/"],
+    ["Clemyjontri Park","6317 Georgetown Pike, McLean, VA 22101","Why families may find it ASD-friendly: a two-acre complex divided into distinct, color-coded play zones that can make the environment easier to understand and navigate, plus high-back molded swings, broad accessible ramps, and an accessible treehouse trail that offers alternatives to the busiest ground-level areas.","https://www.fairfaxcounty.gov/parks/clemyjontri"],
+    ["Jake’s Place at Challenge Grove Park","101 Bortons Mill Rd, Cherry Hill, NJ 08034","Why families may find it ASD-friendly: perimeter fencing for children prone to running, cushioned synthetic surfacing, tactile sensory walls, quieter retreat areas, and gentle percussion play that offers auditory input without relying entirely on sharp metallic sounds.","https://our-view.com/build-jakes-place"],
+    ["H!GH Five Park at Glasgow Regional Park","2275 Pulaski Hwy, Newark, DE 19702","Why families may find it ASD-friendly: Delaware’s first playground designed specifically around autism-spectrum needs, with full fencing for containment, core-strength and balance equipment, varied sensory and movement activities, and a therapeutic music area for sensory integration and regulation.","https://www.newcastlede.gov/m/newsflash/Home/Detail/1192"],
+    ["Tatum’s Garden","1 Maryal Dr, Salinas, CA 93906","Why families may find it ASD-friendly: a lower-stimulation agricultural theme, perimeter fencing with controlled entry, smooth rubber pathways, supportive high-back swings, and cozy barn-like alcoves where an overwhelmed child can step away from the main activity and co-regulate.","https://www.tatumsgarden.org/"],
+    ["Possibility Playground at Upper Lake Park","498 N Lake St, Port Washington, WI 53074","Why families may find it ASD-friendly: a gated security perimeter, extra-wide ramps that feel open rather than confining, double-wide slides that let a caregiver ride beside a child for co-regulation, and outdoor musical play designed around gentler, lower-frequency sound.","https://possibilityplayground.org/"],
+    ["SENSES Park","2296 Camelia Dr, Kissimmee, FL 34743","Why families may find it ASD-friendly: it was created specifically as a sensory-conscious space for autistic children, with separated play areas for less-intense social experiences, synthetic surfacing instead of loose woodchips, shaded tactile and sound features, percussion instruments, ground-level spinning equipment for vestibular input, wheelchair access, and perimeter fencing.","https://www.osceola.org/Community/Parks-and-Public-Lands/Find-a-Park-or-Facility/SENSES-Park"],
+    ["Wing-Dickerson Park Playground","Allens Ln near Carpenter St, Woodbury, NJ 08096","Why families may find it ASD-friendly: an enclosed layout, quieter composite play systems, under-deck sensory spaces, and low-ceiling crawling routes that can provide immediate retreat and body-based sensory input when the larger playground becomes overwhelming.","https://woodbury.nj.us/facilities/facility/details/WingDickerson-Park-4"],
+    ["Norwood Park Universal Accessibility Park","1885 Morgantown Ave, Fairmont, WV 26554","Why families may find it ASD-friendly: West Virginia’s first universal-accessibility park includes seamless surfacing, wheelchair-accessible play, outdoor musical equipment, high-sided spinning and twirling elements for strong vestibular input, and an open layout intended to help caregivers visually track children.","https://www.fairmontwv.gov/155/Parks-Recreation"],
+    ["Hope Park at Frisco Commons","8000 McKinney Rd, Frisco, TX 75033","Why families may find it ASD-friendly: perimeter fencing with controlled gates, rubberized surfacing, color-coded sensory walls, adaptive equipment, separate age-based play areas, and quiet cocoon-style sensory spaces along the playground boundary for children who need to reduce noise and stimulation.","https://www.friscotexas.gov/facilities/facility/details/Hope-Park-121"],
+    ["Jaycee Playground at Wirth Park","2000 N Calhoun Rd, Brookfield, WI 53005","Why families may find it ASD-friendly: muted earth-tone equipment, broad non-claustrophobic ramps, a flush-to-ground motion carousel, and a sensory-garden edge with textured plants and wooden sound tubes for gentler acoustic exploration.","https://www.ci.brookfield.wi.us/1072/Wirth-Park-Playground"],
+    ["Ridgeview Park Playground","700 S Magnolia Ave, Waynesboro, VA 22980","Why families may find it ASD-friendly: a lower-traffic park setting with logs, river-stone-style balance obstacles, high-back adaptive swings for vestibular input, and vegetated clearings away from active swing areas where a child and caregiver can step aside to regulate.","https://www.waynesboro.va.us/197/Playground"]
+  ],
+  "🎢 Theme parks":[
+    ["Sesame Place","Langhorne, PA & San Diego, CA","Certified Autism Center resources, sensory guides, quiet spaces, hearing protection, and ride-accessibility support.","https://sesameplace.com/philadelphia/help/autism-resources/"],
+    ["LEGOLAND Resorts","California, Florida & New York","Certified staff, attraction sensory guides, quiet or low-sensory spaces, and disability-access programs. Rules vary by resort.","https://www.legoland.com/new-york/plan-your-visit/know-before-you-go/special-situations-accessibility/certified-autism-center/"],
+    ["Dollywood","Pigeon Forge, TN","Calming room, accessibility guide, and Boarding Pass program based on individual needs and ride requirements—not unlimited front-of-line access.","https://www.dollywood.com/accessibility/"],
+    ["Morgan’s Wonderland","San Antonio, TX","Designed for guests of diverse abilities. The guest with a qualifying special need is admitted free; confirm current companion pricing.","https://morganswonderland.org/"],
+    ["SeaWorld parks","Orlando, San Antonio & San Diego","Ride Accessibility Program, sensory guides, and quiet-space resources vary by park; selected areas or parks hold CAC designation.","https://seaworld.com/orlando/help/guests-with-disabilities/"],
+    ["Six Flags parks","Nationwide","Sensory guides and the current Individual Accessibility Card process. Verify park-specific registration and ride rules.","https://www.sixflags.com/accessibility"],
+    ["American Dream","East Rutherford, NJ","Accessibility resources for indoor attractions including Nickelodeon Universe and DreamWorks Water Park; verify each attraction’s supports.","https://www.americandream.com/accessibility"]
+  ],
+  "🦏 Zoos":[
+    ["Cincinnati Zoo & Botanical Garden","Cincinnati, OH","Sensory map, quiet locations, and visit-planning resources.","https://cincinnatizoo.org/plan-your-visit/accessibility/"],
+    ["Santa Barbara Zoo","Santa Barbara, CA","Autism and sensory resources may include trained staff, sensory tools, and selected low-sensory programming.","https://www.sbzoo.org/accessibility"],
+    ["Fort Wayne Children’s Zoo","Fort Wayne, IN","Certified Autism Center training and sensory planning information.","https://kidszoo.org/visit/accessibility/"],
+    ["Zoo Miami","Miami, FL","Accessibility and sensory resources; confirm current sensory-bag availability.","https://www.zoomiami.org/accessibility"],
+    ["ABQ BioPark","Albuquerque, NM","Certified Autism Center resources across the zoo, aquarium, botanic garden, and related facilities.","https://www.cabq.gov/artsculture/biopark/biopark-connect/accessibility"]
+  ],
+  "🐠 Aquariums":[
+    ["Georgia Aquarium","Atlanta, GA","Certified and sensory-inclusive venue with morning low-sensory hours, quiet areas, sensory bags, and a sensory room.","https://www.georgiaaquarium.org/accessibility/"],
+    ["Ripley’s Aquarium","Myrtle Beach, SC","Certified Autism Center resources and selected sensory-friendly events with environmental adjustments.","https://www.ripleyaquariums.com/myrtlebeach/sensory-friendly/"],
+    ["OdySea Aquarium","Scottsdale, AZ","Certified Autism Center with a quiet room, sensory guide, and staff support.","https://www.odyseaaquarium.com/plan-your-visit/accessibility/"],
+    ["Aquarium of the Pacific","Long Beach, CA","Selected Autism Families Nights and accessibility resources; dates require current registration.","https://www.aquariumofpacific.org/events/info/autism_families_night/"],
+    ["Adventure Aquarium","Camden, NJ","Sensory and accessibility resources may include noise-reduction tools and weighted lap items; verify availability.","https://www.adventureaquarium.com/plan-your-visit/accessibility"],
+    ["National Aquarium","Baltimore, MD","KultureCity Sensory Inclusive resources including trained staff, sensory bags, and planning support.","https://aqua.org/visit/accessibility"]
+  ],
+  "🎉 Recurring programs":[
+    ["Chuck E. Cheese Sensory Sensitive Sundays","Participating locations","Selected Sunday hours with reduced sound and lighting and limited flashing effects. Participation and dates vary.","https://www.chuckecheese.com/sensory-sensitive-sundays/"],
+    ["AMC Sensory Friendly Films","Participating theaters","Lights raised, sound lowered, and movement or vocalizing welcomed at selected screenings.","https://www.amctheatres.com/programs/sensory-friendly-films"],
+    ["Regal My Way Matinee","Participating theaters","Selected family films with brighter lighting and reduced sound.","https://www.regmovies.com/promotions/my-way-matinee"],
+    ["Please Touch Museum","Philadelphia, PA","Accessibility resources and periodic sensory-friendly programming.","https://www.pleasetouchmuseum.org/accessibility/"],
+    ["Cayton Children’s Museum","Santa Monica, CA","Check current accessibility supports and sensory-friendly event schedule.","https://www.caytonmuseum.org/accessibility"]
+  ]
+};
+function renderAsdFriendlyFunExpanded(){
+  renderAsdFriendlyFun();
+  const cards=document.querySelectorAll(".education-card"), html=Object.entries(FRIENDLY_PLACES).map(([heading,places])=>`<h3>${heading}</h3><div class="friendly-place-list">${places.map(([name,location,description,url])=>`<a href="${url}" target="_blank" rel="noopener"><strong>${esc(name)}</strong><small>${esc(location)}</small><span>${esc(description)}</span></a>`).join("")}</div>`).join("");
+  const socialization=`<details class="education-card"><summary>🤝 Socialization</summary><div class="education-body">
+    <p>Social opportunities do not have to look like a traditional playgroup. Some children connect best through a shared interest, online game, structured activity, one-to-one buddy, or small group with clear expectations. Check the current age range, communication expectations, supervision, cost, location, and availability before enrolling.</p>
+    <button class="btn full" data-go="community" type="button">Open Social Meetups</button>
+    <h3>National organizations and online clubs</h3>
+    <div class="education-links">
+      <a class="education-link" href="https://aane.org/services-programs/group-services/social-groups-activities/" target="_blank" rel="noopener noreferrer"><strong>AANE social groups and activities</strong><span>Virtual and regional opportunities for autistic teens, young adults, adults, and family members. Current groups, ages, locations, fees, and registration requirements vary.</span><small>View current AANE groups ↗</small></a>
+      <a class="education-link" href="https://www.friendinmegroup.org/" target="_blank" rel="noopener noreferrer"><strong>Friend in Me</strong><span>Free, flexible weekly Zoom sessions pairing children with disabilities and student volunteers for guided one-to-one games, conversation, or shared activities. Parents or aides may help when needed.</span><small>Open official program ↗</small></a>
+      <a class="education-link" href="https://outschool.com/online-classes/autism-social-clubs" target="_blank" rel="noopener noreferrer"><strong>Outschool interest-based social clubs</strong><span>Live online classes and clubs built around interests such as gaming, art, LEGO, Pokémon, and conversation, including options advertised for autistic and neurodivergent children and teens.</span><small>Browse current clubs ↗</small></a>
+    </div>
+    <h3>Structured programs and local groups</h3>
+    <div class="education-links">
+      <a class="education-link" href="https://teams.semel.ucla.edu/peers" target="_blank" rel="noopener noreferrer"><strong>UCLA PEERS® programs</strong><span>Manualized, evidence-based social-skills programs for preschoolers, adolescents, young adults, and adults. Programs teach and practice friendship and relationship skills; ages, caregiver involvement, format, cost, and provider availability differ.</span><small>Programs and provider information ↗</small></a>
+      <a class="education-link" href="https://www.friendshipcircle.com/locations/" target="_blank" rel="noopener noreferrer"><strong>Friendship Circle chapters</strong><span>Local chapters may offer friendship matching, recreation, camps, clubs, family events, or supervised activities with volunteers. Search the chapter directory and confirm current local programs.</span><small>Find a chapter ↗</small></a>
+      <a class="education-link" href="https://autismsociety.org/" target="_blank" rel="noopener noreferrer"><strong>Autism Society affiliates</strong><span>Regional affiliates may coordinate park meetups, family events, support groups, adaptive recreation, teen activities, or referrals to other local opportunities.</span><small>Find local support ↗</small></a>
+      <a class="education-link" href="https://ourcircle.org/" target="_blank" rel="noopener noreferrer"><strong>Our Circle — formerly Spectrum Circle</strong><span>A family-focused app for connecting with nearby parents, joining local groups, sharing playdates, and discovering or creating inclusive meetups for children with support needs.</span><small>Open official app site ↗</small></a>
+    </div>
+    <div class="banner"><strong>Meetup safety:</strong> A listing, group membership, volunteer match, identity check, or professional title is not a guarantee of safety or fit. Review supervision and screening practices, protect the child's private information, involve the child in the decision when possible, and use a public setting with a caregiver present for first meetings.</div>
+  </div></details>`;
+  const places=`<details class="education-card"><summary>🗺️ Autism-friendly places to explore</summary><div class="education-body"><p>Programs, certifications, admission rules, and event schedules change. Confirm accommodations before buying tickets. Certification usually means training and planning resources; it does not guarantee that every space will be quiet or fit every visitor.</p><p class="hint"><strong>Playground planning:</strong> Equipment, fencing, gates, surfacing, quiet areas, and operating conditions can change. The descriptions below summarize published and community-supplied design information; contact the park before a long trip when a particular safety or sensory feature is essential.</p>${html}<div class="banner"><strong>Federal Access Pass detail:</strong> At per-vehicle sites the pass generally covers the pass holder and occupants of one noncommercial vehicle. At per-person sites it generally covers the pass holder plus up to three adults; children under 16 are ordinarily admitted free. Concessions, special permits, and every recreation fee are not automatically included.</div></div></details>`;
+  if(cards[1])cards[1].insertAdjacentHTML("afterend",`${socialization}${places}`);
+  bindRouteButtons();
+}
+
+
+const COMMUNITY_PAGE_SIZE=50;
+function renderCommunityPager(prefix,data,goToPage){
+  const host=$("#"+prefix+"Pager"),count=$("#"+prefix+"ResultCount");
+  if(!host||!count)return;
+  const total=Number(data.total||0),page=Math.max(1,Number(data.page||1)),pages=Math.max(1,Math.ceil(total/COMMUNITY_PAGE_SIZE));
+  count.textContent=total?`Showing ${Math.min((page-1)*COMMUNITY_PAGE_SIZE+1,total)}–${Math.min(page*COMMUNITY_PAGE_SIZE,total)} of ${total} results.`:"No results found.";
+  if(!total){host.innerHTML="";return;}
+  host.innerHTML=`<div class="btn-row search-pages"><button class="btn secondary" data-page="${page-1}" type="button" ${data.hasPrevious?"":"disabled"}>← Previous</button><span class="hint">Page ${page} of ${pages}</span><button class="btn secondary" data-page="${page+1}" type="button" ${data.hasNext?"":"disabled"}>Next →</button></div>`;
+  host.querySelectorAll("button:not([disabled])").forEach(button=>button.onclick=()=>goToPage(Number(button.dataset.page)));
+}
+
+const BABYSITTER_CACHE_KEY="mtm-test-community-babysitters-v1";
+let communityBabysitters=[];
+
+async function loadBabysitters(params){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
+  return window.MTMSync.api(`/v1/community/babysitters?${params.toString()}`);
+}
+
+function babysitterCard(item){
+  const statusLabels={pending:"Waiting for permission",approved:item.source==="self"?"Self-listed profile":"Approved profile",declined:"Invitation declined",removed:"Removed"};
+  const approvedActions=item.status==="approved"&&!item.isNominator&&!item.isSelfManaged?`<button class="btn babysitter-contact" data-id="${item.id}" type="button">Contact through MTM</button><button class="small-action danger-link babysitter-report" data-id="${item.id}" type="button">Report concern</button>`:"";
+  const selfActions=item.isSelfManaged?`<button class="btn secondary babysitter-manage" data-id="${item.id}" type="button">Manage my profile</button>`:"";
+  const ownerActions=item.isNominator&&["pending","approved"].includes(item.status)?`<button class="btn secondary babysitter-withdraw" data-id="${item.id}" type="button">Withdraw nomination</button>`:"";
+  return `<article class="babysitter-card ${esc(item.status)}"><div class="babysitter-card-head"><span>${esc(statusLabels[item.status]||item.status)}</span><small>${esc(item.generalArea)}</small></div>
+    <h3>${esc(item.name)}</h3>${item.bio?`<p>${esc(item.bio)}</p>`:""}
+    ${item.recommendation?`<div class="babysitter-detail"><strong>Parent recommendation</strong><p>${esc(item.recommendation)}</p></div>`:""}
+    ${item.experience?`<div class="babysitter-detail"><strong>Experience</strong><p>${esc(item.experience)}</p></div>`:""}
+    ${item.ageRanges?`<div class="babysitter-detail"><strong>Age groups</strong><p>${esc(item.ageRanges)}</p></div>`:""}
+    ${item.availability?`<div class="babysitter-detail"><strong>Availability</strong><p>${esc(item.availability)}</p></div>`:""}
+    ${item.qualifications?`<div class="babysitter-detail"><strong>Qualifications or training</strong><p>${esc(item.qualifications)}</p></div>`:""}
+    <p class="hint">${item.source==="self"?"Profile created by the babysitter":`Nominated by ${esc(item.nominatedBy?.displayName||"a parent")}${item.isNominator&&item.nomineeEmail?` • Invitation sent to ${esc(item.nomineeEmail)}`:""}`}</p>
+    ${item.status==="pending"?'<div class="banner"><strong>Private pending invitation:</strong> This profile is visible only to the parent who submitted it until the babysitter approves.</div>':""}
+    <div class="btn-row">${approvedActions}${selfActions}${ownerActions}</div></article>`;
+}
+
+function drawBabysitterResults(){
+  const search=$("#babysitterSearch").value.trim().toLocaleLowerCase(),show=$("#babysitterView").value;
+  const shown=communityBabysitters.filter(item=>{
+    if(show==="approved"&&item.status!=="approved")return false;
+    if(show==="mine"&&!item.isNominator&&!item.isSelfManaged)return false;
+    return !search||`${item.name} ${item.generalArea} ${item.bio} ${item.recommendation} ${item.experience} ${item.availability} ${item.ageRanges} ${item.qualifications}`.toLocaleLowerCase().includes(search);
+  });
+  $("#babysitterResultCount").textContent=`${shown.length} ${shown.length===1?"profile":"profiles"} found.`;
+  $("#babysitterResults").innerHTML=shown.length?shown.map(babysitterCard).join(""):`<div class="empty card"><div class="big">🧑‍🍼</div><p>No babysitter profiles match that search.</p></div>`;
+  document.querySelectorAll(".babysitter-contact").forEach(button=>button.onclick=()=>contactBabysitter(button.dataset.id));
+  document.querySelectorAll(".babysitter-report").forEach(button=>button.onclick=()=>reportBabysitter(button.dataset.id));
+  document.querySelectorAll(".babysitter-manage").forEach(button=>button.onclick=async()=>openMyBabysitterProfile(communityBabysitters.find(item=>item.id===button.dataset.id),(await window.MTMSync.state()).user));
+  document.querySelectorAll(".babysitter-withdraw").forEach(button=>button.onclick=()=>withdrawBabysitterNomination(button.dataset.id));
+}
+
+async function runBabysitterSearch(page=1){
+  const q=$("#babysitterSearch").value.trim(),scope=$("#babysitterView").value==="mine"?"mine":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const button=$("#searchBabysitters");button.disabled=true;button.textContent="Searching…";
+  try{
+    const data=await loadBabysitters(new URLSearchParams({q,scope,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}));
+    communityBabysitters=data.babysitters;drawBabysitterResults();renderCommunityPager("babysitter",data,runBabysitterSearch);
+  }catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
+async function renderBabysitters(){
+  try{
+    let state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
+    if(!state.user){const account=await window.MTMSync.api("/v1/account");state={...state,user:account.user};await window.MTMSync.saveState(state);}
+    let myProfileResult=state.user?.isBabysitter?await window.MTMSync.api("/v1/community/babysitters/me"):null;
+    if(state.user?.isBabysitter&&!myProfileResult?.profile){
+      const mine=await window.MTMSync.api("/v1/community/babysitters?scope=mine&offset=0"),fallback=mine.babysitters?.find(item=>item.isSelfManaged);
+      if(fallback)myProfileResult={profile:fallback,needsAccountLink:false};
+    }
+    const myProfile=myProfileResult?.profile||null,needsAccountLink=Boolean(myProfileResult?.needsAccountLink);
+    communityBabysitters=[];
+    view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1><p>Search profiles created by babysitters and profiles approved after a parent nomination.</p></section>
+      <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
+      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="manageBabysitterShares" class="btn secondary" type="button">View or share child access</button><button id="myBabysitterProfile" class="btn secondary" type="button">${needsAccountLink?"Connect and manage my profile":myProfile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
+      <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, ZIP, experience, or availability</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, weekends, CPR…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Public profiles</option><option value="mine">My profile and nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location, name, or service detail, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
+    $("#nominateBabysitter").onclick=openBabysitterNominationForm;
+    $("#manageBabysitterShares").onclick=()=>navigate("sync");
+    $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile,state.user,needsAccountLink);
+    $("#searchBabysitters").onclick=()=>runBabysitterSearch(1);
+    $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch(1);});
+    $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterPager").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your profile and nominations.":"Enter a location or name, then press Search.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+}
+
+async function openMyBabysitterProfile(profile,user,needsAccountLink=false){
+  if(!user?.isBabysitter){
+    if(!confirm("Mark this account as a babysitter account? Creating and managing your profile is free."))return;
+    try{
+      const result=await window.MTMSync.api("/v1/account/babysitter-status",{method:"POST",body:JSON.stringify({isBabysitter:true})});
+      const state=await window.MTMSync.state();await window.MTMSync.saveState({...state,user:result.user});
+      user=result.user;
+    }catch(error){return alert(error.message);}
+  }
+  modalBody.innerHTML=`<h2>${needsAccountLink?"Connect and manage":profile?"Manage":"Create"} my babysitter profile</h2><div class="banner">${needsAccountLink?"This approved listing uses the same email as your account. Save it once to connect it to your account, then you can edit or remove it here. ":""}Your email stays private. Parents contact you through MTM, and you decide whether to reply.</div><div class="form-grid">
+    <div class="field"><label>Public display name</label><input id="selfSitterName" maxlength="100" value="${esc(profile?.name||user.displayName||"")}"></div>
+    <div class="field"><label>Cities and ZIP codes served</label><textarea id="selfSitterArea" maxlength="300" placeholder="Berkeley Springs 25411, Martinsburg 25404, Hedgesville 25427">${esc(profile?.generalArea||"")}</textarea><p class="hint">Separate each town or ZIP code with a comma. Families can search for any location you enter.</p></div>
+    <div class="field"><label>Short public introduction</label><textarea id="selfSitterBio" maxlength="1200">${esc(profile?.bio||"")}</textarea></div>
+    <div class="field"><label>Experience</label><textarea id="selfSitterExperience" maxlength="1000">${esc(profile?.experience||"")}</textarea></div>
+    <div class="field"><label>Age groups</label><input id="selfSitterAges" maxlength="300" placeholder="Infants, toddlers, ages 5–12…" value="${esc(profile?.ageRanges||"")}"></div>
+    <div class="field"><label>Availability</label><textarea id="selfSitterAvailability" maxlength="500" placeholder="Weekends, evenings, school breaks…">${esc(profile?.availability||"")}</textarea></div>
+    <div class="field"><label>Qualifications or training</label><textarea id="selfSitterQualifications" maxlength="800" placeholder="CPR, first aid, AAC, sensory support…">${esc(profile?.qualifications||"")}</textarea></div>
+    <div class="btn-row"><button id="saveSelfSitter" class="btn" type="button">${needsAccountLink?"Connect and save profile":"Save public profile"}</button>${profile&&!needsAccountLink?`<button id="removeSelfSitter" class="btn secondary" type="button">Remove profile</button>`:""}<button id="cancelSelfSitter" class="btn secondary" type="button">Cancel</button></div></div>`;
+  modal.showModal();$("#cancelSelfSitter").onclick=()=>modal.close();
+  $("#saveSelfSitter").onclick=async()=>{
+    const button=$("#saveSelfSitter");button.disabled=true;button.textContent="Saving…";
+    try{
+      await window.MTMSync.api("/v1/community/babysitters/me",{method:"POST",body:JSON.stringify({
+        publicName:$("#selfSitterName").value,generalArea:$("#selfSitterArea").value,bio:$("#selfSitterBio").value,
+        experience:$("#selfSitterExperience").value,ageRanges:$("#selfSitterAges").value,
+        availability:$("#selfSitterAvailability").value,qualifications:$("#selfSitterQualifications").value
+      })});
+      modal.close();alert(needsAccountLink?"Your existing listing is now connected to your account. You can edit or remove it here anytime.":"Your babysitter profile is now searchable.");renderBabysitters();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent=needsAccountLink?"Connect and save profile":"Save public profile";}
+  };
+  if($("#removeSelfSitter"))$("#removeSelfSitter").onclick=async()=>{
+    if(!confirm("Remove your babysitter profile from search? You can restore it later by saving the profile again."))return;
+    try{await window.MTMSync.api("/v1/community/babysitters/me",{method:"DELETE"});modal.close();renderBabysitters();}catch(error){alert(error.message);}
+  };
+}
+function openBabysitterNominationForm(){
+  modalBody.innerHTML=`<h2>Recommend a babysitter</h2><div class="banner"><strong>The babysitter must choose.</strong> MTM will email a private approval link. Their name, recommendation, and email stay out of public search unless they approve. Their email is never displayed publicly.</div><div class="form-grid">
+    <div class="field"><label>Babysitter's name</label><input id="babysitterName" maxlength="100" autocomplete="off"></div>
+    <div class="field"><label>Babysitter's email</label><input id="babysitterEmail" type="email" maxlength="254" autocomplete="off"></div>
+    <div class="field"><label>General area</label><input id="babysitterArea" maxlength="120" placeholder="City, state, or ZIP code"></div>
+    <div class="field"><label>Why do you recommend them?</label><textarea id="babysitterRecommendation" maxlength="1200" placeholder="Describe your own experience without sharing a child's private information."></textarea></div>
+    <div class="field"><label>Relevant experience <span class="hint">(optional)</span></label><textarea id="babysitterExperience" maxlength="800" placeholder="Age groups, disability experience, first aid, AAC, sensory supports… Only include information you know firsthand."></textarea></div>
+    <label class="check-option"><input id="babysitterPermissionConfirm" type="checkbox"><span>I understand MTM will email this person and nothing will appear publicly unless they approve.</span></label>
+    <button id="sendBabysitterInvitation" class="btn full" type="button">Email private invitation</button></div>`;
+  modal.showModal();
+  $("#sendBabysitterInvitation").onclick=async()=>{
+    if(!$("#babysitterPermissionConfirm").checked)return alert("Confirm that you understand the babysitter must approve before anything becomes public.");
+    const button=$("#sendBabysitterInvitation");button.disabled=true;button.textContent="Sending…";
+    try{
+      await window.MTMSync.api("/v1/community/babysitters",{method:"POST",body:JSON.stringify({
+        name:$("#babysitterName").value,email:$("#babysitterEmail").value,generalArea:$("#babysitterArea").value,
+        recommendation:$("#babysitterRecommendation").value,experience:$("#babysitterExperience").value
+      })});
+      modal.close();alert("The private invitation was emailed. The profile will remain hidden until the babysitter approves it.");renderBabysitters();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Email private invitation";}
+  };
+}
+
+async function contactBabysitter(id){
+  const item=communityBabysitters.find(profile=>profile.id===id);
+  const message=prompt(`Write a short inquiry for ${item?.name||"this babysitter"}. If you send it, the babysitter will receive your MTM account name and email so they can reply. Their email stays hidden from you.`);
+  if(!message?.trim())return;
+  if(!confirm("Send this message and share your MTM account email with the babysitter?"))return;
+  try{await window.MTMSync.api(`/v1/community/babysitters/${encodeURIComponent(id)}/contact`,{method:"POST",body:JSON.stringify({message})});alert("Your message was emailed to the babysitter.");}catch(error){alert(error.message);}
+}
+async function withdrawBabysitterNomination(id){
+  if(!confirm("Withdraw this babysitter nomination? Any public profile created from it will be removed."))return;
+  try{await window.MTMSync.api(`/v1/community/babysitters/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action:"remove"})});renderBabysitters();}catch(error){alert(error.message);}
+}
+async function reportBabysitter(id){
+  const reason=prompt("Briefly describe the safety, accuracy, privacy, or profile concern. Reports are private.");
+  if(!reason?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/babysitters/${encodeURIComponent(id)}/report`,{method:"POST",body:JSON.stringify({reason})});alert("The profile was reported for review.");}catch(error){alert(error.message);}
+}
+
+const RECOMMENDATION_CACHE_KEY="mtm-test-community-recommendations-v1";
+const RECOMMENDATION_CATEGORIES={
+  doctor:"Doctors & medical specialists",dentist:"Dentists","speech-therapy":"Speech therapy",
+  "occupational-therapy":"Occupational therapy","physical-therapy":"Physical therapy",
+  "behavioral-therapy":"Behavioral therapy","mental-health":"Mental health",
+  restaurant:"Restaurants",school:"Schools & education",activities:"Activities & recreation",
+  "barber-salon":"Barbers & salons",other:"Other local resources"
+};
+let communityRecommendations=[];
+
+async function loadRecommendations(params){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended.");
+  return window.MTMSync.api(`/v1/community/recommendations?${params.toString()}`);
+}
+
+function recommendationCard(item){
+  const status=item.status==="active"?"Active":"Removed";
+  const supportButton=item.isOwner?"":`<button class="btn ${item.supportedByMe?"secondary":""} recommendation-support" data-id="${item.id}" data-support="${item.supportedByMe?"false":"true"}" type="button">${item.supportedByMe?"Remove my recommendation":"Recommend this too"}</button>`;
+  const ownerActions=item.isOwner?`<button class="btn secondary recommendation-manage" data-id="${item.id}" data-action="${item.status==="active"?"remove":"activate"}" type="button">${item.status==="active"?"Remove listing":"Restore listing"}</button>`:"";
+  const publicLinks=`${item.phone?`<a href="tel:${esc(item.phone.replace(/[^+\d]/g,""))}">📞 ${esc(item.phone)}</a>`:""}${item.website?`<a href="${esc(item.website)}" target="_blank" rel="noopener noreferrer">🌐 Visit website</a>`:""}`;
+  return `<article class="recommendation-card ${esc(item.status)}">
+    <div class="recommendation-card-head"><span>${esc(RECOMMENDATION_CATEGORIES[item.category]||item.category)}</span><small>${esc(status)}</small></div>
+    <h3>${esc(item.name)}</h3><p>${esc(item.description)}</p>
+    <dl><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div>${item.address?`<div><dt>Public address</dt><dd>${esc(item.address)}</dd></div>`:""}<div><dt>Recommended by</dt><dd>${item.recommendationCount} ${item.recommendationCount===1?"parent":"parents"}</dd></div><div><dt>Added by</dt><dd>${esc(item.submittedBy.displayName)}</dd></div></dl>
+    ${item.accommodations?`<div class="recommendation-detail"><strong>Accommodations families noticed</strong><p>${esc(item.accommodations)}</p></div>`:""}
+    ${item.goodFit?`<div class="recommendation-detail"><strong>May be a good fit for</strong><p>${esc(item.goodFit)}</p></div>`:""}
+    ${publicLinks?`<div class="recommendation-links">${publicLinks}</div>`:""}
+    <div class="btn-row">${supportButton}${ownerActions}${!item.isOwner?`<button class="small-action danger-link recommendation-report" data-id="${item.id}" type="button">Report concern</button>`:""}</div>
+  </article>`;
+}
+
+function drawRecommendationResults(){
+  const search=$("#recommendationSearch").value.trim().toLocaleLowerCase(),
+    category=$("#recommendationCategory").value,show=$("#recommendationView").value;
+  const shown=communityRecommendations.filter(item=>{
+    if(category&&item.category!==category)return false;
+    if(show==="mine"&&!item.isOwner)return false;
+    if(show==="supported"&&!item.supportedByMe)return false;
+    if(show==="active"&&item.status!=="active")return false;
+    const haystack=`${item.name} ${item.description} ${item.generalArea} ${item.address} ${item.accommodations} ${item.goodFit} ${RECOMMENDATION_CATEGORIES[item.category]||""}`.toLocaleLowerCase();
+    return !search||haystack.includes(search);
+  });
+  $("#recommendationResultCount").textContent=`${shown.length} ${shown.length===1?"recommendation":"recommendations"} found.`;
+  $("#recommendationResults").innerHTML=shown.length?shown.map(recommendationCard).join(""):`<div class="empty card"><div class="big">⭐</div><p>No recommendations match those filters yet.</p></div>`;
+  document.querySelectorAll(".recommendation-support").forEach(button=>button.onclick=()=>supportRecommendation(button.dataset.id,button.dataset.support==="true"));
+  document.querySelectorAll(".recommendation-manage").forEach(button=>button.onclick=()=>manageRecommendation(button.dataset.id,button.dataset.action));
+  document.querySelectorAll(".recommendation-report").forEach(button=>button.onclick=()=>reportRecommendation(button.dataset.id));
+}
+
+async function runRecommendationSearch(page=1){
+  const q=$("#recommendationSearch").value.trim(),viewMode=$("#recommendationView").value,
+    scope=viewMode==="mine"?"mine":viewMode==="supported"?"supported":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,category:$("#recommendationCategory").value,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchRecommendations");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadRecommendations(params);communityRecommendations=data.recommendations;drawRecommendationResults();renderCommunityPager("recommendation",data,runRecommendationSearch);}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
+async function renderRecommendations(){
+  try{
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Recommended.");
+    communityRecommendations=[];
+    view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1><p>Find local professionals, services, restaurants, schools, and activities recommended by other parents.</p></section>
+      <div class="banner"><strong>Community recommendations, not MTM endorsements:</strong> Details can change. Confirm current licensing, credentials, insurance, prices, accessibility, accommodations, policies, and fit directly with the provider or business before making a decision.</div>
+      <div class="btn-row"><button id="newRecommendation" class="btn" type="button">Add a recommendation</button></div>
+      <section class="card recommendation-search" aria-label="Search recommendations"><h2>Search near you</h2><div class="form-grid two-col">
+        <div class="field"><label>Search name, service, city, state, or ZIP</label><input id="recommendationSearch" type="search" placeholder="Dentist, speech, Berkeley Springs…"></div>
+        <div class="field"><label>Category</label><select id="recommendationCategory"><option value="">All categories</option>${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+        <div class="field"><label>Show</label><select id="recommendationView"><option value="active">Public recommendations</option><option value="mine">My submissions</option><option value="supported">I recommend these too</option></select></div>
+      </div><button id="searchRecommendations" class="btn full" type="button">Search</button><p id="recommendationResultCount" class="hint" role="status">Enter a location, provider, or service, then press Search. No listings are downloaded until you search.</p></section><div id="recommendationResults" class="recommendation-list"></div><nav id="recommendationPager" aria-label="Recommendation search pages"></nav>`;
+    $("#newRecommendation").onclick=openRecommendationForm;$("#searchRecommendations").onclick=()=>runRecommendationSearch(1);
+    $("#recommendationSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runRecommendationSearch(1);});
+    $("#recommendationView").onchange=()=>{communityRecommendations=[];$("#recommendationResults").innerHTML="";$("#recommendationPager").innerHTML="";$("#recommendationResultCount").textContent=$("#recommendationView").value==="active"?"Enter a location, provider, or service, then press Search.":"Press Search to load your selected list.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>⭐ Recommended</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+}
+
+function openRecommendationForm(){
+  modalBody.innerHTML=`<h2>Add a local recommendation</h2><div class="banner">Share your own experience. Use public business details only—never post a provider’s personal number, a home address, or a child’s private information.</div><div class="form-grid">
+    <div class="field"><label>Category</label><select id="recommendationFormCategory">${Object.entries(RECOMMENDATION_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>Name</label><input id="recommendationName" maxlength="140" placeholder="Provider, practice, restaurant, school, or place"></div>
+    <div class="field"><label>Why do you recommend them?</label><textarea id="recommendationDescription" maxlength="1200" placeholder="Describe your family’s experience without sharing private health information."></textarea></div>
+    <div class="field"><label>General area</label><input id="recommendationArea" maxlength="120" placeholder="City, state, or ZIP code"></div>
+    <div class="field"><label>Public business address <span class="hint">(optional)</span></label><input id="recommendationAddress" maxlength="220" placeholder="Use the published office or business address only"></div>
+    <div class="field"><label>Public business phone <span class="hint">(optional)</span></label><input id="recommendationPhone" type="tel" maxlength="40"></div>
+    <div class="field"><label>Website <span class="hint">(optional)</span></label><input id="recommendationWebsite" type="url" maxlength="500" placeholder="https://…"></div>
+    <div class="field"><label>Accommodations or sensory supports <span class="hint">(optional)</span></label><textarea id="recommendationAccommodations" maxlength="800" placeholder="Quiet waiting area, dimmer lighting, AAC respected, flexible seating…"></textarea></div>
+    <div class="field"><label>Who might find this especially helpful? <span class="hint">(optional)</span></label><textarea id="recommendationGoodFit" maxlength="500" placeholder="For example: children who need extra transition time"></textarea></div>
+    <button id="saveRecommendation" class="btn full" type="button">Post recommendation</button></div>`;
+  modal.showModal();
+  $("#saveRecommendation").onclick=async()=>{
+    const button=$("#saveRecommendation");button.disabled=true;button.textContent="Posting…";
+    try{
+      await window.MTMSync.api("/v1/community/recommendations",{method:"POST",body:JSON.stringify({
+        category:$("#recommendationFormCategory").value,name:$("#recommendationName").value,
+        description:$("#recommendationDescription").value,generalArea:$("#recommendationArea").value,
+        address:$("#recommendationAddress").value,phone:$("#recommendationPhone").value,
+        website:$("#recommendationWebsite").value,accommodations:$("#recommendationAccommodations").value,
+        goodFit:$("#recommendationGoodFit").value
+      })});
+      modal.close();renderRecommendations();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Post recommendation";}
+  };
+}
+
+async function supportRecommendation(id,support){
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/support`,{method:"POST",body:JSON.stringify({support})});renderRecommendations();}catch(error){alert(error.message);}
+}
+async function manageRecommendation(id,action){
+  if(!confirm(action==="remove"?"Remove this recommendation?":"Restore this recommendation?"))return;
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action})});renderRecommendations();}catch(error){alert(error.message);}
+}
+async function reportRecommendation(id){
+  const reason=prompt("Briefly describe what is inaccurate, unsafe, private, or concerning. Reports are private.");
+  if(!reason?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/recommendations/${encodeURIComponent(id)}/report`,{method:"POST",body:JSON.stringify({reason})});alert("The recommendation was reported for review.");}catch(error){alert(error.message);}
+}
+
+const TOY_CACHE_KEY="mtm-test-community-toys-v1";
+const TOY_CATEGORIES={learning:"Learning & educational",sensory:"Sensory",outdoor:"Outdoor",pretend:"Pretend play",building:"Building",vehicles:"Vehicles",dolls:"Dolls & figures",games:"Games & puzzles",books:"Books",baby:"Baby & toddler",other:"Other"};
+const TOY_CONDITIONS={"like-new":"Like new",good:"Good",fair:"Fair","parts":"Parts or pieces missing"};
+let toyListings=[];
+
+async function loadToyExchange(params){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
+  return window.MTMSync.api(`/v1/community/toys?${params.toString()}`);
+}
+
+function toyContactMarkup(toy){
+  if(!toy.contact)return "";
+  const href=toy.contact.method==="email"
+    ? `mailto:${encodeURIComponent(toy.contact.value)}?subject=${encodeURIComponent("MTM Toy Exchange: "+toy.title)}`
+    : `sms:${toy.contact.value.replace(/[^+\d]/g,"")}`;
+  return `<div class="banner toy-contact"><strong>Your request was accepted.</strong><br><a href="${esc(href)}">${toy.contact.method==="email"?"Email":"Text"} ${esc(toy.contact.value)}</a> to arrange the public meetup.</div>`;
+}
+
+function toyCard(toy){
+  const statusLabel={active:"Available",pending:"Pending pickup",claimed:"Claimed",removed:"Removed"}[toy.status]||toy.status;
+  const ownerActions=toy.isOwner
+    ? `<button class="btn secondary toy-requests" data-id="${toy.id}" type="button">Requests${toy.requestCount?` (${toy.requestCount})`:""}</button>
+       ${toy.status!=="active"?`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="activate" type="button">Make available</button>`:`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="pending" type="button">Mark pending</button>`}
+       ${toy.status!=="claimed"?`<button class="btn secondary toy-manage" data-id="${toy.id}" data-action="claimed" type="button">Mark claimed</button>`:""}
+       ${toy.status!=="removed"?`<button class="small-action danger-link toy-manage" data-id="${toy.id}" data-action="remove" type="button">Remove</button>`:""}`
+    : toy.myStatus==="requested"
+      ? `<button class="btn secondary toy-withdraw" data-id="${toy.id}" type="button">Withdraw request</button>`
+      : toy.myStatus==="accepted"
+        ? `<span class="toy-request-status">Request accepted</span>`
+        : toy.status==="active"
+          ? `<button class="btn toy-request" data-id="${toy.id}" type="button">Request this toy</button>`
+          : `<span class="toy-request-status">${esc(statusLabel)}</span>`;
+  return `<article class="toy-card ${esc(toy.status)}">
+    ${toy.imageData?`<img class="toy-photo" src="${toy.imageData}" alt="${esc(toy.title)}">`:`<div class="toy-photo toy-photo-placeholder" aria-hidden="true">🧸</div>`}
+    <div class="toy-card-body"><div class="toy-card-head"><span>${esc(TOY_CATEGORIES[toy.category]||toy.category)}</span><small>${esc(statusLabel)}</small></div>
+    <h3>${esc(toy.title)}</h3><p>${esc(toy.description)}</p>
+    <dl><div><dt>Condition</dt><dd>${esc(TOY_CONDITIONS[toy.condition]||toy.condition)}</dd></div><div><dt>Age</dt><dd>${esc(toy.ageRange)}</dd></div><div><dt>Area</dt><dd>${esc(toy.generalArea)}</dd></div><div><dt>Public meetup</dt><dd>${esc(toy.publicPlace)}</dd></div></dl>
+    <p class="hint">Offered by ${esc(toy.owner.displayName)}. No payment is permitted through the Toy Exchange.</p>
+    ${toyContactMarkup(toy)}
+    <div class="btn-row">${ownerActions}${!toy.isOwner?`<button class="small-action toy-report" data-id="${toy.id}" type="button">Report listing</button>`:""}</div></div>
+  </article>`;
+}
+
+function renderToyResults(){
+  const results=document.querySelector("#toyResults");if(!results)return;
+  const words=$("#toySearch").value.trim().toLowerCase(),category=$("#toyCategory").value,condition=$("#toyCondition").value,viewMode=$("#toyView").value;
+  const matches=toyListings.filter(toy=>{
+    const haystack=[toy.title,toy.description,toy.generalArea,toy.publicPlace,toy.ageRange,toy.owner?.displayName].join(" ").toLowerCase();
+    return(!words||words.split(/\s+/).every(word=>haystack.includes(word)))&&(!category||toy.category===category)&&(!condition||toy.condition===condition)
+      &&(viewMode==="mine"?toy.isOwner:viewMode==="requested"?!toy.isOwner&&Boolean(toy.myStatus):["active","pending"].includes(toy.status));
+  });
+  $("#toyResultCount").textContent=`${matches.length} ${matches.length===1?"toy":"toys"} found`;
+  results.innerHTML=matches.length?matches.map(toyCard).join(""):'<div class="empty"><p>No toys match those filters. Try a nearby city or ZIP code, or clear a filter.</p></div>';
+  document.querySelectorAll(".toy-request").forEach(button=>button.onclick=()=>requestToy(button.dataset.id));
+  document.querySelectorAll(".toy-withdraw").forEach(button=>button.onclick=()=>withdrawToyRequest(button.dataset.id));
+  document.querySelectorAll(".toy-requests").forEach(button=>button.onclick=()=>openToyRequests(button.dataset.id));
+  document.querySelectorAll(".toy-manage").forEach(button=>button.onclick=()=>manageToy(button.dataset.id,button.dataset.action));
+  document.querySelectorAll(".toy-report").forEach(button=>button.onclick=()=>reportToy(button.dataset.id));
+}
+
+async function runToySearch(page=1){
+  const q=$("#toySearch").value.trim(),viewMode=$("#toyView").value,
+    scope=viewMode==="mine"?"mine":viewMode==="requested"?"requested":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,category:$("#toyCategory").value,condition:$("#toyCondition").value,offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchToys");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadToyExchange(params);toyListings=data.toys;renderToyResults();renderCommunityPager("toy",data,runToySearch);}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
+async function renderToyExchange(){
+  try{
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use the Toy Exchange.");
+    toyListings=[];
+    view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1><p>Pass along toys your family no longer needs and find free toys offered nearby.</p></section>
+      <div class="banner"><strong>Exchange safely:</strong> MTM does not inspect toys or screen members. Check recalls, cleanliness, missing pieces, batteries, age labels, and choking hazards yourself. Meet in a public place with another adult when possible. Never post a home address or a child’s private information.</div>
+      <div class="btn-row"><button id="newToyListing" class="btn" type="button">Offer a toy</button></div>
+      <section class="card toy-search" aria-label="Search free toys"><h2>Find a toy</h2><div class="form-grid two-col">
+      <div class="field"><label>Search toy, city, area, or ZIP</label><input id="toySearch" type="search" placeholder="Train, sensory, 25411…"></div>
+      <div class="field"><label>Category</label><select id="toyCategory"><option value="">All categories</option>${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>Condition</label><select id="toyCondition"><option value="">Any condition</option>${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>Show</label><select id="toyView"><option value="available">Available nearby</option><option value="mine">My listings</option><option value="requested">My requests</option></select></div>
+      </div><button id="searchToys" class="btn full" type="button">Search</button><p id="toyResultCount" class="hint" role="status">Enter a toy, location, or ZIP code, then press Search. No listings are downloaded until you search.</p></section><div id="toyResults" class="toy-list"></div><nav id="toyPager" aria-label="Toy search pages"></nav>`;
+    $("#newToyListing").onclick=openToyListingForm;$("#searchToys").onclick=()=>runToySearch(1);
+    $("#toySearch").addEventListener("keydown",event=>{if(event.key==="Enter")runToySearch(1);});
+    $("#toyView").onchange=()=>{toyListings=[];$("#toyResults").innerHTML="";$("#toyPager").innerHTML="";$("#toyResultCount").textContent=$("#toyView").value==="available"?"Enter a toy, location, or ZIP code, then press Search.":"Press Search to load your selected list.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🧸 Free Toy Exchange</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+}
+
+function readToyPhoto(file){
+  return new Promise((resolve,reject)=>{
+    if(!file)return resolve(null);
+    if(!/^image\/(jpeg|png|webp)$/i.test(file.type))return reject(new Error("Choose a JPEG, PNG, or WebP photo."));
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("The toy photo could not be read."));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("The toy photo could not be opened."));
+      image.onload=()=>{
+        const scale=Math.min(1,900/Math.max(image.width,image.height)),canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+        canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+        const data=canvas.toDataURL("image/jpeg",.76);
+        if(data.length>1_450_000)return reject(new Error("That photo is still too large after resizing. Try another photo."));
+        resolve(data);
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openToyListingForm(){
+  modalBody.innerHTML=`<h2>Offer a free toy</h2><div class="banner">Only free items belong here. Use a general area and public meetup location. Your contact detail stays hidden until you accept a request.</div><div class="form-grid">
+    <div class="field"><label>Toy name</label><input id="toyTitle" maxlength="100" placeholder="Wooden train set"></div>
+    <div class="field"><label>Description</label><textarea id="toyDescription" maxlength="1000" placeholder="Include missing pieces, wear, cleaning, batteries, and anything a parent should know."></textarea></div>
+    <div class="field"><label>Category</label><select id="toyListingCategory">${Object.entries(TOY_CATEGORIES).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>Suggested age range</label><input id="toyAge" maxlength="80" placeholder="Ages 3–6"></div>
+    <div class="field"><label>Condition</label><select id="toyListingCondition">${Object.entries(TOY_CONDITIONS).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+    <div class="field"><label>General area</label><input id="toyArea" maxlength="100" placeholder="Berkeley Springs, WV or ZIP code"></div>
+    <div class="field"><label>Public meetup place</label><input id="toyPlace" maxlength="160" placeholder="Library, police station exchange area, community center…"></div>
+    <div class="field"><label>Photo (optional)</label><input id="toyPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+    <div class="field"><label>Private contact method</label><select id="toyContactMethod"><option value="email">Email</option><option value="text">Text message</option></select></div>
+    <div class="field"><label>Private contact detail</label><input id="toyContactValue" maxlength="180" placeholder="Email address"></div>
+    <button id="saveToyListing" class="btn full" type="button">Post free toy</button></div>`;
+  modal.showModal();
+  $("#toyContactMethod").onchange=()=>{$("#toyContactValue").placeholder=$("#toyContactMethod").value==="email"?"Email address":"Phone number";};
+  $("#saveToyListing").onclick=async()=>{
+    const button=$("#saveToyListing");button.disabled=true;button.textContent="Posting…";
+    try{
+      const imageData=await readToyPhoto($("#toyPhoto").files[0]);
+      await window.MTMSync.api("/v1/community/toys",{method:"POST",body:JSON.stringify({
+        title:$("#toyTitle").value,description:$("#toyDescription").value,category:$("#toyListingCategory").value,
+        ageRange:$("#toyAge").value,condition:$("#toyListingCondition").value,generalArea:$("#toyArea").value,
+        publicPlace:$("#toyPlace").value,imageData,contactMethod:$("#toyContactMethod").value,contactValue:$("#toyContactValue").value
+      })});
+      modal.close();renderToyExchange();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent="Post free toy";}
+  };
+}
+
+async function requestToy(id){
+  const toy=toyListings.find(item=>item.id===id),message=prompt(`Send a short message to ${toy?.owner?.displayName||"the parent"} about “${toy?.title||"this toy"}.” Do not include a home address.`);
+  if(!message?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/request`,{method:"POST",body:JSON.stringify({message})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function withdrawToyRequest(id){
+  if(!confirm("Withdraw your request for this toy?"))return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/request`,{method:"POST",body:JSON.stringify({withdraw:true})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function openToyRequests(id){
+  try{
+    const data=await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/requests`);
+    modalBody.innerHTML=`<h2>Toy requests</h2><div class="toy-request-list">${data.requests.length?data.requests.map(request=>`<div class="card"><strong>${esc(request.displayName)}</strong><p>${esc(request.message)}</p><p class="hint">${esc(request.status)}</p>${request.status==="requested"?`<div class="btn-row"><button class="btn toy-request-action" data-user="${request.userId}" data-action="accept" type="button">Accept</button><button class="btn secondary toy-request-action" data-user="${request.userId}" data-action="decline" type="button">Decline</button></div>`:""}</div>`).join(""):'<div class="empty"><p>No requests yet.</p></div>'}</div>`;
+    modal.showModal();
+    document.querySelectorAll(".toy-request-action").forEach(button=>button.onclick=async()=>{
+      try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action:button.dataset.action,userId:button.dataset.user})});modal.close();renderToyExchange();}catch(error){alert(error.message);}
+    });
+  }catch(error){alert(error.message);}
+}
+async function manageToy(id,action){
+  const question=action==="claimed"?"Mark this toy claimed?":action==="remove"?"Remove this listing?":action==="pending"?"Mark this toy pending pickup?":"Make this toy available again?";
+  if(!confirm(question))return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action})});renderToyExchange();}catch(error){alert(error.message);}
+}
+async function reportToy(id){
+  const reason=prompt("Briefly describe the safety, privacy, or listing concern. Reports are private.");
+  if(!reason?.trim())return;
+  try{await window.MTMSync.api(`/v1/community/toys/${encodeURIComponent(id)}/report`,{method:"POST",body:JSON.stringify({reason})});alert("The listing was reported for review.");}catch(error){alert(error.message);}
+}
+
+const COMMUNITY_CACHE_KEY="mtm-test-community-playgroups-v1";
+let communityMeetups=[];
+const communityKindLabel={hosting:"Hosting a playdate",looking:"Looking for a playdate",recurring:"Recurring group",parent:"Parent meetup",outing:"Sensory-friendly outing"};
+const communityDate=value=>new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
+async function loadCommunityPlaygroups(params){
+  const state=await window.MTMSync.state();
+  if(!state.token)throw new Error("Sign in through Accounts & Sync to use Social Meetups.");
+  return window.MTMSync.api(`/v1/community/playgroups?${params.toString()}`);
+}
+
+function communityCard(item){
+  const response=item.myStatus?`Your response: ${item.myStatus==="requested"?"Waiting for organizer approval":item.myStatus}`:"";
+  return `<article class="community-card ${item.status}"><div class="community-card-head"><span>${esc(communityKindLabel[item.kind]||item.kind)}</span><small>${esc(item.status)}</small></div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><dl><div><dt>When</dt><dd>${esc(communityDate(item.startsAt))}</dd></div><div><dt>Area</dt><dd>${esc(item.generalArea)}</dd></div><div><dt>Public meeting place</dt><dd>${esc(item.publicPlace)}</dd></div><div><dt>Ages</dt><dd>${esc(item.ageRange)}</dd></div><div><dt>Setting</dt><dd>${esc(item.setting)}</dd></div>${item.maxGroupSize?`<div><dt>Group limit</dt><dd>${item.maxGroupSize}</dd></div>`:""}</dl>${item.sensoryNotes?`<p><strong>Sensory notes:</strong> ${esc(item.sensoryNotes)}</p>`:""}${item.accessibility?`<p><strong>Accessibility:</strong> ${esc(item.accessibility)}</p>`:""}<p class="hint">Organized by ${esc(item.organizer.displayName)} · ${item.siblingsWelcome?"Siblings welcome":"Ask before bringing siblings"} · ${item.parentMustRemain?"A parent or caregiver must remain":"Confirm supervision with organizer"} · ${item.goingCount} going</p>${response?`<div class="banner">${esc(response)}</div>`:""}<div class="btn-row">${item.isOrganizer?`<button class="btn secondary community-requests" data-id="${item.id}" type="button">Responses${item.responseCount?` (${item.responseCount})`:""}</button>${item.status==="active"?`<button class="btn secondary community-cancel" data-id="${item.id}" type="button">Cancel gathering</button>`:""}`:item.status==="active"?`${item.myStatus?`<button class="btn secondary community-withdraw" data-id="${item.id}" type="button">Withdraw response</button>`:`<button class="btn secondary community-interest" data-id="${item.id}" type="button">Interested</button><button class="btn community-request" data-id="${item.id}" type="button">Request to join</button>`}`:""}</div></article>`;
+}
+async function runCommunitySearch(page=1){
+  const q=$("#meetupSearch").value.trim(),scope=$("#meetupView").value==="mine"?"mine":"public";
+  if(scope==="public"&&q.length<2)return alert("Enter at least two letters, a city, state, or ZIP code.");
+  const params=new URLSearchParams({q,scope,kind:$("#meetupKind").value,days:$("#meetupWhen").value,setting:$("#meetupSetting").value,
+    sensory:$("#meetupSensory").checked?"1":"0",accessible:$("#meetupAccessible").checked?"1":"0",offset:String((page-1)*COMMUNITY_PAGE_SIZE)}),button=$("#searchMeetups");
+  button.disabled=true;button.textContent="Searching…";
+  try{const data=await loadCommunityPlaygroups(params);communityMeetups=data.playgroups;renderCommunityResults();renderCommunityPager("meetup",data,runCommunitySearch);}
+  catch(error){alert(error.message);}
+  finally{button.disabled=false;button.textContent="Search";}
+}
+async function renderCommunityConnections(){
+  try{
+    const state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Social Meetups.");
+    communityMeetups=[];clearInterval(communityRefreshTimer);communityRefreshTimer=null;
+    view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1><p>Find and create inclusive opportunities for families to meet.</p></section><div class="banner"><strong>Community safety:</strong> MtM provides a community board but does not arrange, supervise, screen, endorse, or guarantee any participant or gathering. Protect children’s private information and use a public setting with a caregiver present for first meetings.</div>
+      <div class="btn-row community-actions"><button id="newGathering" class="btn" type="button">Create a meetup</button></div>
+      <section class="card community-search" aria-label="Search social meetups"><h2>Find a meetup</h2><div class="form-grid two-col">
+      <div class="field"><label>Search words, city, area, or ZIP</label><input id="meetupSearch" type="search" placeholder="Park, 21740, sensory, ages 5–8…"></div>
+      <div class="field"><label>Meetup type</label><select id="meetupKind"><option value="">All types</option>${Object.entries(communityKindLabel).map(([value,label])=>`<option value="${value}">${esc(label)}</option>`).join("")}</select></div>
+      <div class="field"><label>When</label><select id="meetupWhen"><option value="">Any upcoming date</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option></select></div>
+      <div class="field"><label>Setting</label><select id="meetupSetting"><option value="">Indoor or outdoor</option><option value="indoor">Indoor</option><option value="outdoor">Outdoor</option><option value="either">Either</option></select></div>
+      <div class="field"><label>Show</label><select id="meetupView"><option value="public">Public meetups</option><option value="mine">My meetups and responses</option></select></div></div>
+      <div class="community-checks"><label class="check-option"><input id="meetupSensory" type="checkbox"> Has sensory details</label><label class="check-option"><input id="meetupAccessible" type="checkbox"> Has accessibility details</label></div>
+      <button id="searchMeetups" class="btn full" type="button">Search</button><p id="meetupResultCount" class="hint" role="status">Enter a location, activity, or ZIP code, then press Search. No meetups are downloaded until you search.</p></section><div id="communityResults" class="community-list"></div><nav id="meetupPager" aria-label="Meetup search pages"></nav>`;
+    $("#newGathering").onclick=openCommunityForm;$("#searchMeetups").onclick=()=>runCommunitySearch(1);
+    $("#meetupSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runCommunitySearch(1);});
+    $("#meetupView").onchange=()=>{communityMeetups=[];$("#communityResults").innerHTML="";$("#meetupPager").innerHTML="";$("#meetupResultCount").textContent=$("#meetupView").value==="mine"?"Press Search to load your meetups and responses.":"Enter a location, activity, or ZIP code, then press Search.";};
+  }catch(error){view.innerHTML=`<section class="hero"><h1>🤝 Social Meetups</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
+}
+async function refreshCommunityMeetupsInPlace(){
+  if(currentRoute==="community"&&communityMeetups.length&&!modal.open)await runCommunitySearch();
+}
+
+function renderCommunityResults(){
+  const words=$("#meetupSearch").value.trim().toLowerCase(),kind=$("#meetupKind").value,days=Number($("#meetupWhen").value||0),setting=$("#meetupSetting").value,deadline=days?Date.now()+days*86400000:Infinity;
+  const matches=communityMeetups.filter(item=>{const haystack=[item.title,item.description,item.generalArea,item.publicPlace,item.ageRange,item.sensoryNotes,item.accessibility,item.organizer?.displayName].join(" ").toLowerCase();return(!words||words.split(/\s+/).every(word=>haystack.includes(word)))&&(!kind||item.kind===kind)&&(!setting||item.setting===setting)&&Date.parse(item.startsAt)<=deadline&&(!$("#meetupSensory").checked||item.sensoryNotes)&&(!$("#meetupAccessible").checked||item.accessibility);});
+  $("#meetupResultCount").textContent=`${matches.length} ${matches.length===1?"meetup":"meetups"} found`;
+  $("#communityResults").innerHTML=matches.length?matches.map(communityCard).join(""):'<div class="empty"><p>No meetups match those filters. Try a nearby city, ZIP code, broader date, or fewer filters.</p></div>';
+  document.querySelectorAll(".community-interest").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"interested"));document.querySelectorAll(".community-request").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,"requested"));document.querySelectorAll(".community-withdraw").forEach(b=>b.onclick=()=>communityRespond(b.dataset.id,null));document.querySelectorAll(".community-cancel").forEach(b=>b.onclick=()=>cancelCommunityGathering(b.dataset.id));document.querySelectorAll(".community-requests").forEach(b=>b.onclick=()=>openCommunityRequests(b.dataset.id));
+}
+function openCommunityForm(){
+  const soon=new Date(Date.now()+86400000);soon.setMinutes(0,0,0);const local=new Date(soon.getTime()-soon.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  modalBody.innerHTML=`<h2>Create a community gathering</h2><div class="form-grid"><div class="field"><label>Type</label><select id="cgKind"><option value="hosting">Hosting a playdate</option><option value="looking">Looking for a playdate</option><option value="recurring">Recurring group</option><option value="parent">Parent meetup</option><option value="outing">Sensory-friendly outing</option></select></div><div class="field"><label>Title</label><input id="cgTitle" maxlength="100" placeholder="Quiet playground meetup"></div><div class="field"><label>Description</label><textarea id="cgDescription" maxlength="1000" placeholder="What families can expect—do not include a child’s name or private information"></textarea></div><div class="field"><label>General area</label><input id="cgArea" maxlength="100" placeholder="City, state or neighborhood"></div><div class="field"><label>Public meeting place</label><input id="cgPlace" maxlength="160" placeholder="Library, park, museum…"></div><div class="field"><label>Date and time</label><input id="cgStarts" type="datetime-local" value="${local}"></div><div class="field"><label>Age range</label><input id="cgAges" maxlength="80" placeholder="Ages 4–8, flexible"></div><div class="field"><label>Maximum group size (optional)</label><input id="cgMax" type="number" min="2" max="100"></div><div class="field"><label>Setting</label><select id="cgSetting"><option value="outdoor">Outdoor</option><option value="indoor">Indoor</option><option value="either">Either</option></select></div><div class="field"><label>Sensory considerations</label><textarea id="cgSensory" maxlength="500" placeholder="Noise, crowds, quiet areas, movement…"></textarea></div><div class="field"><label>Accessibility</label><textarea id="cgAccess" maxlength="500" placeholder="Parking, wheelchair access, restrooms…"></textarea></div><label class="check-option"><input id="cgSiblings" type="checkbox"> Siblings are welcome</label><label class="check-option"><input id="cgParent" type="checkbox" checked> A parent or caregiver must remain</label><button id="saveGathering" class="btn full" type="button">Post gathering</button></div>`;modal.showModal();
+  $("#saveGathering").onclick=async()=>{try{const payload={kind:$("#cgKind").value,title:$("#cgTitle").value,description:$("#cgDescription").value,generalArea:$("#cgArea").value,publicPlace:$("#cgPlace").value,startsAt:new Date($("#cgStarts").value).toISOString(),ageRange:$("#cgAges").value,maxGroupSize:$("#cgMax").value?Number($("#cgMax").value):null,setting:$("#cgSetting").value,sensoryNotes:$("#cgSensory").value,accessibility:$("#cgAccess").value,siblingsWelcome:$("#cgSiblings").checked,parentMustRemain:$("#cgParent").checked};await window.MTMSync.api("/v1/community/playgroups",{method:"POST",body:JSON.stringify(payload)});modal.close();renderCommunityConnections();}catch(error){alert(error.message);}};
+}
+async function communityRespond(id,status){try{await window.MTMSync.api(`/v1/community/playgroups/${encodeURIComponent(id)}/response`,{method:"POST",body:JSON.stringify({status})});renderCommunityConnections();}catch(error){alert(error.message);}}
+async function cancelCommunityGathering(id){if(!confirm("Cancel this gathering? People who joined will see that it was cancelled."))return;try{await window.MTMSync.api(`/v1/community/playgroups/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action:"cancel"})});renderCommunityConnections();}catch(error){alert(error.message);}}
+async function openCommunityRequests(id){try{const data=await window.MTMSync.api(`/v1/community/playgroups/${encodeURIComponent(id)}/requests`);modalBody.innerHTML=`<h2>Meetup responses</h2>${data.requests.length?data.requests.map(r=>`<div class="card"><strong>${esc(r.displayName)}</strong><p>${r.status==="interested"?"Interested":r.status==="requested"?"Requested to join":"Going"}</p><div class="btn-row">${r.status!=="going"?`<button class="btn approve-request" data-user="${r.userId}" type="button">${r.status==="interested"?"Add to Going":"Approve"}</button>`:""}<button class="btn secondary remove-request" data-user="${r.userId}" type="button">Remove</button></div></div>`).join(""):'<div class="empty"><p>No responses yet.</p></div>'}`;modal.showModal();document.querySelectorAll(".approve-request,.remove-request").forEach(b=>b.onclick=async()=>{try{await window.MTMSync.api(`/v1/community/playgroups/${encodeURIComponent(id)}/manage`,{method:"POST",body:JSON.stringify({action:b.classList.contains("approve-request")?"approve":"remove",userId:b.dataset.user})});modal.close();openCommunityRequests(id);renderCommunityConnections();}catch(error){alert(error.message);}});}catch(error){alert(error.message);}}
+
+function renderResources() {
+  view.innerHTML = `<section class="hero"><h1>📚 Resources</h1><p>Open the app’s practical guides and tools from one place.</p></section><div class="grid section-grid">
+    <button class="card-button" data-go="speech"><span class="emoji">🗣️</span><strong>Communication</strong><small>Speech tracking, ASL, AAC, apps, oral ties, and visual supports.</small></button>
+    <button class="card-button" data-go="sensory"><span class="emoji">🫧</span><strong>Sensory support</strong><small>Sensory systems, patterns, triggers, clothing, and regulation tools.</small></button>
+    <button class="card-button" data-go="sleep"><span class="emoji">🌙</span><strong>Sleep</strong><small>Routines, preferences, sleep environments, magnesium, beds, and products.</small></button>
+    <button class="card-button" data-go="health"><span class="emoji">🏥</span><strong>Medical advocacy & health</strong><small>Appointment tools, provider reports, medical letters, labs, and health education.</small></button>
+    <button class="card-button" data-go="education"><span class="emoji">🎓</span><strong>Educational options</strong><small>IEPs, 504 plans, homeschooling, school choices, and letter templates.</small></button>
+    <button class="card-button" data-go="skills"><span class="emoji">📚</span><strong>Learning & skill building</strong><small>Strengths-first learning, daily living skills, potty training, and practical supports.</small></button>
+    <button class="card-button" data-go="fun"><span class="emoji">🎡</span><strong>ASD Friendly Fun</strong><small>Socialization, accessible destinations, sensory-friendly programs, films, cruises, and national parks.</small></button>
+    <button class="card-button" data-go="caregiver"><span class="emoji">💛</span><strong>Caregiver resources</strong><small>Education, benefits, safety, therapy, terms, planning, and caregiver tools.</small></button>
+  </div>`;
+  bindRouteButtons();
+}
+// Each entry already has a place for future media. Empty sources create no
+// image or video elements, so this browser build carries no media overhead.
+const CAREGIVER_TERMS = [
+  ["AAC", "AAC stands for Augmentative and Alternative Communication. It simply means using another way to help someone communicate—like pictures, signs, a letter board, or a device that speaks. AAC can be used alongside speech, and it does not stop a child from learning to talk."],
+  ["ASD Level 1", "ASD Level 1 generally means a person needs some support in everyday life. They may communicate well but still find things like social situations, changes, planning, or sensory input difficult. The help they need can change from one setting or day to another, and the level does not tell you their intelligence or potential."],
+  ["ASD Level 2", "ASD Level 2 generally means a person needs more noticeable or consistent support. Communication, changes in routine, sensory needs, or daily tasks may be harder to manage without help. Their needs can still vary a lot by skill, setting, stress, and stage of life."],
+  ["ASD Level 3", "ASD Level 3 generally means a person needs very substantial, ongoing support in daily life. They may need a great deal of help with communication, safety, transitions, sensory needs, or personal care. This level describes support needs—not intelligence, personality, worth, or what someone may learn over time."],
+  ["Autistic burnout", "Autistic burnout is a deep kind of exhaustion that can happen after someone has spent a long time coping with stress, demands, sensory strain, or hiding parts of themselves. They may have less energy, find everyday skills harder, or need more quiet and recovery time. Rest, fewer demands, predictability, and understanding can help."],
+  ["Dysregulation", "Dysregulation means the nervous system is having a hard time handling feelings, sensory input, or what is being asked in that moment. A child may become upset, very active, withdrawn, or unable to do things they normally can. It helps to see the behavior as a sign that they need support, not as simple disobedience."],
+  ["Echolalia", "Echolalia is when someone repeats words or phrases they have heard from people, shows, songs, or earlier moments. The repetition may happen right away or much later. It can be a way to communicate, work out language, practice, remember something, or feel comforted."],
+  ["Elopement", "Elopement means leaving a safe place or caregiver unexpectedly. A child may be trying to reach something interesting, get away from something uncomfortable, or meet a need they cannot explain yet. Because it can be dangerous, the focus should be on safety, prevention, supervision, and figuring out what is drawing them away."],
+  ["Executive functioning", "Executive functioning is the set of skills that helps us get started, remember steps, plan, switch tasks, manage time, and control impulses. A child may truly understand what to do and still need help beginning or finishing it. Visual steps, reminders, and doing the first part together can make a big difference."],
+  ["Gestalt language processing", "Some children seem to learn language in whole chunks—like a full phrase from a song or show—before they learn to mix and match individual words. This is often called gestalt language processing. Echolalia may be part of that journey, and the repeated phrase may carry a real message even if it sounds out of place to someone else."],
+  ["Interoception", "Interoception is the sense that tells us what is happening inside our body—things like hunger, thirst, pain, temperature, a racing heart, or needing the bathroom. Some children notice these signals very strongly, very late, or only sometimes, so they may need help learning what each feeling means."],
+  ["Joint attention", "Joint attention is simply two people sharing interest in the same thing. A child might look back and forth, point, make a sound, move their body, or bring you an object to share the moment. It does not have to involve eye contact to count."],
+  ["Leading / hand leading", "Leading or hand leading is when a child takes someone's hand, wrist, or arm and guides them toward a place, object, or action. It may be their way of saying ‘come with me,’ ‘I want that,’ ‘help me,’ ‘open this,’ or ‘do this with me’—especially when spoken words, signs, or an AAC device are not available quickly enough. Treat it as meaningful communication: follow safely when you can, name what you think they are asking for, and model a simple word, sign, picture, or AAC button without making them repeat it before receiving help. If the meaning is unclear, offer a couple of choices and watch where they look, reach, or lead next."],
+  ["Masking", "Masking is when an autistic person hides or holds back natural behaviors to fit in or avoid negative reactions. They might force eye contact, copy other people, stay quiet about discomfort, or stop themselves from stimming. It can take a lot of energy and may leave someone anxious, exhausted, or burned out afterward."],
+  ["Meltdown", "A meltdown happens when everything becomes too much and the person loses the ability to stay in control. Noise, feelings, demands, communication trouble, or a day full of small stresses can all build toward one. It is not manipulation or a choice; the most helpful response is usually safety, fewer words, less pressure, and time to recover.", { image: "assets/visual-guides/understanding-autistic-meltdowns.webp", alt: "Understanding autistic meltdowns visual guide", caption: "Tap to enlarge the visual guide." }],
+  ["Neurodiversity", "Neurodiversity is the idea that brains naturally work in different ways. People can think, learn, communicate, focus, and experience the world differently from one another. Those differences can include strengths and real disabilities at the same time, and everyone deserves the support that helps them live well."],
+  ["Proprioception", "Proprioception is the body's sense of where it is and how its muscles and joints are moving. Pushing, pulling, carrying, climbing, jumping, or firm pressure can feel calming and organizing for some children. You may hear people call these activities ‘heavy work.’"],
+  ["Regression", "Regression means losing a skill that was already being used—such as words, gestures, play, social connection, toileting, movement, or a daily-living skill. It is different from having an off day, using a skill less during stress, or temporarily needing more help. Some autistic children experience developmental regression, often in the toddler years, but a new, sudden, or continuing loss of skills deserves prompt attention from the child’s healthcare professional. Write down what changed and when, and mention illness, pain, sleep, seizures, medication changes, stress, or other changes you noticed. Regression is not the child’s fault, and it does not erase who they are or everything they have learned."],
+  ["Scripting", "Scripting is using remembered lines from shows, songs, books, or past conversations. A script may help a child communicate, play, understand what happened, or calm themselves. Even when the words came from somewhere else, the child may be using them to say something meaningful."],
+  ["Sensory avoider", "A sensory avoider is someone who tries to get away from certain sounds, lights, textures, smells, tastes, touch, or movement because the input feels too strong or uncomfortable. Avoiding it is often their way of protecting themselves, not being difficult."],
+  ["Sensory overload", "Sensory overload happens when the brain is receiving more sights, sounds, touch, movement, or other input than it can comfortably sort through. A child might cover their ears, run away, cry, become agitated, shut down, or have a meltdown. A quieter space and less pressure can help their system settle."],
+  ["Sensory seeker", "A sensory seeker is someone who looks for extra sensory input. They might spin, crash into cushions, chew, touch everything, make loud sounds, or stay in motion. Offering safe ways to get that input can work better than simply asking them to stop."],
+  ["Shutdown", "A shutdown is an inward response to being overwhelmed. A person may become very quiet, stop speaking or moving, seem sleepy, withdraw, or respond less than usual. They are not ignoring you; their system may need quiet, safety, fewer demands, and time before they can reconnect."],
+  ["Special interest", "A special interest is something a person feels deeply drawn to and may know a great deal about. It can bring joy, comfort, confidence, motivation, and connection. Joining a child in that interest can also be a wonderful way to build trust and support learning."],
+  ["Stimming", "Stimming means repeating a movement, sound, or action—such as rocking, hand movements, humming, pacing, or repeating sounds. It may help a person feel calm, express excitement, focus, or get the sensory input they need. If a stim is safe, it usually does not need to be stopped.", { image: "assets/visual-guides/stimming-examples.webp", alt: "10 ways stimming may look visual guide", caption: "Tap to enlarge the visual guide." }],
+  ["Tantrum", "A tantrum is usually an expression of frustration tied to wanting or avoiding something, and it often settles when the situation changes. A meltdown comes from being overwhelmed and cannot simply be switched off by giving in. From the outside they can look similar, so it helps to consider what happened beforehand and what actually helps the child recover."],
+  ["Vestibular sense", "The vestibular sense helps the body understand movement and balance. Swinging, spinning, climbing, jumping, and changing head position all involve this system. Some children seek a lot of this movement, while others may feel uncomfortable or unsteady with it."],
+].map(([term, explanation, media = {}]) => ({
+  term,
+  explanation,
+  media: {
+    image: media.image || "",
+    clip: media.clip || "",
+    alt: media.alt || "",
+    caption: media.caption || "",
+  },
+}));
+
+function renderSkills() {
+  view.innerHTML = `<section class="hero"><h1>📚 Skill Building</h1><p>Practical tools for supporting everyday skills at your child’s pace.</p></section><h2 class="section-title">Daily living</h2><div class="grid"><button class="card-button" data-go="lifeSkills"><span class="emoji">🌟</span><strong>Life Skills Tracker</strong><small>Track new daily-living skills, practice, help, and independence.</small></button><button class="card-button" data-go="potty"><span class="emoji">🚽</span><strong>Potty Training Tracker</strong><small>Track potty successes and accidents by day.</small></button><button class="card-button" data-go="pottyTips"><span class="emoji">💡</span><strong>Potty Training Tips & Tricks</strong><small>Gentle, practical ideas to support learning and comfort.</small></button><button id="waitingTurnsGuide" class="card-button"><span class="emoji">⏳</span><strong>Waiting & taking turns</strong><small>A visual guide for building predictability, communication, and turn-taking support.</small></button><button id="learningGuide" class="card-button"><span class="emoji">🧠</span><strong>How autistic children learn</strong><small>Strengths-first teaching ideas, prompting, repetition, and generalization.</small></button><button id="strengthsStruggles" class="card-button"><span class="emoji">🧭</span><strong>Strengths & struggles</strong><small>Save a personal learning snapshot for each child.</small></button><button id="diaperHelp" class="card-button"><span class="emoji">🧷</span><strong>Diapers & pull-ups through Medicaid</strong><small>Coverage questions, medical necessity, EPSDT, and supplier steps.</small></button><button id="imaginationLibrary" class="card-button"><span class="emoji">📚</span><strong>Imagination Library</strong><small>Check for free monthly books for children from birth to age five.</small></button><button id="skillProducts" class="card-button"><span class="emoji">🛍️</span><strong>Skill-building products</strong><small>Product categories and safer shopping questions.</small></button></div>`;
+  bindRouteButtons();
+  $("#waitingTurnsGuide").onclick=()=>openInfoGuide("⏳ Waiting & taking turns",visualGuideFigure("waiting-taking-turns.webp","Waiting and taking turns"));
+  $("#learningGuide").onclick=()=>openInfoGuide("🧠 How autistic children learn",`<p>There is no single autistic learning style. Begin with the individual child: what gets their attention, how they communicate, what sensory input helps, what makes a task meaningful, and how much language they can process in that moment.</p><ul><li>Show as well as tell: use modeling, pictures, gestures, objects, or a short visual sequence.</li><li>Break a task into small teachable steps and celebrate real attempts.</li><li>Use interests as a bridge to connection and practice—not as something the child must earn back.</li><li>Give processing time before repeating a direction.</li><li>Practice in several places and with several people; a learned skill may not automatically transfer.</li><li>Reduce prompts gradually so help does not become part of the task forever.</li><li>Presume competence while still providing the support the child needs.</li></ul>`);
+  $("#strengthsStruggles").onclick=openLearningSnapshot;
+  $("#diaperHelp").onclick=()=>openInfoGuide("🧷 Diapers and pull-ups through Medicaid",`<p>Some Medicaid programs cover incontinence supplies for an enrolled child when they are medically necessary, often after the age when continence is normally expected. Rules, ages, quantities, diagnoses, and approved suppliers vary by state and plan.</p><ol><li>Call the number on the Medicaid card and ask for the written benefit and prior-authorization criteria for pediatric incontinence supplies.</li><li>Ask the child’s clinician to document the condition, expected duration, size, daily quantity, skin or hygiene risks, and why ordinary retail supplies do not meet the need.</li><li>Use an in-network durable-medical-equipment or medical-supply company; many suppliers help gather the prescription and authorization.</li><li>If denied, request the written reason and appeal instructions. Ask whether EPSDT applies to the medically necessary item.</li></ol><p><a href="https://www.medicaid.gov/medicaid/benefits/early-and-periodic-screening-diagnostic-and-treatment/index.html" target="_blank" rel="noopener">Medicaid EPSDT information ↗</a></p><div class="banner">Coverage is not automatic based on an autism diagnosis alone.</div>`);
+  $("#imaginationLibrary").onclick=()=>openInfoGuide("📚 Dolly Parton’s Imagination Library",`<p>Participating local programs mail one free, age-appropriate book each month from birth until a child turns five. Availability depends on the local program serving the child’s address; it is not an autism-only benefit and generally has no income test.</p><p><a href="https://imaginationlibrary.com/usa/find-my-program/" target="_blank" rel="noopener">Check availability by ZIP code ↗</a></p>`);
+  $("#skillProducts").onclick=()=>openProductGuide("Skill building",["Visual schedules and first-then boards","Easy-grip utensils and open-cup trainers","Dressing practice boards and adaptive fasteners","Toothbrushing timers and mirrors","Footstools, toilet inserts, and easy clothing","Task boxes, matching sets, and fine-motor tools"]);
+}
+
+const INFO_GUIDE_VISUALS = {
+  "🧭 Signs of autism": [
+    ["autism-can-look-different.webp", "Autism can look different"],
+    ["things-autistic-children-want-known.webp", "12 things autistic children want you to know"],
+    ["things-autistic-child-may-want-adults-to-know.webp", "10 things an autistic child may want adults to know"],
+  ],
+  "🫶 Understanding aggressive behaviors": [
+    ["behavior-is-communication.webp", "Behavior is communication"],
+    ["distress-unsafe.webp", "When distress becomes unsafe"],
+    ["distress-at-home.webp", "Why distress may show up most at home"],
+  ],
+};
+function openInfoGuide(title, html){const visuals=(INFO_GUIDE_VISUALS[title]||[]).map(([file,label])=>visualGuideFigure(file,label)).join("");modalBody.innerHTML=`<h2>${title}</h2><div class="education-body">${html}${visuals}</div><button id="closeInfoGuide" class="btn full">Close</button>`;modal.showModal();$("#closeInfoGuide").onclick=()=>modal.close();}
+function openProductGuide(title, items){openInfoGuide(`🛍️ ${title} products`,`<p>These are shopping categories, not endorsements. Choose products around the child’s actual goal, age, size, motor skills, sensory preferences, cleaning needs, supervision, and choking or entrapment risks.</p><ul>${items.map((x)=>`<li>${esc(x)}</li>`).join("")}</ul><p><a href="https://www.amazon.com/s?k=${encodeURIComponent(title+" autism tools")}" target="_blank" rel="noopener">Search products ↗</a></p><div class="banner">A product should support participation or safety—not force a child to look less autistic.</div>`);}
+async function openLearningSnapshot(){const profiles=await getAll("profiles");if(!profiles.length)return alert("Create a child profile first.");let profileId=profiles[0].id;const draw=async()=>{const value=await getSetting(`learningSnapshot:${profileId}`,{});modalBody.innerHTML=`<h2>🧭 Strengths & struggles</h2><div class="form-grid"><div class="field"><label>Child</label><select id="snapshotProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Strengths</label><textarea id="snapshotStrengths" placeholder="What comes naturally? What brings confidence and joy?">${esc(value.strengths||"")}</textarea></div><div class="field"><label>Struggles or barriers</label><textarea id="snapshotStruggles" placeholder="What is difficult, exhausting, painful, confusing, or still developing?">${esc(value.struggles||"")}</textarea></div><div class="field"><label>What helps</label><textarea id="snapshotHelps">${esc(value.helps||"")}</textarea></div><button id="saveSnapshot" class="btn">Save snapshot</button></div>`;$("#snapshotProfile").onchange=async(e)=>{profileId=e.target.value;await draw();};$("#saveSnapshot").onclick=async()=>{await setSetting(`learningSnapshot:${profileId}`,{strengths:$("#snapshotStrengths").value.trim(),struggles:$("#snapshotStruggles").value.trim(),helps:$("#snapshotHelps").value.trim(),updatedAt:nowISO()});alert("Learning snapshot saved.");};};await draw();modal.showModal();}
+
+async function renderPottyTracker() {
+  const profiles = await getAll("profiles"), logs = await getAll("pottyLogs");
+  if (!profiles.length) {
+    view.innerHTML = `<div class="empty card"><div class="big">🚽</div><h2>Create a child profile first</h2><p>Potty-training records are connected to a child.</p><button id="pottyCreateProfile" class="btn">Create profile</button></div>`;
+    $("#pottyCreateProfile").onclick = openProfileForm;
+    return;
+  }
+  view.innerHTML = `<section class="hero"><h1>🚽 Potty Training Tracker</h1><p>Record each day with patience, privacy, and no comparison.</p></section><div class="potty-entry card"><div class="field"><label>Child</label><select id="pottyProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="pottyDate" type="date" value="${isoToday()}"></div><div class="potty-count-grid"><label><span>💧 Pees in potty</span><input id="pottyPees" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>💩 Poops in potty</span><input id="pottyPoops" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>🧺 Accidents</span><input id="pottyAccidents" type="number" min="0" step="1" inputmode="numeric" value="0"></label></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="pottyNotes" placeholder="What helped, timing, signs noticed, or anything worth remembering"></textarea></div><button id="savePottyDay" class="btn full" type="button">Save day</button></div><div id="pottyStats"></div><h2 class="section-title">Recent days</h2><div id="pottyHistory" class="potty-history"></div>`;
+  const selectedLogs = () => logs.filter((x) => x.profileId === $("#pottyProfile").value).sort((a, b) => b.date.localeCompare(a.date));
+  const loadDay = () => {
+    const item = logs.find((x) => x.profileId === $("#pottyProfile").value && x.date === $("#pottyDate").value);
+    $("#pottyPees").value = item?.pees ?? 0; $("#pottyPoops").value = item?.poops ?? 0; $("#pottyAccidents").value = item?.accidents ?? 0; $("#pottyNotes").value = item?.notes || "";
+    $("#savePottyDay").textContent = item ? "Update day" : "Save day";
+  };
+  const draw = () => {
+    const shown = selectedLogs(), recent = shown.filter((x) => x.date >= new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)), sum = (key) => recent.reduce((total, x) => total + Number(x[key] || 0), 0);
+    $("#pottyStats").innerHTML = `<h2 class="section-title">Last 7 days</h2><div class="potty-stats"><div><strong>${sum("pees")}</strong><span>Pees in potty</span></div><div><strong>${sum("poops")}</strong><span>Poops in potty</span></div><div><strong>${sum("accidents")}</strong><span>Accidents</span></div></div>`;
+    $("#pottyHistory").innerHTML = shown.length ? shown.map((x) => `<div class="potty-day card" data-id="${x.id}"><div><strong>${fmtDate(x.date)}</strong><span>💧 ${Number(x.pees || 0)} pee • 💩 ${Number(x.poops || 0)} poop • 🧺 ${Number(x.accidents || 0)} ${Number(x.accidents || 0) === 1 ? "accident" : "accidents"}</span>${x.notes ? `<p>${esc(x.notes)}</p>` : ""}</div><div><button class="small-action edit-potty" data-id="${x.id}" type="button">Edit</button><button class="small-action danger-link delete-potty" data-id="${x.id}" type="button">Delete</button></div></div>`).join("") : `<div class="empty card"><p>No potty-training days recorded yet.</p></div>`;
+    document.querySelectorAll(".edit-potty").forEach((button) => button.onclick = () => { const item = logs.find((x) => x.id === button.dataset.id); $("#pottyDate").value = item.date; loadDay(); scrollTo({ top: 0, behavior: "smooth" }); });
+    document.querySelectorAll(".delete-potty").forEach((button) => button.onclick = async () => { const item = logs.find((x) => x.id === button.dataset.id); if (!item || !confirm(`Delete the potty-training record for ${fmtDate(item.date)}?`)) return; await createSnapshot(`Before deleting potty-training day ${item.date}`); await deleteItem("pottyLogs", item.id); logs.splice(logs.indexOf(item), 1); loadDay(); draw(); });
+  };
+  $("#pottyProfile").onchange = () => { loadDay(); draw(); };
+  $("#pottyDate").onchange = loadDay;
+  $("#savePottyDay").onclick = async () => {
+    const profileId = $("#pottyProfile").value, date = $("#pottyDate").value, cleanCount = (id) => Math.max(0, Math.floor(Number($(id).value) || 0));
+    if (!date) return alert("Choose a day to record.");
+    const old = logs.find((x) => x.profileId === profileId && x.date === date), item = { id: old?.id || `potty-${profileId}-${date}`, profileId, date, pees: cleanCount("#pottyPees"), poops: cleanCount("#pottyPoops"), accidents: cleanCount("#pottyAccidents"), notes: $("#pottyNotes").value.trim(), createdAt: old?.createdAt || nowISO(), updatedAt: nowISO(), syncStatus: "local" };
+    await put("pottyLogs", item);
+    if (old) Object.assign(old, item); else logs.push(item);
+    loadDay(); draw(); alert("Potty-training day saved.");
+  };
+  loadDay(); draw();
+}
+
+function renderPottyTips() {
+  const tips = [
+    ["Look for readiness, not a deadline", "Signs may include staying dry longer, noticing a wet or dirty diaper, hiding to go, showing interest in the toilet, or communicating before or after going. Readiness can be uneven and may come and go."],
+    ["Build a predictable routine", "Offer calm toilet opportunities at natural times such as after waking, after meals, before leaving home, and before bed. Keep the routine brief and consistent."],
+    ["Use a simple visual sequence", "Pictures or a short list—pants down, sit, wipe, flush, wash hands—can make the steps easier to understand and reduce verbal overload."],
+    ["Support communication", "Teach and honor a consistent word, sign, picture, or AAC button for bathroom. Respond to attempts even when they come after the child has already gone."],
+    ["Make the bathroom sensory-friendly", "Consider lighting, fan and flush noise, seat temperature, foot support, smells, and clothing textures. A stable footstool and smaller seat insert can help a child feel secure."],
+    ["Choose easy clothing", "Elastic-waist pants and simple layers reduce the number of steps and make independent success more reachable."],
+    ["Keep praise specific and pressure low", "Notice the exact step: ‘You sat on the potty,’ ‘You told me,’ or ‘Pee went in the potty.’ Avoid shame, punishment, comparison, or forcing a child to remain seated."],
+    ["Treat accidents neutrally", "Use a calm, brief response: ‘Pee goes in the potty. Let’s get clean and try again next time.’ Record patterns without making the accident feel like failure."],
+    ["Watch for patterns", "The tracker can reveal common times, signals, constipation patterns, or environments where success is easier. Use the pattern to adjust reminders rather than increasing pressure."],
+    ["Protect comfort and health", "Constipation, painful stools, urinary symptoms, or sudden regression can make training much harder. Pause pressure and contact the child’s healthcare professional when pain or medical concerns are present."],
+  ];
+  view.innerHTML = `<section class="hero"><h1>💡 Potty Training Tips & Tricks</h1><p>Gentle starting points that can be adapted to your child.</p></section><div class="banner" style="margin-top:16px">Potty training is a skill, not a test. Progress may be non-linear, and comfort and communication come first.</div><div class="tips-list">${tips.map(([title, text]) => `<details class="term-card"><summary>${esc(title)}</summary><p>${esc(text)}</p></details>`).join("")}</div><details class="education-card"><summary>🩲 Help paying for diapers, pull-ups, and continence supplies</summary><div class="education-body"><p>Some Medicaid programs cover medically necessary pediatric incontinence supplies for an enrolled child whose diagnosed condition causes incontinence. An autism diagnosis or turning age 3 does <strong>not</strong> automatically create coverage. Minimum age, covered products, monthly quantities, documentation, prior authorization, suppliers, and out-of-pocket cost vary by state and plan.</p><ol><li>Ask the child’s Medicaid plan whether pediatric diapers, briefs, pull-ons, underpads, wipes, gloves, or barrier products are covered.</li><li>Ask what diagnosis, prescription, medical-necessity documentation, age rule, measurements, and renewal schedule are required.</li><li>Use an in-network medical-supply provider and confirm the exact products and cost before authorizing recurring shipments.</li><li>If denied, request the written reason and appeal instructions rather than assuming the item can never be covered.</li></ol><div class="education-links"><a class="education-link" href="https://www.medicaid.gov/medicaid/benefits/early-and-periodic-screening-diagnostic-and-treatment" target="_blank" rel="noopener noreferrer"><strong>Medicaid EPSDT overview</strong><span>Federal explanation of medically necessary services for Medicaid-enrolled people under age 21; states make individual medical-necessity decisions.</span><small>Official source ↗</small></a><a class="education-link" href="https://urostathealthcare.com/child-incontinence/" target="_blank" rel="noopener noreferrer"><strong>UroStat for Little Ones</strong><span>Checks eligibility and assists with prescriptions, insurance paperwork, and home delivery where the company serves the child’s plan and location.</span><small>Supplier page ↗</small></a><a class="education-link" href="https://www.activstyle.com/home-medical-supplies-medicaid-covered/pediatric-supplies/" target="_blank" rel="noopener noreferrer"><strong>ActivStyle pediatric supplies</strong><span>Explains its state- and plan-dependent Medicaid eligibility process, including diagnosed incontinence and minimum-age rules.</span><small>Supplier page ↗</small></a></div><div class="banner"><strong>Coverage is plan-specific.</strong> Do not send medical or insurance information through an unverified ad or social-media form. Confirm the supplier directly with the insurance plan.</div></div></details>`;
+}
+
+const IEP_REQUEST_TEMPLATE = `[DATE]
+
+To: [PRINCIPAL, SPECIAL EDUCATION DIRECTOR, OR SCHOOL CONTACT]
+[SCHOOL OR DISTRICT NAME]
+[SCHOOL OR DISTRICT ADDRESS OR EMAIL]
+
+Subject: Request for an initial special education evaluation for [CHILD'S FULL NAME], date of birth [DATE OF BIRTH], grade [GRADE]
+
+Dear [NAME OR SCHOOL TEAM],
+
+I am the parent/guardian of [CHILD'S FULL NAME], who attends [SCHOOL NAME]. I am writing to request a full and individual initial evaluation under the Individuals with Disabilities Education Act (IDEA) to determine whether my child is eligible for special education and related services.
+
+I am concerned about [DESCRIBE LEARNING, COMMUNICATION, SENSORY, SOCIAL, BEHAVIORAL, MOTOR, ATTENDANCE, OR DAILY-LIVING CONCERNS]. Examples include [ADD SPECIFIC EXAMPLES, DATES, SCHOOLWORK, REPORTS, OR OBSERVATIONS].
+
+My child has been diagnosed with or is being evaluated for [OPTIONAL: DIAGNOSIS OR CONDITION]. Supports that have been tried include [LIST SUPPORTS, INTERVENTIONS, ACCOMMODATIONS, OR SERVICES], with the following results: [DESCRIBE WHAT HELPED OR WHAT REMAINS DIFFICULT].
+
+Please evaluate every area related to the suspected disability, including any relevant academic, communication, functional, social-emotional, sensory, motor, behavioral, assistive-technology, and related-service needs. Please do not delay this request while waiting for additional classroom interventions.
+
+Please send me the district's written consent form, evaluation procedures, applicable timeline, and a copy of my procedural safeguards. If the district refuses any part of this request, please provide prior written notice explaining the decision and the information used to make it.
+
+I would like to participate in all meetings and receive copies of evaluation reports before the eligibility meeting when possible. Please contact me in writing at [EMAIL OR MAILING ADDRESS] and at [PHONE NUMBER].
+
+Thank you for working with me to understand and support [CHILD'S FIRST NAME].
+
+Sincerely,
+[PARENT/GUARDIAN NAME]
+[ADDRESS]
+[EMAIL]
+[PHONE]`;
+
+const PLAN_504_REQUEST_TEMPLATE = `[DATE]
+
+To: [SCHOOL'S SECTION 504 COORDINATOR, PRINCIPAL, OR SCHOOL CONTACT]
+[SCHOOL OR DISTRICT NAME]
+[SCHOOL OR DISTRICT ADDRESS OR EMAIL]
+
+Subject: Request for a Section 504 evaluation for [CHILD'S FULL NAME], date of birth [DATE OF BIRTH], grade [GRADE]
+
+Dear [NAME OR 504 TEAM],
+
+I am the parent/guardian of [CHILD'S FULL NAME], who attends [SCHOOL NAME]. I am writing to request an evaluation under Section 504 of the Rehabilitation Act to determine whether my child has a disability and needs accommodations, aids, or services to have equal access to school.
+
+My child has or may have [DIAGNOSIS, CONDITION, OR SUSPECTED DISABILITY]. This affects school and major life activities in the following ways: [DESCRIBE LEARNING, COMMUNICATION, CONCENTRATION, THINKING, SENSORY, EATING, SLEEPING, WALKING, BATHROOM, BREATHING, OR OTHER IMPACTS]. Examples include [ADD SPECIFIC EXAMPLES, DATES, ATTENDANCE INFORMATION, SCHOOLWORK, OR OBSERVATIONS].
+
+Helpful supports may include [LIST POSSIBLE ACCOMMODATIONS OR SERVICES—FOR EXAMPLE, MOVEMENT BREAKS, A QUIET TESTING AREA, VISUAL DIRECTIONS, EXTRA PROCESSING TIME, COMMUNICATION SUPPORT, A SENSORY PLAN, OR HEALTH-RELATED SUPPORT]. I understand the school team will consider the individual evaluation information when deciding what is appropriate.
+
+Please let me know in writing what information or consent you need, the school's evaluation process and timeline, and the date of any meeting. Please also provide a copy of the district's Section 504 procedural safeguards. If the school refuses this request, please give me written notice explaining the decision and the information considered.
+
+I would like to participate in the evaluation and placement process. Please contact me in writing at [EMAIL OR MAILING ADDRESS] and at [PHONE NUMBER].
+
+Thank you for working with me to support [CHILD'S FIRST NAME]'s access to school.
+
+Sincerely,
+[PARENT/GUARDIAN NAME]
+[ADDRESS]
+[EMAIL]
+[PHONE]`;
+
+function educationLink(url, title, description, tag = "") {
+  return `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span>${tag ? `<small>${esc(tag)}</small>` : ""}</a>`;
+}
+
+async function copyEducationTemplate(textarea, button) {
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(textarea.value);
+    else {
+      textarea.focus();
+      textarea.select();
+      if (!document.execCommand("copy")) throw new Error("Copy unavailable");
+    }
+    const old = button.textContent;
+    button.textContent = "Copied!";
+    setTimeout(() => (button.textContent = old), 1500);
+  } catch {
+    alert("Copy was blocked by this browser. Select the letter text and use Copy instead.");
+  }
+}
+
+function renderEducationOptions() {
+  view.innerHTML = `<section class="hero"><h1>🎓 Educational Options</h1><p>Understand the paths available and choose what fits your child and family.</p></section>
+  <div class="banner education-note"><strong>A helpful starting point:</strong> There is no single best school setting for every autistic child. The right choice is the one that can support your child’s communication, regulation, safety, learning, and sense of belonging. Homeschool and private-school rules vary by state, so always confirm current requirements locally.</div>
+
+  <h2 class="section-title">Choosing a learning setting</h2>
+  <div class="education-sections">
+    <details class="education-card" open><summary>🏡 Homeschooling an autistic child</summary><div class="education-body">
+      <p>Homeschooling can offer a quieter environment, flexible pacing, shorter lessons, sensory breaks, interest-led learning, and the freedom to teach different subjects at different levels. It also places planning, recordkeeping, instruction, and much of the cost on the family.</p>
+      <h3>Questions worth asking</h3><ul><li>Does your child learn better one-to-one, through movement, visually, or in short predictable sessions?</li><li>How will you support communication, occupational therapy, speech, social connection, physical activity, and life skills?</li><li>What records, notices, subjects, attendance, assessments, or portfolio does your state require?</li><li>Is the program truly homeschooling, or a public virtual school with public-school rules and services?</li></ul>
+      <p>Start with your state’s education department. Federal special-education services available to independently homeschooled children can differ from those available in public school, and state rules matter.</p>
+      <div class="education-links">${educationLink("https://www.ed.gov/birth-grade-12-education/education-choice/state-regulation-of-private-and-home-schools", "State home and private-school rules", "Choose your state and review its requirements.", "U.S. Department of Education")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧩 Structured, online, and specialized programs</summary><div class="education-body">
+      <p>These options are not interchangeable. Some provide a complete curriculum or accredited online school, while others offer individual classes, downloadable materials, or a focused learning intervention. “Autism-friendly” is not one teaching style, and a certification or program label does not guarantee a good fit for every child.</p>
+
+      <h3>Structured and online programs</h3>
+      <div class="education-links">
+        ${educationLink("https://www.time4learning.com/", "Time4Learning", "A self-paced PreK–12 general homeschool curriculum with multimedia lessons and parent planning and reporting tools. Families can adjust pacing and course placement; it is a curriculum provider rather than an accredited school.", "General homeschool curriculum • Self-paced • Commercial")}
+        ${educationLink("https://miacademy.co/homeschool-curriculum/homeschooling-your-way/special-needs/certified-autism-resource/", "Miacademy and MiaPrep", "Flexible online curriculum spanning elementary through high school platforms, with interactive lessons, adjustable pacing, and optional moderated community features. The platforms are recognized by IBCCES as Certified Autism Resources.", "Online curriculum • Self-paced • Certified Autism Resource")}
+        ${educationLink("https://web.teachtown.com/parents/teachtown-basics-for-parents/", "TeachTown Basics", "Computer-delivered and parent-led ABA instruction for learners with moderate to severe disabilities, including autism. It targets adaptive, cognitive, language, math, and social-emotional skills and is an intervention rather than a complete general curriculum.", "Structured intervention • Developmentally ages 2–7 • ABA-based")}
+        ${educationLink("https://outschool.com/online-classes/neurodivergent-homeschool", "Outschool", "A marketplace for live small-group classes, one-to-one tutoring, social groups, and self-paced classes, including options designed for neurodivergent learners. Instructor experience and accommodations vary by class.", "Individual classes • Live, 1:1, or self-paced • Not a complete school")}
+        ${educationLink("https://www.acellusacademy.com/online-homeschool-program/", "Acellus Academy", "An accredited K–12 online school with self-paced courses, year-round enrollment, core subjects, electives, and high-school diploma pathways. It is not specifically an autism program, so families should evaluate sensory, communication, and support fit.", "Accredited online school • K–12 • Self-paced")}
+        ${educationLink("https://brilliantmicroschools.org/", "Brilliant Microschools", "An accredited K–12 online private school for students who learn differently, offering small live classes, certified teachers, structured routines, flexible pacing, and personalized learning pathways.", "Accredited online school • K–12 • Small live classes")}
+      </div>
+
+      <h3>Specialized and subject-specific curricula</h3>
+      <div class="education-links">
+        ${educationLink("https://shop.theautismhelper.com/pages/curriculum", "The Autism Helper Curriculum", "Visual, leveled curriculum materials across language arts, math, science, social studies, functional literacy, and functional math. These are teaching resources rather than an accredited school.", "Leveled special-education materials • Downloadable • Commercial")}
+        ${educationLink("https://www.gemmlearning.com/programs/fast-forword/", "Gemm Learning and Fast ForWord", "A remotely coached, adaptive reading and language intervention that works on processing, working memory, attention, sequencing, phonics, fluency, and comprehension. It is a focused intervention, not a complete homeschool curriculum.", "Reading and language intervention • Ages 5+ • Remote coaching")}
+        ${educationLink("https://www.theautismoasis.com/programs", "The Autism Oasis", "A homeschool program designed for nonspeaking and minimally speaking autistic learners, with reading, math, science, social studies, and art. An optional AAC module supports academic and everyday communication.", "Specialized homeschool curriculum • Nonspeaking learners • Optional AAC")}
+      </div>
+
+      <h3>Key features to look for</h3>
+      <ul><li><strong>Flexible pacing:</strong> The freedom to slow down, repeat, pause, or move ahead based on daily sensory, communication, and attention needs.</li><li><strong>Visual and predictable structure:</strong> Clear directions, visual schedules, consistent lesson patterns, and interfaces without unnecessary sensory clutter.</li><li><strong>Interest-led adaptations:</strong> Space to use the child’s special interests as a bridge to engagement, practice, communication, and deeper learning.</li><li><strong>Multiple ways to participate:</strong> Speech should not be the only way to answer. Look for typing, pointing, selecting, gestures, hands-on work, and AAC access.</li><li><strong>Meaningful parent controls:</strong> Preview lessons, adjust placement by subject, monitor progress, protect privacy, and turn off distracting or unwanted features.</li></ul>
+
+      <h3>Additional autism teaching resources</h3>
+      <div class="education-links">
+        ${educationLink("https://www.n2y.com/unique-learning-system/accessible-content/", "Unique Learning System", "Standards-based differentiated academics and life-skills content for students with complex learning needs.", "Special education curriculum • Commercial")}
+        ${educationLink("https://starautismprogram.com/curriculum/star-program", "STAR Program", "A structured autism-focused program covering communication, academics, routines, play, and social skills.", "Autism curriculum • Commercial • ABA-based")}
+        ${educationLink("https://starautismprogram.com/curriculum/links-curriculum", "LINKS Curriculum", "School, community, vocational, and independence instruction for older learners.", "Older learners • Commercial • ABA-based")}
+        ${educationLink("https://afirm.fpg.unc.edu/afirm-modules", "AFIRM Modules", "Step-by-step modules and downloadable materials for evidence-based autism practices.", "Free teaching support • Not a full core curriculum")}
+        ${educationLink("https://autisminternetmodules.org/", "Autism Internet Modules", "Learning modules on communication, sensory needs, structured teaching, transitions, and other topics.", "Free learning resource • Not a full core curriculum")}
+      </div>
+      <p class="hint">These links are starting points, not endorsements. Review samples, accessibility, teaching philosophy, cancellation terms, accreditation when relevant, total cost, device requirements, and current state homeschool rules before paying.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🏫 Private, alternative, and specialized schools</summary><div class="education-body">
+      <p>Options may include autism-specific private schools, therapeutic schools, microschools, hybrid programs, Montessori-style settings, public charter or magnet schools, and public virtual schools. A smaller or specialized setting is not automatically a better fit—visit, observe, and ask direct questions.</p>
+      <h3>What to check before enrolling</h3><ul><li>Staff training, class size, communication supports, sensory spaces, behavior approach, restraint and seclusion policies, and family communication.</li><li>Whether the school can provide speech, occupational therapy, AAC support, transportation, nursing, or other services your child needs.</li><li>Accreditation or state approval, tuition and fees, scholarships, refund rules, discipline policies, and how progress is measured.</li><li>Whether students earn a recognized diploma and how transitions back to public school or into adulthood are handled.</li></ul>
+      <p>If a family places a child in private school by choice, the child may not have the same individual entitlement to IDEA services they would have in public school. The local district still has child-find responsibilities, so ask the district how evaluation and any available services work before enrolling.</p>
+      <div class="education-links">${educationLink("https://nces.ed.gov/surveys/pss/privateschoolsearch/", "Search private schools", "Find private schools by location and program details; listing does not mean endorsement or accreditation.", "National Center for Education Statistics")}${educationLink("https://nces.ed.gov/ccd/schoolsearch/", "Search public schools", "Explore public, charter, magnet, virtual, alternative, and special-education schools.", "National Center for Education Statistics")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📘 Understanding an IEP</summary><div class="education-body">
+      <p>An Individualized Education Program, or IEP, is a written plan under IDEA for an eligible student who needs specially designed instruction. It is built by a team that includes the parent. An IEP can include present levels, measurable goals, accommodations, specialized instruction, related services such as speech or occupational therapy, assistive technology, behavior supports, transportation, and how progress will be reported.</p>
+      <p>A medical diagnosis does not automatically create an IEP, and good grades do not automatically rule one out. The school evaluates how the suspected disability affects educational needs, including functional needs. A parent can request an evaluation. Federal rules generally call for the initial evaluation within 60 days after parental consent unless the state uses its own timeline.</p>
+      <h3>Useful public-school terms</h3><ul><li><strong>Child Find:</strong> the school system’s duty to identify, locate, and evaluate children who may need special education.</li><li><strong>FAPE:</strong> a free appropriate public education designed around the child’s individual needs.</li><li><strong>LRE:</strong> learning with nondisabled peers as much as is appropriate for the individual child.</li><li><strong>Prior Written Notice:</strong> the school’s written explanation when it proposes or refuses certain actions.</li><li><strong>Procedural safeguards:</strong> the family’s notice of rights, including records, consent, complaints, mediation, and due process.</li><li><strong>Independent Educational Evaluation:</strong> in certain circumstances, a parent who disagrees with the school’s evaluation may request an outside evaluation at public expense.</li></ul>
+      <div class="education-links">${educationLink("https://sites.ed.gov/idea/parents-families/", "IDEA resources for parents and families", "Federal information about evaluations, IEPs, safeguards, and model forms.", "U.S. Department of Education")}${educationLink("https://www.parentcenterhub.org/find-your-center/", "Find your Parent Training and Information Center", "Locate a federally funded parent center for local guidance and training.", "Center for Parent Information and Resources")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📝 Understanding a 504 plan</summary><div class="education-body">
+      <p>A Section 504 plan helps a qualified student with a disability have equal access to school. It may include accommodations, aids, and services such as a quieter testing space, visual directions, breaks, health supports, communication access, extra processing time, or changes to how work is completed.</p>
+      <p>A 504 plan does not usually include the specially designed instruction and annual goals found in an IEP. Section 504 eligibility can be broader, and a student may qualify even when they do not need special education under IDEA. The school must use evaluation and placement procedures rather than relying on a diagnosis alone.</p>
+      <div class="education-links">${educationLink("https://www.ed.gov/laws-and-policy/individuals-disabilities/section-504/civil-rights-of-students-hidden-disabilities-and-section-504", "Section 504 and students with disabilities", "Federal explanation of evaluation, placement, services, and parent rights.", "U.S. Department of Education Office for Civil Rights")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧰 Other public-school supports to ask about</summary><div class="education-body"><ul><li>Speech-language, occupational therapy, physical therapy, counseling, nursing, transportation, orientation and mobility, or other related services when needed for education.</li><li>AAC and assistive-technology evaluation, devices, training, and access throughout the school day.</li><li>Visual schedules, sensory breaks, alternative seating, quiet spaces, communication supports, and staff training.</li><li>A Functional Behavioral Assessment and a positive Behavior Intervention Plan when behavior is interfering with learning or communicating an unmet need.</li><li>Extended School Year services when needed to provide FAPE—not simply because a child has a disability.</li><li>Transition planning for life after high school when the child reaches the age required by federal and state rules.</li><li>Your state’s Parent Training and Information Center, special-education complaint process, mediation, and Office for Civil Rights complaint information.</li></ul></div></details>
+  </div>
+
+  <h2 class="section-title">Letter templates</h2>
+  <div class="banner"><strong>Before sending:</strong> Replace every item in brackets, add specific examples, keep a dated copy, and send it in a way you can document. District forms and timelines vary. These templates provide general educational information and are not legal advice.</div>
+  <div class="education-templates">
+    <details class="education-card"><summary>📄 Request an IDEA special-education evaluation</summary><div class="education-body"><p>This asks the school to evaluate whether your child is eligible for an IEP. Edit the letter directly below.</p><textarea id="iepLetter" class="template-letter" aria-label="Editable IDEA evaluation request letter">${esc(IEP_REQUEST_TEMPLATE)}</textarea><div class="btn-row"><button id="copyIepLetter" class="btn" type="button">Copy letter</button><button id="downloadIepLetter" class="btn secondary" type="button">Download .txt</button></div></div></details>
+    <details class="education-card"><summary>📄 Request a Section 504 evaluation</summary><div class="education-body"><p>This asks the school to evaluate whether your child needs a 504 plan. Edit the letter directly below.</p><textarea id="plan504Letter" class="template-letter" aria-label="Editable Section 504 evaluation request letter">${esc(PLAN_504_REQUEST_TEMPLATE)}</textarea><div class="btn-row"><button id="copy504Letter" class="btn" type="button">Copy letter</button><button id="download504Letter" class="btn secondary" type="button">Download .txt</button></div></div></details>
+  </div>`;
+
+  const iep = $("#iepLetter"), plan504 = $("#plan504Letter");
+  $("#copyIepLetter").onclick = (event) => copyEducationTemplate(iep, event.currentTarget);
+  $("#copy504Letter").onclick = (event) => copyEducationTemplate(plan504, event.currentTarget);
+  $("#downloadIepLetter").onclick = () => downloadBlob(new Blob([iep.value], { type: "text/plain;charset=utf-8" }), "IEP-Evaluation-Request-Template.txt");
+  $("#download504Letter").onclick = () => downloadBlob(new Blob([plan504.value], { type: "text/plain;charset=utf-8" }), "Section-504-Evaluation-Request-Template.txt");
+}
+
+function renderAssessmentInformation() {
+  const sourceLink = (url, title, description) =>
+    `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span></a>`;
+  view.innerHTML = `<section class="hero"><h1>🧭 Autism Assessment Information</h1><p>A friendly walkthrough of what the process may look like from first concern to written report.</p></section>
+  <div class="banner assessment-note"><strong>First, take a breath:</strong> An assessment is not a test your child has to pass. The goal is to understand how they communicate, learn, play, handle sensory input, and move through daily life—along with the support that may help them thrive.</div>
+
+  <div class="assessment-quick card">
+    <div><strong>18 & 24 months</strong><span>Routine autism screening ages</span></div>
+    <div><strong>Any age</strong><span>Assessment when concerns exist</span></div>
+    <div><strong>Several hours</strong><span>Common full-evaluation range</span></div>
+  </div>
+  <p class="hint assessment-range-note">These are general guideposts, not promises. The child’s age, needs, clinic, provider team, and required testing can change the timing.</p>
+
+  <h2 class="section-title">Understanding the process</h2>
+  <div class="education-sections assessment-sections">
+    <details class="education-card" open><summary>🌱 How early can an assessment be done?</summary><div class="education-body">
+      <p>You do not have to wait for a certain birthday to bring up a developmental concern. A pediatrician, early-intervention program, school system, or specialist can begin looking at a child’s development whenever a caregiver or professional is concerned.</p>
+      <ul><li>The American Academy of Pediatrics recommends general developmental screening at 9, 18, and 30 months.</li><li>Autism-specific screening is recommended at 18 and 24 months.</li><li>Autism can sometimes be detected at 18 months or younger.</li><li>By age 2, a diagnosis made by an experienced professional can be considered reliable.</li><li>Older children, teenagers, and adults can also be assessed. There is no upper age limit.</li></ul>
+      <p>A screening result does not diagnose autism. It helps decide whether a fuller evaluation would be useful. If you have concerns, you do not need to wait for the next routine screening age.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🔎 Screening and assessment are different</summary><div class="education-body">
+      <p><strong>Developmental monitoring</strong> is the everyday process of noticing how a child plays, learns, communicates, behaves, and moves.</p>
+      <p><strong>Screening</strong> is a short questionnaire or structured check that looks for signs a closer evaluation may be needed. A screening may take only a few minutes and is often completed during a regular appointment. It cannot confirm or rule out autism by itself.</p>
+      <p><strong>A diagnostic evaluation</strong> is a deeper look at developmental history, current behavior, communication, strengths, needs, and daily functioning. It uses information from caregivers plus direct professional observation. There is no blood test, brain scan, or single questionnaire that diagnoses autism.</p>
+    </div></details>
+
+    <details class="education-card"><summary>👥 Who may be involved?</summary><div class="education-body">
+      <p>The assessment may be completed by one experienced clinician or a team. Depending on the child and the clinic, that could include a developmental-behavioral pediatrician, child psychologist or neuropsychologist, pediatric neurologist, child psychiatrist, speech-language pathologist, occupational therapist, or another trained professional.</p>
+      <p>A larger team is not automatically better. What matters is that the clinician is qualified, considers more than one source of information, understands the child’s age and communication style, and explains how the conclusion was reached.</p>
+    </div></details>
+
+    <details class="education-card"><summary>📋 Before the appointment</summary><div class="education-body">
+      <p>The clinic may send intake forms and questionnaires for caregivers, teachers, childcare providers, or therapists. Complete them honestly based on an ordinary day—there is no need to make strengths look smaller or challenges look larger.</p>
+      <h3>Helpful things to gather</h3><ul><li>Birth, medical, developmental, and family history.</li><li>Previous evaluations, therapy reports, school records, IEP or 504 documents, and hearing or vision results.</li><li>A short timeline of milestones, concerns, changes, and any loss of previously used skills.</li><li>Examples from more than one setting, including videos when the clinic allows them.</li><li>A list of medications, diagnoses, allergies, and family questions.</li><li>The child’s usual AAC system, glasses, hearing devices, comfort item, snacks, drink, diapers or toileting supplies, and anything the clinic recommends.</li></ul>
+      <p>Tell the clinic ahead of time about communication needs, mobility, elopement risk, feeding needs, sensory triggers, interpreter needs, or accommodations that could make the visit safer and more comfortable.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🧸 What happens during the assessment?</summary><div class="education-body">
+      <p>For a young child, much of the appointment may look like play. For an older child or adult, it may include conversation, pictures, stories, puzzles, or other structured activities. The clinician is watching how the person communicates, shares attention, responds socially, plays or imagines, handles changes, and uses repetitive movements or interests.</p>
+      <p>The process may include:</p><ul><li>A detailed caregiver interview about early development and current daily life.</li><li>Direct observation using play- or conversation-based activities.</li><li>Autism-focused tools such as the ADOS-2, along with caregiver questionnaires or interviews. No single tool should decide the diagnosis alone.</li><li>Developmental, cognitive, learning, speech-language, motor, sensory, adaptive-living, attention, or emotional testing when appropriate.</li><li>Information from school, childcare, therapists, or other people who know the child.</li><li>A physical or neurological exam, hearing test, vision test, or discussion of genetic testing when clinically appropriate.</li></ul>
+      <p>Your child does not need to perform perfectly. Do not rehearse answers or try to stop natural communication, movement, or stimming. If your child becomes tired or overwhelmed, ask for a break.</p>
+    </div></details>
+
+    <details class="education-card"><summary>⏱️ How long does it take?</summary><div class="education-body">
+      <p>There is no dependable national average because clinics organize assessments differently.</p>
+      <ul><li><strong>Brief screening:</strong> commonly 30 minutes or less and often part of another visit.</li><li><strong>Diagnostic appointment:</strong> commonly about 1½ to 4 hours, although broader testing can take longer.</li><li><strong>Multiple-visit evaluation:</strong> the interview, child observation, additional testing, and feedback may be split across two or more appointments.</li><li><strong>Results:</strong> some clinicians discuss an initial conclusion the same day; a full written report may take days or several weeks.</li><li><strong>Waiting for the first appointment:</strong> this is separate from testing time and can vary greatly by location, insurance, and provider availability.</li></ul>
+      <p>Ask when scheduling: “How many visits should we expect, how long is each visit, when will feedback be given, and when should the written report be ready?”</p>
+    </div></details>
+
+    <details class="education-card"><summary>🧠 What the clinician is deciding</summary><div class="education-body">
+      <p>The clinician compares all of the information with accepted diagnostic criteria. They are looking for a lifelong pattern involving social communication and interaction along with restricted or repetitive behavior, interests, routines, or sensory experiences—and whether those differences affect everyday life.</p>
+      <p>They should also consider other explanations and co-occurring needs, such as language disorder, intellectual disability, ADHD, anxiety, hearing differences, learning disability, sleep problems, motor differences, trauma, or medical concerns. A child can be autistic and have one or more of these needs too.</p>
+      <p>The result may be an autism diagnosis, another diagnosis, no diagnosis, or a need for more information or follow-up over time. Not receiving an autism diagnosis does not mean the caregiver imagined the concerns or that the child does not need support.</p>
+    </div></details>
+
+    <details class="education-card"><summary>📄 Feedback and the written report</summary><div class="education-body">
+      <p>A good feedback visit should explain the conclusion in everyday language, describe the child’s strengths and support needs, answer questions, and provide practical next steps. Ask for a complete written report and review it for factual mistakes.</p>
+      <h3>Questions to ask</h3><ul><li>What information supported the conclusion?</li><li>Were any results uncertain or affected by fatigue, anxiety, language, culture, or the unfamiliar setting?</li><li>What strengths stood out?</li><li>What needs should be addressed first?</li><li>Are speech, occupational therapy, AAC, hearing, medical, genetic, school, or other evaluations recommended?</li><li>Who can help us understand services, insurance requirements, and follow-up?</li><li>When should the child be reevaluated, if at all?</li></ul>
+      <p>A medical autism diagnosis and school eligibility are related but separate. A school conducts its own educational evaluation to decide IDEA or Section 504 eligibility and school services.</p>
+    </div></details>
+
+    <details class="education-card"><summary>🫶 While you are waiting</summary><div class="education-body">
+      <p>You do not need to wait for a final autism diagnosis to ask about help for a developmental concern.</p><ul><li>Talk with the child’s pediatrician and request developmental screening or referrals.</li><li>For a child under 3 in the United States, contact the state’s early-intervention program directly.</li><li>For a child age 3 or older, contact the local public-school system and request an educational evaluation—even if the child is not enrolled or not yet kindergarten age.</li><li>Address specific needs such as hearing, speech-language, feeding, motor, sleep, or safety concerns as referrals become available.</li><li>Keep notes about new skills, communication, sensory patterns, and concerns, but keep enjoying the child rather than turning every day into a test.</li></ul>
+    </div></details>
+
+    <details class="education-card"><summary>🧬 Optional autism research participation</summary><div class="education-body">
+      <p><strong>SPARK for Autism</strong> is a voluntary U.S. research study, not a diagnostic service or treatment program. Eligible autistic people and biological family members can register, answer research questions, and—if they consent to genetic participation—receive saliva-collection kits by mail.</p>
+      <ul><li>Participation is free, but it involves sharing health, family, and genetic information under the study’s consent and privacy terms.</li><li>The main purpose is to support autism research. Do not join expecting a clinical diagnosis, a complete explanation of autism, or guaranteed individual genetic findings.</li><li>If the study returns a potentially relevant finding, discuss it with a qualified healthcare professional or genetic counselor before making medical decisions.</li></ul>
+      <div class="education-links">${sourceLink("https://sparkforautism.org/", "SPARK for Autism", "Current eligibility, consent, privacy information, saliva-kit participation, and other research opportunities.")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>⚖️ When a second opinion may help</summary><div class="education-body">
+      <p>Consider asking questions or seeking another qualified opinion if the assessment relied on only one checklist, ignored caregiver or school information, did not fit the person’s language or culture, dismissed concerns only because of eye contact or good grades, or did not explain the decision clearly.</p>
+      <p>Insurance and program rules differ, so check coverage and referral requirements before arranging another private assessment. For disagreements with a school evaluation, the Educational Options section explains school rights and independent educational evaluations.</p>
+    </div></details>
+  </div>
+
+  <h2 class="section-title">Trusted starting points</h2>
+  <div class="education-links assessment-links">
+    ${sourceLink("https://www.cdc.gov/autism/diagnosis/index.html", "CDC: Screening for Autism", "The steps from developmental monitoring and screening to a formal evaluation.")}
+    ${sourceLink("https://www.cdc.gov/autism/about/index.html", "CDC: About Autism", "Age information, early identification, and how to contact early intervention or the school system.")}
+    ${sourceLink("https://www.nichd.nih.gov/health/topics/autism/conditioninfo/diagnose", "NICHD: How providers diagnose autism", "An overview of screening, caregiver interviews, and comprehensive assessment.")}
+    ${sourceLink("https://www.chop.edu/centers-programs/autism-integrated-care-program/your-childs-experience", "Children’s Hospital of Philadelphia: What to expect", "Examples of appointment length, providers, observation, and testing components.")}
+  </div>
+  <div class="banner assessment-disclaimer"><strong>Important:</strong> This guide offers general caregiver education. It cannot assess or diagnose a child, replace an individualized medical or developmental evaluation, or guarantee a clinic’s timing or process.</div>`;
+}
+
+function renderBenefitsInformation() {
+  const benefitLink = (url, title, description, tag = "") =>
+    `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span>${tag ? `<small>${esc(tag)}</small>` : ""}</a>`;
+  view.innerHTML = `<section class="hero"><h1>🤲 Benefits & Financial Support</h1><p>A calmer place to start when caregiving is stretching the family’s time, energy, and budget.</p></section>
+  <div class="banner benefits-note"><strong>You are allowed to ask for help.</strong> Supporting a child with additional needs can affect work, childcare, transportation, food, housing, insurance, and the caregiver’s own health. Benefits are not a measure of how much you love your child, and using support does not take anything away from another family.</div>
+  <div class="banner benefits-warning"><strong>Eligibility reminder:</strong> An autism diagnosis does not automatically approve a program. Each benefit uses its own disability, daily-functioning, financial, residency, age, and sometimes work-history rules. Dollar limits and tax rules change, and paid-family-caregiver rules vary by state.</div>
+
+  <h2 class="section-title">A simple place to begin</h2>
+  <ol class="benefits-start card"><li><strong>Check broad eligibility.</strong><span>Use the official federal benefit finder, then write down programs that might fit.</span></li><li><strong>Call your state disability and Medicaid systems.</strong><span>Ask specifically about developmental-disability services, HCBS waivers, self-direction, paid family caregivers, respite, family-support funds, and waiting lists.</span></li><li><strong>Explore Social Security.</strong><span>For a minor child, SSI is usually the first disability cash-benefit program to review. Apply even if you are unsure rather than guessing from an online discussion.</span></li><li><strong>Review taxes and workplace benefits.</strong><span>Save receipts and ask about credits, medical deductions, dependent-care benefits, FMLA, and state paid leave.</span></li></ol>
+  <div class="education-links benefits-top-links">${benefitLink("https://www.usa.gov/benefit-finder", "USAGov Benefit Finder", "Answer questions to find federal and state benefits that may fit your household.", "Official government starting point")}${benefitLink("https://acl.gov/nwd/find-help", "Find disability help in your state", "Connect with your state’s No Wrong Door and disability-resource systems.", "Administration for Community Living")}</div>
+
+  <h2 class="section-title">Benefits and support programs</h2>
+  <div class="education-sections benefits-sections">
+    <details class="education-card" open><summary>💜 Can a parent or family member be paid as the caregiver?</summary><div class="education-body">
+      <p>Sometimes—but there is no single nationwide “paid parent caregiver” benefit. Most opportunities come through a state Medicaid home- and community-based services program, waiver, personal-care program, or self-directed service option.</p>
+      <p>When self-direction is available, the person receiving services or their representative may be able to choose, hire, train, and supervise a worker. Some states allow a parent, spouse, or other legally responsible relative to be paid; others limit this, require an exception, or allow only certain relatives.</p>
+      <h3>What eligibility may involve</h3><ul><li>The child qualifies for Medicaid or a Medicaid waiver and meets the program’s functional level-of-care rules.</li><li>An assessment documents hands-on supervision or personal-care needs beyond what is ordinarily expected for a child of the same age.</li><li>The service is authorized in a person-centered plan and funding is available.</li><li>The caregiver completes enrollment, background checks, training, timesheets, electronic visit verification, and payroll requirements.</li><li>The caregiver can be paid only for approved tasks and hours—not every hour spent parenting.</li></ul>
+      <h3>Ask the state these exact questions</h3><ul><li>“Do you have an HCBS or developmental-disability waiver for children with autism?”</li><li>“Does it include self-directed personal care, participant direction, respite, or family-caregiver pay?”</li><li>“Can a legally responsible parent be the paid worker? If only under an exception, what qualifies?”</li><li>“Is there a waiting list, and can we join it before Medicaid eligibility is final?”</li><li>“Are there TEFRA, Katie Beckett, or other pathways that consider the child’s finances rather than the parents’ income?”</li></ul>
+      <div class="education-links">${benefitLink("https://www.usa.gov/disability-caregiver", "Getting paid as a family caregiver", "Federal overview of Medicaid, paid leave, insurance, and caregiver programs.", "USAGov")}${benefitLink("https://www.medicaid.gov/medicaid/long-term-services-supports/self-directed-services", "Medicaid self-directed services", "How participant-directed services and individual budgets work.", "Centers for Medicare & Medicaid Services")}${benefitLink("https://www.medicaid.gov/about-us/where-can-people-get-help-medicaid-chip", "Find your state Medicaid agency", "Official state contacts for eligibility, applications, coverage, and renewals.", "Medicaid.gov")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>💵 SSI for a child</summary><div class="education-body">
+      <p><strong>Supplemental Security Income (SSI)</strong> is a needs-based monthly benefit. A child under 18 may qualify when they have a medically determinable condition that causes marked and severe functional limitations and is expected to last at least 12 months or result in death. The Social Security Administration also reviews household income and resources, including some parental income and resources while the child lives at home.</p>
+      <p>Autism can qualify, but the diagnosis alone is not the decision. SSA looks at how the child functions compared with other children the same age across areas such as learning, communication, relationships, completing tasks, self-care, health, and physical abilities.</p>
+      ${visualGuideFigure("child-ssi-money.webp","Understanding a child's SSI money")}
+      <h3>How to apply</h3><ol><li>Review SSA’s child Disability Starter Kit and gather the checklist items.</li><li>Start the child SSI process through SSA’s application page or call SSA for an appointment.</li><li>List every provider, therapist, school, evaluation, medication, and service with accurate contact information.</li><li>Describe the help, prompting, supervision, recovery time, safety support, and accommodations the child needs on an ordinary difficult day—not only their best day.</li><li>Return forms promptly, keep copies, and tell SSA about changes in income, resources, household, school, or medical care.</li></ol>
+      <h3>Useful records</h3><ul><li>Diagnostic and developmental reports, therapy evaluations, medical records, medication lists, and hospital records.</li><li>IEP, IFSP, 504 plan, school evaluations, attendance, behavior or safety plans, teacher reports, and progress notes.</li><li>Caregiver examples showing frequency, duration, help required, and what happens without support.</li></ul>
+      <h3>What can a child’s SSI be spent on?</h3><p><strong>Regular monthly SSI</strong> is for the child’s current needs. A representative payee should first use it for the child’s food, housing or shelter share, clothing, medical and dental care not otherwise covered, and personal needs. Depending on the child’s needs, appropriate spending can also include items such as hygiene supplies, transportation, education, recreation, therapy, communication supports, and other personal expenses that benefit the child. Save what remains for the child and remember that saved money or a major purchase can affect SSI resource eligibility.</p>
+      <p>Keep the child’s money identifiable, keep records and receipts, and do not use it for the caregiver’s personal expenses. Because household costs are shared, document a reasonable child’s share rather than treating the entire household bill as the child’s expense. Ask SSA before an unusual or major purchase if you are unsure.</p>
+      <div class="banner"><strong>Dedicated account is different:</strong> A large past-due SSI payment for a child may have to go into a separate dedicated account. That money generally cannot pay ordinary food, clothing, or shelter. It is restricted mainly to medical treatment, education or job training and disability-related personal assistance, special equipment, housing modifications, therapy or rehabilitation, and other items SSA approves. Keep dedicated-account receipts and bank statements for at least two years, and contact SSA before an uncertain purchase.</div>
+      <p>If denied, read the notice carefully. Appeal deadlines are generally short, and starting a new application is not always the same as appealing the original decision. A disability attorney or qualified advocate may help, especially at later appeal stages.</p>
+      <div class="education-links">${benefitLink("https://www.ssa.gov/ssi/eligibility", "SSI eligibility", "Current income, resource, and disability basics.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/apply/ssi", "Apply for SSI", "Choose whether the application is for a child or adult and see current process information.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/disability/disability_starter_kits.htm", "Child Disability Starter Kit", "SSA’s checklist, worksheet, and preparation guide.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/pubs/EN-05-10076.pdf", "Guide for Representative Payees", "How monthly benefits should be managed, saved, and documented.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/ssi/spotlights/spot-dedicated-accounts.htm", "Dedicated accounts for children", "Special restrictions for certain large past-due SSI payments.", "Social Security Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧾 SSI versus SSDI—and Disabled Adult Child benefits</summary><div class="education-body">
+      <div class="benefit-compare"><div><strong>SSI</strong><span>Based on disability plus limited income and resources. It does not require the child to have worked. Parental finances can affect a minor child’s eligibility.</span></div><div><strong>SSDI</strong><span>Insurance based on a worker’s Social Security earnings record. A young child normally does not have their own work record for SSDI.</span></div></div>
+      <p>A child may sometimes receive Social Security dependent or survivor benefits when a parent receives retirement or disability benefits or dies. Those are based on the parent’s record and are different from child SSI.</p>
+      <p>At age 18, SSA uses adult disability rules for SSI and generally stops counting parental income under the child-deeming rules. Apply or complete the age-18 review on time even if the family’s income was previously too high.</p>
+      <p>An unmarried adult whose disability began before age 22 may later qualify for <strong>Disabled Adult Child</strong> benefits—also called DAC or Childhood Disability Benefits—on the earnings record of a parent who is retired, disabled, or deceased. Despite the name, this is a Social Security benefit paid to an adult child. Marriage, work, and other rules can affect eligibility.</p>
+      <p>Some people receive both SSDI or DAC and SSI when the Social Security payment is low enough and all SSI rules are met. SSDI is generally connected to Medicare after the applicable waiting period; SSI is commonly connected to Medicaid, but the exact Medicaid connection varies by state.</p>
+      <div class="education-links">${benefitLink("https://www.ssa.gov/disability/eligibility", "SSDI eligibility", "Current disability and work-history rules.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/faqs/en/questions/KA-02053.html", "Social Security benefits for children", "Dependent, student, survivor, and disability-related child benefits.", "Social Security Administration")}${benefitLink("https://www.ssa.gov/OP_Home/handbook/handbook.05/handbook-0518.html", "Disabled Adult Child requirements", "Rules for disability beginning before age 22 on a parent’s record.", "Social Security Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🏥 Medicaid, CHIP, waivers, and services people miss</summary><div class="education-body">
+      <p>Regular Medicaid or CHIP may cover healthcare based on household and state eligibility rules. Medicaid HCBS waivers and state-plan programs can add long-term supports such as respite, personal care, home modifications, community support, assistive technology, case management, and self-directed services.</p>
+      <p>Some disability pathways allow a child to qualify even when parental income is too high for ordinary Medicaid. Names vary and may include Katie Beckett, TEFRA, institutional-deeming, medically needy, or a developmental-disability waiver. Availability, level-of-care rules, premiums, and waiting lists differ by state.</p>
+      <h3>Also ask about</h3><ul><li><strong>EPSDT:</strong> Medicaid’s comprehensive benefit for enrolled people under 21, including medically necessary screening, diagnostic, and treatment services within federal coverage rules.</li><li>Non-emergency medical transportation, case management, disposable medical supplies, AAC, durable medical equipment, therapies, and insurance appeal help.</li><li>State developmental-disability eligibility separate from Medicaid. Applying can open access to service coordination, respite, family-support funds, recreation, or future adult services.</li><li>Joining waiver waiting lists early. Some waits are long, and current needs may change before a slot becomes available.</li></ul>
+      <div class="education-links">${benefitLink("https://www.medicaid.gov/medicaid/home-community-based-services", "Medicaid home- and community-based services", "Federal overview of supports delivered in homes and communities.", "Medicaid.gov")}${benefitLink("https://acl.gov/nwd/find-help", "Find state disability-resource contacts", "State and local systems that help families navigate disability services.", "Administration for Community Living")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🎁 Grants, equipment, and free-resource programs</summary><div class="education-body">
+      <p>Nonprofit grants can sometimes help with communication devices, therapies, safety modifications, sensory equipment, education, camps, or other disability-related needs that insurance and public programs do not cover. Each organization controls its own eligible ages, locations, income review, application window, documentation, and payment method.</p>
+      <div class="education-links">${benefitLink("https://www.act-today.org/apply-for-grant/", "Autism Care Today grants", "Nationwide application cycles for autism-related services or products, with awards generally paid to an approved provider or vendor; military-family and urgent-safety funds may use different rules.", "Check the current application window")}${benefitLink("https://mygoalinc.org/mygoal-autism-grant-program/", "MyGOAL Autism Grant", "A yearly need-based U.S. grant for families caring for an autistic person under 18; current award amount, dates, and required documents are listed by the program.", "Annual program")}${benefitLink("https://autismhopealliance.org/samples/", "Autism Hope Alliance free samples", "Registration usually opens in April and December for selected products from participating companies; contents and availability change.", "Twice-yearly signup")}${benefitLink("https://www.kidswishnetwork.org/", "Kids Wish Network", "Wish and toy programs for children with qualifying life-altering or life-threatening conditions. This is not a general autism sensory-toy grant, so review its nomination criteria.", "Condition-based wish program")}</div>
+      <h3>Before submitting an application</h3><ul><li>Use the organization’s official website and confirm that the application is currently open.</li><li>Ask whether funds go to the family, provider, vendor, or school and whether purchases made before approval can be reimbursed.</li><li>Gather the diagnosis or disability documentation, professional recommendation, estimate, insurance denial, household information, and explanation of functional need the program requests.</li><li>Never pay someone who promises a guaranteed grant, and avoid sending Social Security numbers, medical records, or tax documents through an unverified link.</li></ul>
+      <div class="banner"><strong>Programs and dates change.</strong> Being eligible does not guarantee an award, and a nonprofit listing does not mean More than Measured endorses a treatment, product, provider, or organization.</div>
+    </div></details>
+
+    <details class="education-card"><summary>🫶 Respite and family-support funds</summary><div class="education-body">
+      <p>Respite provides temporary care so a caregiver can rest, handle appointments, spend time with other family members, or simply recover. It may be offered through Medicaid waivers, state developmental-disability agencies, Lifespan Respite programs, family-support grants, nonprofit organizations, faith communities, or employer benefits.</p>
+      <p>Ask whether there are planned and emergency respite options, provider lists, reimbursement programs, summer or after-school supports, and grants for safety equipment, adaptive recreation, transportation, or home modifications.</p>
+      <div class="education-links">${benefitLink("https://acl.gov/programs/support-caregivers/lifespan-respite-care-program", "Lifespan Respite Care", "Information about state systems supporting planned and emergency caregiver breaks.", "Administration for Community Living")}${benefitLink("https://acl.gov/help", "Disability Information and Access Locator", "Help finding local disability, transportation, housing, legal, and community-living resources.", "Administration for Community Living")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧮 Federal tax credits and deductions to review</summary><div class="education-body">
+      <p>Tax rules change yearly, and autism does not automatically meet every tax definition of disability. Keep receipts and discuss your specific facts with a qualified tax professional or a free IRS-certified tax-preparation site.</p>
+      <ul><li><strong>Child Tax Credit or Credit for Other Dependents:</strong> depends on age, dependency, identification-number, residency, support, and income rules.</li><li><strong>Child and Dependent Care Credit:</strong> may apply to qualifying care expenses that allow a caregiver to work or look for work. A dependent under 13 may qualify under the age rule; an older dependent may qualify if incapable of self-care and the other requirements are met.</li><li><strong>Earned Income Tax Credit:</strong> a qualifying child who is permanently and totally disabled can meet the EITC age test at any age, but all other EITC and disability-definition rules still apply.</li><li><strong>Medical expense deduction:</strong> when itemizing, eligible unreimbursed expenses above the applicable threshold may include certain evaluations, therapies, prescribed equipment, medical travel, and—in narrow circumstances—special education when medical care is the principal reason.</li><li><strong>Dependent Care FSA, HSA, or health FSA:</strong> employer plans may provide tax advantages, but reimbursement rules and eligible expenses differ.</li></ul>
+      <p>Do not claim the same expense twice through a tax credit, deduction, FSA, HSA, insurance reimbursement, or another program.</p>
+      <div class="education-links">${benefitLink("https://www.irs.gov/newsroom/tax-benefits-for-parents-and-families", "Tax benefits for parents and families", "Current overview of family credits and basic eligibility.", "Internal Revenue Service")}${benefitLink("https://www.irs.gov/credits-deductions/individuals/child-and-dependent-care-credit-information", "Child and Dependent Care Credit", "Eligibility, qualifying people, care providers, and Form 2441.", "Internal Revenue Service")}${benefitLink("https://www.irs.gov/credits-deductions/individuals/earned-income-tax-credit/disability-and-the-earned-income-tax-credit-eitc", "Disability and the EITC", "How disability affects qualifying-child age rules and documentation.", "Internal Revenue Service")}${benefitLink("https://www.irs.gov/publications/p502", "Publication 502: Medical expenses", "Detailed rules for medical deductions, travel, equipment, therapy, and special education.", "Internal Revenue Service")}${benefitLink("https://www.irs.gov/individuals/free-tax-return-preparation-for-qualifying-taxpayers", "Free IRS-certified tax preparation", "Find VITA or TCE help if the household meets program requirements.", "Internal Revenue Service")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🌱 ABLE accounts and planning without disrupting benefits</summary><div class="education-body">
+      <p>An ABLE account is a tax-advantaged account for qualified disability expenses such as education, housing, transportation, health, assistive technology, employment support, and personal-support services. Beginning in 2026, eligibility generally requires that the disability began before age 46—not that the account was opened before that age.</p>
+      <p>A person does not always have to receive SSI or SSDI to qualify; a disability certification may be another path. Contributions are not generally deductible on a federal return, but qualified withdrawals can be tax-free. Up to $100,000 in an ABLE account is generally excluded from the SSI resource calculation, with additional rules for balances and withdrawals.</p>
+      <p>For larger gifts, inheritances, settlements, or lifelong planning, talk with a qualified special-needs or elder-law attorney before placing money directly in the child’s name. A properly designed special-needs trust may protect eligibility differently from an ordinary account or trust.</p>
+      <div class="education-links">${benefitLink("https://www.irs.gov/newsroom/able-savings-accounts-and-other-tax-benefits-for-persons-with-disabilities", "ABLE account overview", "Qualified expenses, tax treatment, and contribution information.", "Internal Revenue Service")}${benefitLink("https://secure.ssa.gov/poms.NSF/lnx/0501130740", "ABLE accounts and SSI", "Current SSA rules for balances and distributions.", "Social Security Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🧑‍💼 Work leave and employer benefits</summary><div class="education-body">
+      <p>Eligible employees of covered employers may use federal FMLA leave for qualifying care connected to a serious health condition. FMLA is generally job-protected and unpaid, although employer-provided paid leave may run at the same time. State paid-family-leave programs can provide pay in some locations.</p>
+      <p>Ask human resources about intermittent FMLA for appointments or flare-ups, state paid leave, donated leave, flexible scheduling, remote-work policies, Employee Assistance Programs, dependent-care FSAs, health FSAs, and caregiver-resource benefits. Request forms early and keep copies.</p>
+      <div class="education-links">${benefitLink("https://www.dol.gov/agencies/whd/fmla", "Family and Medical Leave Act", "Eligibility, covered employers, qualifying reasons, and how leave works.", "U.S. Department of Labor")}${benefitLink("https://www.dol.gov/agencies/whd/fact-sheets/28k-fmla-adult-children", "FMLA and an adult child with a disability", "When a parent may use leave to care for an adult son or daughter.", "U.S. Department of Labor")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🥕 Food, housing, utilities, and everyday expenses</summary><div class="education-body">
+      <p>Disability-related costs can squeeze a family even when income looks too high for one program. Check each program rather than assuming the answer.</p><ul><li>SNAP for groceries; WIC for eligible pregnant/postpartum caregivers and young children.</li><li>TANF or state cash assistance, childcare subsidies, school meal programs, and summer food programs.</li><li>LIHEAP or state utility assistance, Lifeline phone/internet support, housing programs, and local emergency aid.</li><li>Medicaid transportation, reduced-fare transit, accessible parking when medically appropriate, and nonprofit transportation help.</li><li>211 and local community-action agencies for food, rent, utilities, diapers, transportation, and emergency referrals.</li></ul>
+      <div class="education-links">${benefitLink("https://www.usa.gov/benefit-finder", "Federal benefit finder", "Search for food, housing, healthcare, disability, and family benefits.", "USAGov")}${benefitLink("https://www.ssa.gov/ssi/get-more-help", "Programs that may accompany SSI", "SSA overview of Medicaid, SNAP, TANF, PASS, and ABLE.", "Social Security Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📁 Make applications easier to manage</summary><div class="education-body">
+      <ul><li>Create one benefits folder with applications, case numbers, notices, deadlines, login information, and copies of everything submitted.</li><li>Keep a contact log with the date, agency, representative’s name, phone number, and what was promised.</li><li>Use specific examples of the help the child needs, how often, how long it takes, what happens without help, and how needs compare with a same-age child.</li><li>Open every notice immediately. Approval, renewal, information-request, and appeal deadlines can be short.</li><li>Report required changes and keep proof. Overpayments can happen when income, resources, living arrangements, work, school, or household changes are not reported.</li><li>Be cautious of anyone promising guaranteed approval or “free government money.” Use official application sites and verify fees before sharing personal information.</li></ul>
+    </div></details>
+  </div>
+  <div class="banner benefits-disclaimer"><strong>Important:</strong> This section provides general U.S. caregiver education, not legal, tax, benefits, or financial advice. Program rules change. Confirm current requirements with the administering agency and a qualified professional who can review your family’s circumstances.</div>`;
+}
+
+function renderSafetyInformation() {
+  const safetyLink = (url, title, description, tag = "") =>
+    `<a class="education-link" href="${url}" target="_blank" rel="noopener noreferrer"><strong>${esc(title)} ↗</strong><span>${esc(description)}</span>${tag ? `<small>${esc(tag)}</small>` : ""}</a>`;
+  view.innerHTML = `<section class="hero"><h1>🛟 ASD Safety</h1><p>Practical layers of protection for wandering, travel, water, emergencies, and everyday life.</p></section>
+  <div class="banner safety-note"><strong>This is not about parenting through fear.</strong> Some autistic children have little awareness of traffic, water, strangers, heat, or getting lost—and some cannot reliably tell a helper their name or address. A few calm preparations can give the whole family more breathing room.</div>
+  <div class="banner safety-warning"><strong>Use layers:</strong> No tracker, alarm, identification item, swim lesson, or car seat can be the entire safety plan. Choose safeguards for this child’s actual abilities and update them as the child grows.</div>
+
+  <h2 class="section-title">A strong starting plan</h2>
+  <ol class="benefits-start card safety-start"><li><strong>Prevent when possible.</strong><span>Secure likely exits and hazards while preserving safe fire escape.</span></li><li><strong>Know what draws or overwhelms the child.</strong><span>Water, playgrounds, roads, favorite signs, animals, noise, demands, fear, or sensory overload may shape where they go.</span></li><li><strong>Make the child easier to locate and help.</strong><span>Use current photos, identification, trusted contacts, and an optional location device.</span></li><li><strong>Practice the response.</strong><span>Everyone should know who calls 911, where to search first, and what information to share.</span></li></ol>
+
+  <h2 class="section-title">Safety topics</h2>
+  <div class="education-sections safety-sections">
+    <details class="education-card" open><summary>🚪 Wandering and leaving a safe area</summary><div class="education-body">
+      <p>Wandering—sometimes called elopement—is more than an ordinary toddler dash. It means leaving a safe place or caregiver in a way that could lead to harm. It can happen quickly and is not proof that a caregiver was careless.</p>
+      <h3>Layers that may help</h3><ul><li>Door and window alarms, chimes, securely placed locks, gates, and pool barriers suited to the home and local fire code.</li><li>A visual stop sign, routine, or cue at exits—but never a visual cue as the only barrier.</li><li>Teaching “stop,” “wait,” responding to a name, showing an ID card, and returning to a trusted adult in small, positive steps.</li><li>Tell school, childcare, relatives, and respite workers what wandering looks like, likely destinations, triggers, and who must be notified.</li><li>Keep a current photo, height, weight, clothing description, communication needs, calming approaches, attractions, aversions, and medical information ready.</li></ul>
+      <h3>If the child is missing</h3><ul><li><strong>Call 911 immediately.</strong> Do not wait. Say the child is autistic or otherwise vulnerable, may not respond to their name, and may be drawn to water or traffic.</li><li>Search nearby water first when water is an attraction, while another adult checks other high-risk and favorite locations.</li><li>Give responders a recent photo and explain communication, sensory, approach, and safety needs.</li><li>At a store or attraction, immediately ask staff to begin their missing-child procedure, sometimes called Code Adam.</li></ul>
+      <div class="education-links">${safetyLink("https://www.cdc.gov/child-development/disability-safety/wandering.html", "CDC wandering guidance", "Planning, prevention, identification, safety skills, and first-responder preparation.", "Centers for Disease Control and Prevention")}${safetyLink("https://www.healthychildren.org/English/health-issues/conditions/Autism/Pages/Autism-Wandering-Tips-AAP.aspx", "AAP wandering safety tips", "Home, school, sleep, water, and emergency-planning ideas.", "American Academy of Pediatrics")}${safetyLink("https://nationalautismassociation.org/big-red-safety-box/", "NAA Big Red Safety Box", "A free wandering-prevention and emergency-planning toolkit for eligible U.S. autism families, offered while supplies and funding are available.", "National Autism Association")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>📍 AngelSense, GPS trackers, and locator programs</summary><div class="education-body">
+      <p>Wearable GPS/cellular products such as <strong>AngelSense</strong> and similar devices may provide location updates, geofences, alerts, and caregiver communication. Compare battery life, water resistance, attachment method, cellular coverage, subscription cost, school policy, privacy, and whether the child will tolerate wearing it.</p>
+      <p><strong>Project Lifesaver</strong> is different from an ordinary consumer GPS tracker. Participating public-safety agencies enroll eligible people and use a wearable radio-frequency transmitter and trained search teams. Availability, enrollment rules, equipment, and fees vary locally.</p>
+      <ul><li>Test the device where the family actually goes—not just at home.</li><li>Charge it on a routine and enable low-battery and removal alerts when offered.</li><li>Give access only to trusted caregivers and use a strong, unique account password.</li><li>Do not delay calling 911 while trying to locate a device signal yourself.</li><li>Batteries die, devices can be removed, signals can fail indoors, and cellular service can disappear.</li></ul>
+      <div class="banner"><strong>Product note:</strong> More than Measured does not endorse or receive payment from AngelSense or another tracker. It is named because caregivers commonly ask about it.</div>
+      <div class="education-links">${safetyLink("https://projectlifesaver.org/about-us/where-we-are/", "Find a Project Lifesaver program", "Check whether a participating public-safety agency serves your area.", "Project Lifesaver International")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🚓 Autism and special-needs police registries</summary><div class="education-body">
+      <h3>What is an autism police registry?</h3>
+      <p>An autism or special-needs police registry is a <strong>voluntary local database</strong>. When a program is available, an individual or family can share important information with local law enforcement, 911 dispatchers, emergency management, or another participating public-safety agency before an emergency occurs.</p>
+      <ul><li><strong>Faster, better-informed response:</strong> Dispatchers may be able to alert responding officers before they arrive at a home that an occupant has autism, a communication difference, or another support need.</li><li><strong>Elopement support:</strong> If the person goes missing, responders may already have a current photograph, physical description, communication information, likely destinations, and favorite locations.</li></ul>
+
+      <h3>What information may be included?</h3>
+      <ul><li><strong>Personal details:</strong> Name, home address, emergency contacts, and caregiver phone numbers.</li><li><strong>Physical description:</strong> Height, weight, hair color, identifying features, and a recent photograph.</li><li><strong>Communication style:</strong> Whether the person speaks, is nonspeaking, may not respond to their name, or uses an AAC device, pictures, gestures, or sign language.</li><li><strong>Triggers and behaviors:</strong> Sensitivities to loud noises, sirens, flashing lights, touch, crowds, or particular approaches, along with effective calming and de-escalation techniques.</li><li><strong>Favorite or likely places:</strong> Parks, playgrounds, bodies of water, relatives' homes, stores, transit locations, or other places the person may wander toward.</li><li><strong>Other response needs:</strong> Medical risks, allergies, seizure information, attraction to water or traffic, how to approach safely, and what may increase distress.</li></ul>
+
+      <h3>How to register</h3>
+      <ol><li><strong>Contact local law enforcement:</strong> Call the non-emergency number for the city police department or county sheriff's office and ask whether it maintains an autism, special-needs, vulnerable-person, or emergency registry.</li><li><strong>Check county 911 services:</strong> A regional 911 center, emergency communications office, or emergency-management agency may manage a “special consideration,” “premise alert,” or similar database, sometimes through an online form.</li><li><strong>Ask how the program works:</strong> Find out which agencies and responders can access the information, whether it follows the person away from the registered address, how it is protected, how long it is retained, and how to correct or remove it.</li><li><strong>Keep it updated:</strong> Submit a newer photograph as the person ages and update changes to height, weight, appearance, communication, favorite locations, phone numbers, emergency contacts, or home address.</li></ol>
+
+      <div class="banner"><strong>Important limits:</strong> These programs are not available everywhere and are not a national registry. Registration cannot guarantee a particular response and may not be visible to neighboring jurisdictions. It does not replace identification, a current emergency profile, layered wandering safeguards, or calling 911 immediately when a vulnerable person is missing or in danger.</div>
+    </div></details>
+
+    <details class="education-card"><summary>🪪 Identification for nonspeaking or vulnerable children</summary><div class="education-body">
+      <p>An ID item can speak for a child who cannot reliably give their name, address, or caregiver’s number—especially when frightened or overwhelmed.</p>
+      <ul><li>Medical ID bracelet, silicone band, shoe tag, necklace, watch-band tag, or secure clothing label.</li><li>Communication card in a pocket, backpack, AAC case, school bag, or emergency pouch.</li><li>Vehicle seat-belt sleeve or backpack tag that tells a responder where to find emergency information.</li><li>Temporary ID band or written caregiver number for fairs, parks, travel, and crowded events.</li></ul>
+      <h3>Sample wording</h3><p><em>“I am autistic. I may not speak or answer questions. Please stay with me and call [caregiver name] at [number]. I may be frightened by sirens or touch. I communicate using [AAC, gestures, ASL, or words].”</em></p>
+      <p>Use the least public personal information that still helps. A caregiver phone number is often safer than printing a full home address. Keep it current and teach the child to show it when possible.</p>
+      <div class="education-links">${safetyLink("https://www.medicalert.org/medical-conditions/autism/", "MedicAlert autism medical IDs", "Custom medical IDs and optional 24/7 emergency-response membership for communicating health and contact information.", "MedicAlert Foundation")}${safetyLink("https://www.medicalert.org/what-is-safe-and-found/", "MedicAlert Safe & Found", "A paid protection-plan service that can help families and law enforcement during a wandering emergency; verify current price and included ID offers.", "Current program details")}</div>
+      <div class="banner"><strong>Current-cost correction:</strong> An older MedicAlert Found promotion offered IDs and wandering support at no cost. The current Safe & Found service is generally tied to a paid protection plan, although temporary free-ID promotions or assistance may be available.</div>
+    </div></details>
+
+    <details class="education-card"><summary>🚗 Car seats, harness escaping, and vehicle safety</summary><div class="education-body">
+      <p>Start with the seat that matches the child’s age, height, weight, developmental needs, and manufacturer limits. Keep a child rear-facing or harnessed as long as the approved seat allows, and have the installation checked.</p>
+      <p>If the child unbuckles, escapes the harness, has poor trunk or head control, or cannot safely use an ordinary seat, ask the clinician and a <strong>Child Passenger Safety Technician experienced with special healthcare needs</strong> for an individual evaluation. Specialized restraints may require a prescription, training, different installation, or funding approval.</p>
+      <ul><li>Do not add an aftermarket buckle guard, chest clip, padding, positioning piece, or restraint the car-seat or vehicle manufacturer has not approved.</li><li>Never use a device that could trap the child or prevent a rescuer from quickly releasing them.</li><li>Follow both the car-seat and vehicle manuals, use the top tether when required, register the seat for recalls, and recheck fit as the child grows.</li><li>Use child locks where appropriate, keep keys inaccessible, and teach that a parked vehicle is not a play space.</li></ul>
+      <div class="education-links">${safetyLink("https://www.nhtsa.gov/campaign/right-seat", "Car-seat finder and inspections", "Choose an appropriate restraint and find a certified inspection station.", "National Highway Traffic Safety Administration")}${safetyLink("https://www.nhtsa.gov/vehicle-safety/adapted-vehicles", "Transportation with special needs", "Passenger evaluations, specialized seating, and adapted vehicles.", "National Highway Traffic Safety Administration")}</div>
+    </div></details>
+
+    <details class="education-card"><summary>🏊 Water safety and swim lessons</summary><div class="education-body">
+      <h3>Why are some autistic children drawn to water?</h3>
+      <p>There is no single reason, and not every autistic child loves water. For some, water offers soothing pressure, buoyancy, gentle resistance, repeating movement, sparkling reflections, or predictable sounds. It may feel quieter and easier on the body than a busy room. Other children are fascinated by pouring, ripples, drains, fountains, or reflections. A child may also run toward water while exploring or while trying to escape noise, demands, pain, or overwhelm.</p>
+      <p>Enjoying water can become a wonderful strength and source of regulation. The concern is that a strong attraction may exist before the child understands depth, currents, temperature, slippery edges, or that every body of water is different.</p>
+
+      <div class="banner water-fact"><strong>The drowning risk is real.</strong> Current American Academy of Pediatrics guidance reports that autistic children and adolescents have about <strong>three times the drowning risk</strong> of children without ASD, and fatal drowning often happens after a child wanders into water. Earlier research is often quoted as saying drowning is the “number one cause of death” among autistic children through age 14. A more careful description is that drowning is a <strong>leading cause of unintentional injury death</strong> in autistic children; the older finding should not be read as the number-one cause of every death among all autistic children. The AAP has also reported that wandering preceded nearly 74% of fatal drowning incidents studied among autistic children.</div>
+
+      <h3>Whenever you are around water</h3>
+      <ul><li>Choose one capable adult as the <strong>water watcher</strong>. That person stays close, watches continuously, and does not use a phone, read, drink alcohol, or assume another adult is watching.</li><li>Use <strong>touch supervision</strong> for young children and anyone who is not water competent—stay close enough to reach them immediately.</li><li>At beaches, lakes, rivers, splash pads, parties, and unfamiliar homes, identify the water and exits before settling in. Ask directly whether there is a pool, pond, hot tub, creek, or open gate.</li><li>Use a properly fitted, U.S. Coast Guard-approved life jacket for boating and when the setting, child’s ability, or conditions call for it. Inflatable arm bands and pool toys are not safety devices.</li><li>Teach skills in small steps: wait for permission, enter safely, turn back to the wall, float, tread water, reach an exit, and climb out. Practice with different instructors and settings when possible because a skill learned in one pool may not automatically transfer elsewhere.</li><li>Choose an instructor who accepts AAC, gestures, breaks, sensory supports, repetition, and one-to-one lessons if a group is overwhelming. Consider practicing an unexpected fall into water while wearing ordinary clothes and shoes under qualified supervision.</li><li>Learn CPR, keep a phone nearby, know the exact location or address, and call 911 immediately for a water emergency.</li></ul>
 
       <h3>If you own a pool or hot tub</h3>
       <ul><li>Install a non-climbable, <strong>four-sided isolation fence</strong> that separates the pool from the house and yard, with a self-closing, self-latching gate. Follow state and local height, gate, and barrier codes.</li><li>Keep patio furniture, toys, and other climbable objects away from the fence. Never prop the gate open.</li><li>Add door, window, gate, and pool alarms as backup layers. Test them routinely, replace batteries, and make sure every caregiver can hear or receive the alert.</li><li>Use approved drain covers and keep rescue equipment available. Secure pool chemicals and remove toys from the water so they do not invite an unsupervised return.</li><li>Empty small pools immediately after use. Cover and lock hot tubs; remember that covers and alarms do not replace fencing or supervision.</li><li>Create a rule for who confirms the pool area is clear and secured after every use, gathering, or caregiver handoff.</li></ul>
