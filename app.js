@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-babysitter-accounts-sharing-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-babysitter-profile-link-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 5,
@@ -2488,22 +2488,23 @@ async function renderBabysitters(){
   try{
     let state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
     if(!state.user){const account=await window.MTMSync.api("/v1/account");state={...state,user:account.user};await window.MTMSync.saveState(state);}
-    const myProfile=state.user?.isBabysitter?await window.MTMSync.api("/v1/community/babysitters/me"):null;
+    const myProfileResult=state.user?.isBabysitter?await window.MTMSync.api("/v1/community/babysitters/me"):null;
+    const myProfile=myProfileResult?.profile||null,needsAccountLink=Boolean(myProfileResult?.needsAccountLink);
     communityBabysitters=[];
     view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1><p>Search profiles created by babysitters and profiles approved after a parent nomination.</p></section>
       <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
-      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="manageBabysitterShares" class="btn secondary" type="button">View or share child access</button><button id="myBabysitterProfile" class="btn secondary" type="button">${myProfile?.profile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
+      <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="manageBabysitterShares" class="btn secondary" type="button">View or share child access</button><button id="myBabysitterProfile" class="btn secondary" type="button">${needsAccountLink?"Connect and manage my profile":myProfile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
       <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, ZIP, experience, or availability</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, weekends, CPR…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Public profiles</option><option value="mine">My profile and nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location, name, or service detail, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
     $("#nominateBabysitter").onclick=openBabysitterNominationForm;
     $("#manageBabysitterShares").onclick=()=>navigate("sync");
-    $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile?.profile||null,state.user);
+    $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile,state.user,needsAccountLink);
     $("#searchBabysitters").onclick=()=>runBabysitterSearch(1);
     $("#babysitterSearch").addEventListener("keydown",event=>{if(event.key==="Enter")runBabysitterSearch(1);});
     $("#babysitterView").onchange=()=>{communityBabysitters=[];$("#babysitterResults").innerHTML="";$("#babysitterPager").innerHTML="";$("#babysitterResultCount").textContent=$("#babysitterView").value==="mine"?"Press Search to load your profile and nominations.":"Enter a location or name, then press Search.";};
   }catch(error){view.innerHTML=`<section class="hero"><h1>🧑‍🍼 Find a Babysitter</h1></section><div class="banner">${esc(error.message)}</div><button class="btn full" data-go="sync" type="button">Open Accounts & Sync</button>`;bindRouteButtons();}
 }
 
-async function openMyBabysitterProfile(profile,user){
+async function openMyBabysitterProfile(profile,user,needsAccountLink=false){
   if(!user?.isBabysitter){
     if(!confirm("Mark this account as a babysitter account? Creating and managing your profile is free."))return;
     try{
@@ -2512,15 +2513,15 @@ async function openMyBabysitterProfile(profile,user){
       user=result.user;
     }catch(error){return alert(error.message);}
   }
-  modalBody.innerHTML=`<h2>${profile?"Manage":"Create"} my babysitter profile</h2><div class="banner">Your email stays private. Parents contact you through MTM, and you decide whether to reply.</div><div class="form-grid">
+  modalBody.innerHTML=`<h2>${needsAccountLink?"Connect and manage":profile?"Manage":"Create"} my babysitter profile</h2><div class="banner">${needsAccountLink?"This approved listing uses the same email as your account. Save it once to connect it to your account, then you can edit or remove it here. ":""}Your email stays private. Parents contact you through MTM, and you decide whether to reply.</div><div class="form-grid">
     <div class="field"><label>Public display name</label><input id="selfSitterName" maxlength="100" value="${esc(profile?.name||user.displayName||"")}"></div>
-    <div class="field"><label>General area</label><input id="selfSitterArea" maxlength="120" placeholder="City, state, or ZIP" value="${esc(profile?.generalArea||"")}"></div>
+    <div class="field"><label>Cities and ZIP codes served</label><textarea id="selfSitterArea" maxlength="300" placeholder="Berkeley Springs 25411, Martinsburg 25404, Hedgesville 25427">${esc(profile?.generalArea||"")}</textarea><p class="hint">Separate each town or ZIP code with a comma. Families can search for any location you enter.</p></div>
     <div class="field"><label>Short public introduction</label><textarea id="selfSitterBio" maxlength="1200">${esc(profile?.bio||"")}</textarea></div>
     <div class="field"><label>Experience</label><textarea id="selfSitterExperience" maxlength="1000">${esc(profile?.experience||"")}</textarea></div>
     <div class="field"><label>Age groups</label><input id="selfSitterAges" maxlength="300" placeholder="Infants, toddlers, ages 5–12…" value="${esc(profile?.ageRanges||"")}"></div>
     <div class="field"><label>Availability</label><textarea id="selfSitterAvailability" maxlength="500" placeholder="Weekends, evenings, school breaks…">${esc(profile?.availability||"")}</textarea></div>
     <div class="field"><label>Qualifications or training</label><textarea id="selfSitterQualifications" maxlength="800" placeholder="CPR, first aid, AAC, sensory support…">${esc(profile?.qualifications||"")}</textarea></div>
-    <div class="btn-row"><button id="saveSelfSitter" class="btn" type="button">Save public profile</button>${profile?`<button id="removeSelfSitter" class="btn secondary" type="button">Remove profile</button>`:""}<button id="cancelSelfSitter" class="btn secondary" type="button">Cancel</button></div></div>`;
+    <div class="btn-row"><button id="saveSelfSitter" class="btn" type="button">${needsAccountLink?"Connect and save profile":"Save public profile"}</button>${profile&&!needsAccountLink?`<button id="removeSelfSitter" class="btn secondary" type="button">Remove profile</button>`:""}<button id="cancelSelfSitter" class="btn secondary" type="button">Cancel</button></div></div>`;
   modal.showModal();$("#cancelSelfSitter").onclick=()=>modal.close();
   $("#saveSelfSitter").onclick=async()=>{
     const button=$("#saveSelfSitter");button.disabled=true;button.textContent="Saving…";
@@ -2530,8 +2531,8 @@ async function openMyBabysitterProfile(profile,user){
         experience:$("#selfSitterExperience").value,ageRanges:$("#selfSitterAges").value,
         availability:$("#selfSitterAvailability").value,qualifications:$("#selfSitterQualifications").value
       })});
-      modal.close();alert("Your babysitter profile is now searchable.");renderBabysitters();
-    }catch(error){alert(error.message);button.disabled=false;button.textContent="Save public profile";}
+      modal.close();alert(needsAccountLink?"Your existing listing is now connected to your account. You can edit or remove it here anytime.":"Your babysitter profile is now searchable.");renderBabysitters();
+    }catch(error){alert(error.message);button.disabled=false;button.textContent=needsAccountLink?"Connect and save profile":"Save public profile";}
   };
   if($("#removeSelfSitter"))$("#removeSelfSitter").onclick=async()=>{
     if(!confirm("Remove your babysitter profile from search? You can restore it later by saving the profile again."))return;
