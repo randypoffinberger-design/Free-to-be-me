@@ -1,9 +1,9 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-babysitter-profile-link-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
-  DB_VERSION = 5,
+  DB_VERSION = 6,
   STORE_NAMES = [
     "profiles",
     "achievements",
@@ -16,6 +16,7 @@ const DB_NAME = "ftbm-test-db",
     "snapshots",
   ];
 const SYNC_STORE_NAMES = ["syncOutbox", "syncMeta", "syncConflicts", "deletedRecords", "accountState"];
+const DEVICE_STORE_NAMES = ["accountVaults"];
 let db,
   deferredInstallPrompt = null,
   profileAgeTimer = null,
@@ -123,7 +124,7 @@ function openDB() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const d = req.result;
-      for (const n of [...STORE_NAMES, ...SYNC_STORE_NAMES])
+      for (const n of [...STORE_NAMES, ...SYNC_STORE_NAMES, ...DEVICE_STORE_NAMES])
         if (!d.objectStoreNames.contains(n))
           d.createObjectStore(n, { keyPath: "id" });
     };
@@ -4278,6 +4279,7 @@ function setupPWA() {
 }
 async function init() {
   db = await openDB();
+  await window.MTMSync.initializeAccountIsolation();
   setupDrawer();
   setupPWA();
   window.addEventListener("mtm:remote-data",()=>{remoteRefreshPending=true;refreshVisibleRouteFromSync().catch(()=>{});});
