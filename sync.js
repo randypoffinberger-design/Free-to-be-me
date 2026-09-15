@@ -4,6 +4,7 @@
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
+  const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
   let applyingRemote = false, running = false, rerun = false, syncTimer = null;
   const iso = () => new Date().toISOString();
@@ -13,6 +14,7 @@ window.MTMSync = (() => {
   const rawAll = store => new Promise((resolve, reject) => { const r=rawStore(store).getAll(); r.onsuccess=()=>resolve(r.result); r.onerror=()=>reject(r.error); });
   const rawPut = (store, value) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").put(value); r.onsuccess=()=>resolve(value); r.onerror=()=>reject(r.error); });
   const rawDelete = (store, id) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").delete(id); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
+  const rawClear = store => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").clear(); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
   const LOCAL_TEST_SERVER = "http://127.0.0.1:8791";
   const PHONE_TEST_SERVER = "https://randys.tail96598f.ts.net/mtm-test-api";
   const ALLOWED_TEST_SERVERS = new Set([LOCAL_TEST_SERVER, PHONE_TEST_SERVER]);
@@ -29,6 +31,39 @@ window.MTMSync = (() => {
     return current;
   };
   const saveState = value => rawPut("accountState", { ...(value || {}), id:"current" });
+  const accountContext = value => ({householdId:value.householdId||null,householdRole:value.householdRole||null,sharedProfileId:value.sharedProfileId||null,accessExpiresAt:value.accessExpiresAt||null,cursor:value.cursor||0,lastSyncAt:value.lastSyncAt||null,lastError:value.lastError||null});
+  async function hasLocalAccountContent(){for(const store of ACCOUNT_CONTENT_STORES)if((await rawAll(store)).length)return true;return false;}
+  async function saveAccountVault(userId,current){
+    if(!userId)return;
+    const data={};for(const store of ACCOUNT_CONTENT_STORES)data[store]=await rawAll(store);
+    await rawPut("accountVaults",{id:userId,data,context:accountContext(current||{}),updatedAt:iso()});
+  }
+  async function clearAccountContent(){applyingRemote=true;try{for(const store of ACCOUNT_CONTENT_STORES)await rawClear(store);}finally{applyingRemote=false;}}
+  async function restoreAccountVault(userId){
+    const vault=await rawGet("accountVaults",userId);await clearAccountContent();
+    if(!vault)return null;
+    applyingRemote=true;try{for(const store of ACCOUNT_CONTENT_STORES)for(const item of vault.data?.[store]||[])await rawPut(store,item);}finally{applyingRemote=false;}
+    return vault.context||null;
+  }
+  async function initializeAccountIsolation(){
+    const current=await readState();
+    if(current.user?.id&&!current.localDataOwnerId)await saveState({...current,localDataOwnerId:current.user.id});
+  }
+  async function activateAccount(auth){
+    const current=await readState(),nextId=auth.user.id,currentId=current.localDataOwnerId||current.user?.id||null;
+    let context=null;
+    if(currentId&&currentId!==nextId){await saveAccountVault(currentId,current);context=await restoreAccountVault(nextId);}
+    else if(!currentId){if(await hasLocalAccountContent())context=accountContext(current);else context=await restoreAccountVault(nextId);}
+    else context=accountContext(current);
+    const next={id:"current",serverUrl:current.serverUrl||defaultTestServer(),...(context||{}),token:auth.token,user:auth.user,localDataOwnerId:nextId,entitlement:auth.entitlement||null,cursor:context?.cursor||0};
+    await saveState(next);return next;
+  }
+  async function signOutAccount(){
+    const current=await readState(),ownerId=current.localDataOwnerId||current.user?.id||null;
+    if(ownerId)await saveAccountVault(ownerId,current);
+    await clearAccountContent();
+    await saveState({id:"current",serverUrl:current.serverUrl||defaultTestServer(),cursor:0,lastAccountId:ownerId});
+  }
   async function clearTemporaryShareData(current=null){
     current ||= await readState();
     const profileId=current.sharedProfileId;
@@ -115,7 +150,7 @@ window.MTMSync = (() => {
   }finally{applyingRemote=false;}schedule();}
   window.addEventListener("online",schedule);
   setInterval(()=>syncNow(),5000);
-  return {onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,defaultServer:defaultTestServer};
+  return {onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,initializeAccountIsolation,defaultServer:defaultTestServer};
 })();
 
 async function renderSyncCenter(){
@@ -125,13 +160,13 @@ async function renderSyncCenter(){
   const signedIn=Boolean(s.token), status=!navigator.onLine?"Offline — local data remains available":s.lastError?`Sync paused: ${esc(s.lastError)}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Synchronized ${fmtDate(s.lastSyncAt)}`:"Not synchronized yet";
   view.innerHTML=`<section class="hero"><h1>🔄 Accounts & Sync</h1><p>Local data remains on this device whether the server is available or not.</p></section>
   <div class="card"><h3>Server</h3><div class="field"><label>Server address</label><input id="syncServer" value="${esc(s.serverUrl||sync.defaultServer())}" placeholder="${esc(sync.defaultServer())}"></div><button id="saveServer" class="btn secondary">Save address</button><p id="syncStatus" class="hint">${esc(status)}</p></div>
-  ${signedIn?`<div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out never removes local records.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><label class="check-option"><input id="regBabysitter" type="checkbox"> I am a babysitter and want to create a free searchable profile</label><button id="registerSync" class="btn">Create account</button></div></div>`}
+  ${signedIn?`<div class="card"><h3>Signed in as</h3><p><strong>${esc(s.user?.displayName||"Account")}</strong><br>${esc(s.user?.email||"")}</p></div><div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out stores this account's local records privately on this device and removes them from the signed-out view.</p></div>`:`<div class="card"><h3>Sign in</h3><div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email"></div><div class="field"><label>Password</label><input id="syncPassword" type="password"></div><button id="loginSync" class="btn">Sign in</button></div><h3>Create free account</h3><p class="hint">A household is not required. You can create one or accept an invitation after signing in.</p><div class="form-grid"><div class="field"><label>Your name</label><input id="regName"></div><div class="field"><label>Email</label><input id="regEmail" type="email"></div><div class="field"><label>Password (10+ characters)</label><input id="regPassword" type="password"></div><label class="check-option"><input id="regBabysitter" type="checkbox"> I am a babysitter and want to create a free searchable profile</label><button id="registerSync" class="btn">Create account</button></div></div>`}
   <h2 id="syncDecisionsTitle" class="section-title">Sync decisions${conflicts.length?` (${conflicts.length})`:""}</h2><div id="syncDecisions" class="list">${syncConflictMarkup(conflicts)}</div>`;
   $("#saveServer").onclick=async()=>{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});alert("Server address saved.");};
-  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.saveState({...await sync.state(),token:d.token,user:d.user,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
-    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,email:$("#regEmail").value,password:$("#regPassword").value,isBabysitter:$("#regBabysitter").checked})});await sync.saveState({...await sync.state(),token:d.token,user:d.user,cursor:0,entitlement:d.entitlement||null});await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+  if(!signedIn){$("#loginSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("#syncEmail").value,password:$("#syncPassword").value})});await sync.activateAccount(d);await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
+    $("#registerSync").onclick=async()=>{try{await sync.saveState({...await sync.state(),serverUrl:$("#syncServer").value.trim()});const d=await sync.api("/v1/auth/register",{method:"POST",body:JSON.stringify({displayName:$("#regName").value,email:$("#regEmail").value,password:$("#regPassword").value,isBabysitter:$("#regBabysitter").checked})});await sync.activateAccount(d);await acceptPendingInvitation(sync);renderSyncCenter();}catch(e){alert(e.message);}};
   }else{try{const d=await sync.api("/v1/households"),area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Accept invitation</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}${["owner","caregiver"].includes(active?.role)?'<button id="inviteBabysitter" class="btn secondary">Share with a babysitter</button>':""}</div>${["owner","caregiver"].includes(active?.role)?'<div id="currentShares"><p class="hint">Loading shared access…</p></div>':""}`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&(s.householdId!==active.id||s.householdRole!==active.role||s.accessExpiresAt!==active.accessExpiresAt))await sync.saveState({...s,householdId:active.id,householdRole:active.role,sharedProfileId:active.sharedProfileId||null,accessExpiresAt:active.accessExpiresAt||null,cursor:s.householdId===active.id?s.cursor||0:0});if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{const selected=d.households.find(item=>item.id===e.target.value);await sync.saveState({...await sync.state(),householdId:selected.id,householdRole:selected.role,sharedProfileId:selected.sharedProfileId||null,accessExpiresAt:selected.accessExpiresAt||null,cursor:0});renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.saveState({...await sync.state(),householdId:result.household.id,cursor:0});renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");await renderCurrentShares(sync,active);}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
-    $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{if(s.householdRole==="babysitter")await sync.clearTemporaryShareData();try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.saveState({id:"current",serverUrl:s.serverUrl,cursor:0});renderSyncCenter();};}
+    $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{if(s.householdRole==="babysitter")await sync.clearTemporaryShareData();try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.signOutAccount();renderSyncCenter();};}
   bindSyncConflictActions(conflicts);
 }
 
