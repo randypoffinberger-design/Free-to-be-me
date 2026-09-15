@@ -1,10 +1,10 @@
-const CACHE='ftbm-test-v0.10.0-babysitter-accounts-sharing-1';
+const CACHE='ftbm-test-v0.10.0-babysitter-profile-link-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-test-10',
-  './sync.js?v=0.10.0-test-10',
-  './app.js?v=0.10.0-test-10',
+  './styles.css?v=0.10.0-test-11',
+  './sync.js?v=0.10.0-test-11',
+  './app.js?v=0.10.0-test-11',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
