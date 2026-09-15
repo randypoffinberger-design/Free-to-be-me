@@ -1,6 +1,6 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-3-test", schemaVersion: 5 };
+const APP = { name: "More than Measured Test", version: "0.10.0-account-isolation-4-test", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 6,
