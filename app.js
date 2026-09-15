@@ -3664,7 +3664,7 @@ async function renderCaregiver() {
     <button id="caregiverMeetups" class="card-button"><strong>🤝 Social Meetups</strong><small>Find or create inclusive playdates, family gatherings, parent meetups, and sensory-friendly outings.</small></button>
     <button id="caregiverToys" class="card-button"><strong>🧸 Free Toy Exchange</strong><small>Offer toys your family no longer needs or find free toys offered by parents nearby.</small></button>
     <button id="caregiverRecommended" class="card-button"><strong>⭐ Recommended</strong><small>Find parent-recommended doctors, dentists, therapists, restaurants, schools, activities, and other local places.</small></button>
-    <button id="caregiverRecommendedBabysitters" class="card-button"><strong>🧑‍🍼 Find a babysitter</strong><small>Find approved babysitter profiles or invite a babysitter you trust to choose whether they want to be listed.</small></button>
+    <button id="caregiverRecommendedBabysitters" class="card-button"><strong>🧑‍🍼 Find a babysitter</strong><small>Find profiles created by babysitters, view approved parent nominations, or recommend a babysitter you trust.</small></button>
     <button id="caregiverBabysitter" class="card-button"><strong>🧑‍🍼 Babysitter care sheet</strong><small>Pull saved care details into editable text that can be shared without an app.</small></button>
     <button id="caregiverEmergencyContacts" class="card-button"><strong>☎️ Emergency contacts</strong><small>Save multiple contacts per child for redundancy and care-sheet sharing.</small></button>
     <button id="caregiverEncouragement" class="card-button"><strong>💬 Encouragement</strong><small>Weekly messages and strength-focused reminders.</small></button>
