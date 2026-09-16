@@ -1,7 +1,7 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.0-test-20";
-const APP = { name: "More than Measured Test", version: "0.10.0-account-recovery-test-2", schemaVersion: 5 };
+const ASSET_BUILD = "0.10.0-test-21";
+const APP = { name: "More than Measured Test", version: "0.10.0-village-search-test-1", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 6,
@@ -184,8 +184,98 @@ const quotes = [
 const weeklyQuote = () =>
   quotes[Math.floor(Date.now() / 604800000) % quotes.length];
 
+const VILLAGE_LOCAL_INDEX = [
+  ["my-child", "My Child profiles", "Growth Journey", "Save each child’s profile, strengths, interests, care details, emergency contacts, and developmental notes.", "child", "profile birthday age height weight milestones wins growth emergency contact doctor babysitter care sheet"],
+  ["my-day", "My Day bubble tracker", "Growth Journey", "Record daily activities, food, health, sleep, behavior, and comfortable moments, then look for possible patterns.", "myDay", "timeline correlation patterns meltdown grandma activity event log"],
+  ["screen-time", "Screen-time tracker", "Growth Journey", "Time or manually record screen use by activity and purpose, with AAC reported separately.", "screenTime", "phone tablet tv video game timer communication aac"],
+  ["food-diary", "Food diary", "Growth Journey", "Track safe, occasional, and refused foods along with reactions, allergies, sensitivities, and variety.", "food", "eating diet nutrition allergy intolerance dairy dye sugar a2 milk safe food picky feeding"],
+  ["life-skills", "Life skills", "Growth Journey", "Track daily-living skills, independence, support needs, and progress.", "lifeSkills", "daily living independence dressing hygiene chores self care"],
+  ["speech-home", "Speech and Language Building", "Communication", "Open words, sentences, ASL, AAC, flash cards, communication apps, and oral-function resources.", "speech", "talking language communication nonspeaking verbal sign"],
+  ["vocabulary", "Words and sentences", "Communication", "Record words and sentences with dates, categories, language, speaking, identifying, and ASL abilities.", "vocabulary", "vocabulary phrase speech date spoken identify asl sign"],
+  ["asl", "ASL and signing", "Communication", "Find the ASL quick guide and practical ways to use signs during everyday routines.", "speech", "american sign language hands signing communication"],
+  ["aac", "AAC communication", "Communication", "Learn about AAC devices, apps, access, funding help, modeling, and keeping communication available.", "speech", "augmentative alternative communication tablet device picture board nonspeaking"],
+  ["speech-apps", "Speech and communication apps", "Communication", "Compare AAC, speech-practice, language, and learning apps based on the job the child needs them to do.", "speech", "app tablet phone communication speech practice"],
+  ["oral-function", "Oral ties and oral function", "Communication", "Open the oral-ties guide and oral-dysfunction screening resource.", "speech", "tongue tie lip tie feeding swallowing mouth dental"],
+  ["sleep-home", "Sleep Sanctuary", "Sleep", "Open sleep routines, tracking, comfort strategies, and caregiver sleep resources.", "sleep", "bed bedtime night insomnia awake waking nap rest"],
+  ["sleep-routine", "Bedtime routine", "Sleep", "Build and follow a predictable bedtime routine that fits the child’s sensory and communication needs.", "sleep", "schedule bath pajamas story lights wind down"],
+  ["sleep-log", "Sleep tracking", "Sleep", "Record sleep and connect sleep events with the My Day timeline and possible patterns.", "sleep", "log tracker bedtime wake night waking nap patterns"],
+  ["sleep-supports", "Sleep supports and supplements", "Sleep", "Review practical sleep supports and information about magnesium and melatonin before making changes.", "sleep", "magnesium melatonin supplement medicine routine insomnia"],
+  ["sensory-home", "Sensory Support", "Sensory", "Explore the eight sensory systems, patterns, common triggers, visual guides, clothing, bedding, and products.", "sensory", "overload regulation seeking avoiding input trigger"],
+  ["sensory-systems", "Eight sensory systems", "Sensory", "Learn how seeking, avoiding, noticing late, and changing needs can appear across sensory systems.", "sensory", "sight sound smell taste touch vestibular proprioception interoception"],
+  ["sensory-triggers", "Common sensory triggers", "Sensory", "Find ideas for water, clothing, haircuts, grass, nail care, teeth, hair, grooming, and hygiene.", "sensory", "bath shower clothes haircut nails brushing teeth grooming hygiene"],
+  ["clothing", "Clothing and bedding preferences", "Sensory", "Save comfortable materials and difficult textures, seams, tags, fit, temperature, and bedding preferences.", "sensory", "fabric socks denim sheets blanket texture seam tag"],
+  ["skills-home", "Skill Building", "Learning and skills", "Open potty training, visual schedules, social stories, routines, and daily skill resources.", "skills", "learning teaching practice routine independence"],
+  ["potty", "Potty-training tracker", "Learning and skills", "Record potty-training days, successes, accidents, timing, and notes.", "potty", "toilet bathroom pee poop accident training log tracker"],
+  ["potty-tips", "Potty-training guide", "Learning and skills", "Review readiness, sensory barriers, communication, constipation, routines, and practical potty-training tips.", "pottyTips", "toilet bathroom readiness constipation diaper underwear accident"],
+  ["education", "Educational options", "Education", "Compare homeschooling, public and private options, online programs, IEPs, 504 plans, and letter templates.", "education", "school homeschool curriculum iep 504 teacher class learning"],
+  ["assessment", "Autism assessment information", "Health and assessment", "Learn when assessment can begin, how it works, what to bring, and what to expect.", "assessment", "diagnosis evaluation screening developmental pediatrician signs"],
+  ["health", "Health and Wellness", "Health and assessment", "Open appointment preparation, labs, medical-necessity letters, oral health, medications, and health resources.", "health", "doctor medical dentist appointment laboratory blood test medicine"],
+  ["therapy", "Therapy and support", "Health and assessment", "Review ABA, speech, OT, AAC, other therapies, wait lists, caregiver involvement, and signs of a good fit.", "therapy", "occupational therapist slp aba treatment waitlist provider"],
+  ["benefits", "Benefits and financial support", "Caregiver help", "Find information about SSI, SSDI, Medicaid, paid caregiving, respite, tax help, and other programs.", "benefits", "money disability income waiver insurance medicaid ssi ssdi taxes respite"],
+  ["safety", "ASD safety", "Safety", "Find guidance for wandering, trackers, identification, car seats, water, home, school, and emergency planning.", "safety", "elopement gps id bracelet drowning pool 911 emergency car seat"],
+  ["meltdowns", "Meltdowns and emotional regulation", "Behavior and regulation", "Find visual guides and support for overload, distress, co-regulation, recovery, and safer responses.", "caregiver", "meltdown tantrum dysregulation upset overwhelmed calm distress behavior"],
+  ["aggression", "Aggressive behaviors", "Behavior and regulation", "Review possible communication, sensory, pain, fear, and skill causes, plus safer in-the-moment responses.", "caregiver", "hit bite kick scratch throw self injury behavior danger"],
+  ["autism-signs", "Signs of autism", "Autism information", "Review social communication, repetition, routines, sensory differences, and when to ask for an evaluation.", "caregiver", "traits symptoms screening diagnosis developmental concerns"],
+  ["myths", "ASD myths and misconceptions", "Autism information", "Read plain answers about empathy, parenting, AAC, stimming, eye contact, meltdowns, and lifelong autism.", "myths", "facts assumptions vaccine empathy savant eye contact stimming tantrum"],
+  ["terms", "Common autism terms", "Autism information", "Find plain-language explanations for autism, communication, sensory, school, and therapy terms.", "caregiver", "dictionary glossary definition terminology"],
+  ["fun", "ASD Friendly Fun", "Community", "Find sensory-friendly places, events, films, recreation passes, travel information, and outing ideas.", "fun", "activities event movie park museum aquarium vacation travel outing"],
+  ["recommended", "Parent-recommended places and providers", "Community", "Browse parent recommendations for doctors, dentists, therapists, restaurants, schools, activities, and local places.", "recommendations", "review local provider place restaurant school doctor dentist therapist"],
+  ["meetups", "Social meetups", "Community", "Find or create inclusive playdates, family gatherings, caregiver meetups, and sensory-friendly outings.", "community", "friends playdate parent group gathering social event"],
+  ["toy-exchange", "Free Toy Exchange", "Community", "Offer toys your family no longer needs or find free toys offered nearby.", "toys", "give away free used toys swap exchange"],
+  ["babysitters", "Find a babysitter", "Caregiver help", "Browse babysitter profiles and approved parent recommendations.", "babysitters", "child care sitter date night caregiver help"],
+  ["babysitter-sheet", "Babysitter care sheet", "Caregiver help", "Create editable care instructions from a child’s saved profile and share them without the app.", "caregiver", "child care instructions emergency routine food communication sitter"],
+  ["calendar", "Caregiver calendar", "Caregiver help", "Save appointments and upcoming dates in Caregiver Corner.", "caregiver", "schedule appointment date reminder"],
+  ["todos", "Caregiver to-do list", "Caregiver help", "Create and manage caregiver tasks in Caregiver Corner.", "caregiver", "task checklist reminder things to do"],
+  ["reflections", "Caregiver Reflections", "Caregiver help", "Keep a searchable personal journal for caregiver notes and reflections.", "caregiver", "journal diary note feelings entry"],
+  ["products", "Product links", "Resources", "Browse categorized communication, sensory, safety, sleep, learning, and daily-living products.", "products", "amazon shopping equipment supplies gear"],
+  ["resources", "Resource library", "Resources", "Browse MTM’s guides, visual resources, support links, and reference material by topic.", "resources", "guide article information visual library help"],
+  ["backup", "Backup and restore", "App tools", "Export a complete local backup, restore saved data, and create safety checkpoints.", "backup", "save export import restore data file checkpoint"],
+  ["account", "Accounts and sync", "App tools", "Manage sign-in, household synchronization, recovery, and account information.", "sync", "login password email household cloud server account recovery"],
+  ["settings", "Settings", "App tools", "Change app preferences and speech-and-language filter defaults.", "settings", "options preference setup version"],
+].map(([id, title, category, description, route, keywords]) => ({ id, title, category, description, route, keywords, source: "mtm" }));
+
+const villageSearchProviders = new Map();
+function registerVillageSearchProvider(id, provider) {
+  if (!id || typeof provider?.search !== "function") throw new TypeError("A Village search provider needs an id and search function.");
+  villageSearchProviders.set(id, { online: false, ...provider, id });
+}
+function villageSearchText(value) {
+  return String(value || "").toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+function searchVillageLocal(query) {
+  const normalized = villageSearchText(query), ignored = new Set(["a", "am", "an", "and", "are", "can", "do", "find", "for", "get", "getting", "having", "help", "how", "i", "im", "in", "is", "looking", "me", "my", "need", "no", "of", "please", "the", "to", "trouble", "want", "what", "where", "with"]), words = normalized.split(" ").filter(Boolean), terms = words.filter((word) => !ignored.has(word));
+  if (!terms.length) terms.push(...words);
+  if (!terms.length) return [];
+  return VILLAGE_LOCAL_INDEX.map((item) => {
+    const title = villageSearchText(item.title), category = villageSearchText(item.category), keywords = villageSearchText(item.keywords), description = villageSearchText(item.description), haystack = `${title} ${category} ${keywords} ${description}`;
+    if (!terms.some((term) => haystack.includes(term))) return null;
+    let score = 0;
+    for (const term of terms) {
+      if (title === term) score += 80;
+      else if (title.startsWith(term)) score += 50;
+      else if (title.includes(term)) score += 35;
+      if (category.includes(term)) score += 20;
+      if (keywords.includes(term)) score += 12;
+      if (description.includes(term)) score += 5;
+    }
+    return { ...item, score };
+  }).filter(Boolean).sort((a, b) => b.score - a.score || a.category.localeCompare(b.category) || a.title.localeCompare(b.title));
+}
+registerVillageSearchProvider("local", { label: "Inside MTM", search: searchVillageLocal });
+window.MTMVillage = Object.freeze({ registerSearchProvider: registerVillageSearchProvider });
+
+async function searchVillage(query) {
+  const providers = [...villageSearchProviders.values()].filter((provider) => !provider.online || navigator.onLine);
+  const settled = await Promise.allSettled(providers.map(async (provider) => {
+    const results = await provider.search(query);
+    return (Array.isArray(results) ? results : []).map((item) => ({ source: provider.id, ...item }));
+  }));
+  return settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+}
+
 const routes = {
   home: renderHome,
+  village: renderVillage,
   child: renderChild,
   speech: renderSpeechBuilding,
   vocabulary: renderVocabulary,
@@ -220,7 +310,7 @@ const routes = {
   sync: renderSyncCenter,
 };
 
-const ACCOUNT_ONLY_ROUTES = new Set(["home", "subscription", "settings", "backup", "about", "sync"]);
+const ACCOUNT_ONLY_ROUTES = new Set(["home", "village", "subscription", "settings", "backup", "about", "sync"]);
 async function getEntitlement() {
   const account = await window.MTMSync?.state?.(), entitlement = account?.entitlement;
   if (!entitlement?.enforced) return { access: true, kind: "development", label: "Development access" };
@@ -320,12 +410,60 @@ async function renderHome() {
     <button class="home-hotspot medical" data-go="health" aria-label="Open Health and Wellness"><span>Health and Wellness</span></button>
     <button class="home-hotspot caregiver-link" data-go="caregiver" aria-label="Open Caregiver Corner"><span>Caregiver Corner</span></button>
     <button class="home-hotspot community" data-go="fun" aria-label="Open ASD Friendly Fun"><span>ASD Friendly Fun</span></button>
+    <button class="home-hotspot village" data-go="village" aria-label="Open The Village search"><span>The Village</span></button>
   </section>`;
   bindRouteButtons();
   document
     .querySelectorAll(".home-hotspot[data-feature]")
     .forEach((b) => (b.onclick = () => underConstruction(b.dataset.feature)));
   await showBirthdayGreetingsIfNeeded();
+}
+
+async function renderVillage() {
+  view.innerHTML = `<section class="hero village-hero"><div class="village-title"><span aria-hidden="true">🏘️</span><div><h1>The Village</h1><p>Search everything inside More than Measured. This search works offline.</p></div></div><div class="village-search"><label for="villageQuery">What can The Village help you find?</label><div class="village-search-row"><input id="villageQuery" type="search" enterkeyhint="search" autocomplete="off" spellcheck="true" placeholder="Try sleep, potty training, AAC, or babysitter"><button id="villageSearchButton" class="btn" type="button">Search</button></div></div></section><div class="village-suggestions" aria-label="Suggested searches">${["Sleep", "Potty training", "Meltdowns", "AAC", "Safety", "Babysitter"].map((term) => `<button class="village-chip" type="button" data-village-query="${esc(term)}">${esc(term)}</button>`).join("")}</div><div id="villageStatus" class="village-status" aria-live="polite">Type a word or question to search MTM’s tools and guides.</div><div id="villageResults" class="village-results"></div>`;
+  const input = $("#villageQuery"), status = $("#villageStatus"), resultsRoot = $("#villageResults");
+  let requestNumber = 0, timer = null;
+  const showResults = async () => {
+    const query = input.value.trim(), thisRequest = ++requestNumber;
+    if (!query) {
+      status.textContent = "Type a word or question to search MTM’s tools and guides.";
+      resultsRoot.innerHTML = "";
+      return;
+    }
+    status.textContent = "Searching inside MTM…";
+    const results = await searchVillage(query);
+    if (thisRequest !== requestNumber) return;
+    if (!results.length) {
+      status.textContent = `No results inside MTM for “${query}.”`;
+      resultsRoot.innerHTML = `<div class="empty card"><div class="big">🔎</div><h2>Nothing matched yet</h2><p>Try a shorter phrase or a related word. The current version searches MTM only and does not search the web.</p></div>`;
+      return;
+    }
+    status.textContent = `${results.length} ${results.length === 1 ? "result" : "results"} inside MTM for “${query}.”`;
+    const groups = results.reduce((map, item) => {
+      if (!map.has(item.category)) map.set(item.category, []);
+      map.get(item.category).push(item);
+      return map;
+    }, new Map());
+    resultsRoot.innerHTML = [...groups].map(([category, items]) => `<section class="village-result-group"><h2>${esc(category)}</h2><div class="village-result-list">${items.map((item) => `<button class="village-result" type="button" data-go="${esc(item.route)}"><span><strong>${esc(item.title)}</strong><small>${esc(item.description)}</small></span><span class="village-result-open" aria-hidden="true">Open ›</span></button>`).join("")}</div></section>`).join("");
+    bindRouteButtons();
+  };
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(showResults, 180);
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    clearTimeout(timer);
+    showResults();
+  });
+  $("#villageSearchButton").onclick = () => { clearTimeout(timer); showResults(); };
+  document.querySelectorAll("[data-village-query]").forEach((button) => button.onclick = () => {
+    input.value = button.dataset.villageQuery;
+    showResults();
+    input.focus();
+  });
+  input.focus();
 }
 
 function openWeeklyEncouragement() {
@@ -4469,6 +4607,7 @@ function closeDrawer() {
 function setupDrawer() {
   const links = [
     ["🏠", "Home", "home"],
+    ["🏘️", "The Village", "village"],
     ["🌱", "My Child", "child"],
     ["🫧", "My Day", "myDay"],
     ["🗣️", "Speech & Language", "speech"],
