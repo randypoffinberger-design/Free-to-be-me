@@ -1,10 +1,10 @@
-const CACHE='ftbm-test-v0.10.0-account-recovery';
+const CACHE='ftbm-test-v0.10.0-shell-repair';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-test-19',
-  './sync.js?v=0.10.0-test-19',
-  './app.js?v=0.10.0-test-19',
+  './styles.css?v=0.10.0-test-20',
+  './sync.js?v=0.10.0-test-20',
+  './app.js?v=0.10.0-test-20',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -62,15 +62,13 @@ self.addEventListener('fetch',event=>{
     event.respondWith(
       caches.open(CACHE).then(async cache=>{
         const cached=await cache.match(OFFLINE_PAGE);
-        const network=fetch(event.request,{cache:'no-store'}).then(response=>{
+        try{
+          const response=await fetch(event.request,{cache:'no-store'});
           if(response&&response.ok)cache.put(OFFLINE_PAGE,response.clone());
           return response;
-        });
-        if(cached){
-          event.waitUntil(network.catch(()=>undefined));
-          return cached;
+        }catch{
+          return cached||new Response('More than Measured is unavailable offline until it has completed its first online load.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});
         }
-        return network.catch(()=>new Response('More than Measured is unavailable offline until it has completed its first online load.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}}));
       })
     );
     return;

@@ -1,6 +1,7 @@
 "use strict";
 
-const APP = { name: "More than Measured Test", version: "0.10.0-account-recovery-test", schemaVersion: 5 };
+const ASSET_BUILD = "0.10.0-test-20";
+const APP = { name: "More than Measured Test", version: "0.10.0-account-recovery-test-2", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-test-db",
   DB_VERSION = 6,
@@ -283,6 +284,7 @@ async function performNavigation(r, options = {}) {
 }
 
 function navigate(r, options = {}) {
+  closeDrawer();
   const run = () => performNavigation(r, options);
   navigationQueue = navigationQueue.then(run, run);
   return navigationQueue;
@@ -4525,6 +4527,23 @@ function setupPWA() {
   };
 }
 async function init() {
+  const syncBuild = window.MTMSync?.build;
+  if (syncBuild !== ASSET_BUILD || typeof window.MTMSync?.initializeAccountIsolation !== "function") {
+    const repairKey = `mtm-shell-repair-${ASSET_BUILD}`;
+    if (sessionStorage.getItem(repairKey)) throw new Error("MTM Test could not finish updating its cached files. Reload once while connected to the internet.");
+    sessionStorage.setItem(repairKey, "1");
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key.startsWith("ftbm-test-v")).map((key) => caches.delete(key)));
+    }
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.allSettled(registrations.map((registration) => registration.update()));
+    }
+    location.reload();
+    return;
+  }
+  sessionStorage.removeItem(`mtm-shell-repair-${ASSET_BUILD}`);
   db = await openDB();
   await window.MTMSync.initializeAccountIsolation();
   setupDrawer();
