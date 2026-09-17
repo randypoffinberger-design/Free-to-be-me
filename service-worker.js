@@ -1,10 +1,10 @@
-const CACHE='ftbm-test-v0.10.0-village-search-1';
+const CACHE='mtm-production-v0.10.0-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-test-21',
-  './sync.js?v=0.10.0-test-21',
-  './app.js?v=0.10.0-test-21',
+  './styles.css?v=0.10.0-production-1',
+  './sync.js?v=0.10.0-production-1',
+  './app.js?v=0.10.0-production-1',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -49,7 +49,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('ftbm-test-v')&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-production-v'))&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
 });

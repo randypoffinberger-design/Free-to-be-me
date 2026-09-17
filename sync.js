@@ -3,7 +3,7 @@
 /* The UI always reads application data from IndexedDB. This module only moves
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
-  const BUILD = "0.10.0-test-21";
+  const BUILD = "0.10.0-production-1";
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
@@ -16,12 +16,10 @@ window.MTMSync = (() => {
   const rawPut = (store, value) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").put(value); r.onsuccess=()=>resolve(value); r.onerror=()=>reject(r.error); });
   const rawDelete = (store, id) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").delete(id); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
   const rawClear = store => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").clear(); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
-  const LOCAL_TEST_SERVER = "http://127.0.0.1:8791";
-  const PHONE_TEST_SERVER = "https://randys.tail96598f.ts.net/mtm-test-api";
-  const ALLOWED_TEST_SERVERS = new Set([LOCAL_TEST_SERVER, PHONE_TEST_SERVER]);
-  const defaultTestServer = () => location.origin === "https://randys.tail96598f.ts.net" ? PHONE_TEST_SERVER : LOCAL_TEST_SERVER;
+  const PRODUCTION_SERVER = "https://randys.tail96598f.ts.net/mtm";
+  const defaultProductionServer = () => PRODUCTION_SERVER;
   const normalizeServerUrl = value => String(value || "").trim().replace(/\/+$/, "");
-  const readState = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:defaultTestServer(), cursor:0 };
+  const readState = async () => (await rawGet("accountState", "current")) || { id:"current", serverUrl:defaultProductionServer(), cursor:0 };
   const state = async () => {
     const current=await readState();
     if(current.householdRole==="babysitter"&&current.accessExpiresAt&&Date.parse(current.accessExpiresAt)<=Date.now()){
@@ -56,14 +54,14 @@ window.MTMSync = (() => {
     if(currentId&&currentId!==nextId){await saveAccountVault(currentId,current);context=await restoreAccountVault(nextId);}
     else if(!currentId){if(await hasLocalAccountContent())context=accountContext(current);else context=await restoreAccountVault(nextId);}
     else context=accountContext(current);
-    const next={id:"current",serverUrl:current.serverUrl||defaultTestServer(),...(context||{}),token:auth.token,user:auth.user,localDataOwnerId:nextId,entitlement:auth.entitlement||null,cursor:context?.cursor||0};
+    const next={id:"current",serverUrl:current.serverUrl||defaultProductionServer(),...(context||{}),token:auth.token,user:auth.user,localDataOwnerId:nextId,entitlement:auth.entitlement||null,cursor:context?.cursor||0};
     await saveState(next);return next;
   }
   async function signOutAccount(){
     const current=await readState(),ownerId=current.localDataOwnerId||current.user?.id||null;
     if(ownerId)await saveAccountVault(ownerId,current);
     await clearAccountContent();
-    await saveState({id:"current",serverUrl:current.serverUrl||defaultTestServer(),cursor:0,lastAccountId:ownerId});
+    await saveState({id:"current",serverUrl:current.serverUrl||defaultProductionServer(),cursor:0,lastAccountId:ownerId});
   }
   async function removeCurrentHouseholdData(){
     const current=await readState(),ownerId=current.localDataOwnerId||current.user?.id||null;
@@ -100,10 +98,7 @@ window.MTMSync = (() => {
   async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value); schedule(); }
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
-    const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultTestServer());
-    if (!ALLOWED_TEST_SERVERS.has(serverUrl)) {
-      throw new Error(`This test build only connects to ${defaultTestServer()}. Save that server address in Accounts & Sync.`);
-    }
+    const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultProductionServer());
     const response=await fetch(`${serverUrl}${path}`,{...options,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
     const data=await response.json().catch(()=>({error:`HTTP ${response.status}`})); if(!response.ok)throw Object.assign(new Error(data.error||"Server request failed"),{status:response.status}); return data;
   }
@@ -156,7 +151,7 @@ window.MTMSync = (() => {
   }finally{applyingRemote=false;}schedule();}
   window.addEventListener("online",schedule);
   setInterval(()=>syncNow(),5000);
-  return {build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultTestServer};
+  return {build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultProductionServer};
 })();
 
 function passwordResetTokenFromLink(){

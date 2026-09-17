@@ -1,9 +1,9 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.0-test-21";
-const APP = { name: "More than Measured Test", version: "0.10.0-village-search-test-1", schemaVersion: 5 };
+const ASSET_BUILD = "0.10.0-production-1";
+const APP = { name: "More than Measured", version: "0.10.0", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
-const DB_NAME = "ftbm-test-db",
+const DB_NAME = "ftbm-db",
   DB_VERSION = 6,
   STORE_NAMES = [
     "profiles",
