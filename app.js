@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.0-production-3";
+const ASSET_BUILD = "0.10.0-production-4";
 const APP = { name: "More than Measured", version: "0.10.0", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-db",
@@ -4669,7 +4669,7 @@ async function init() {
   const syncBuild = window.MTMSync?.build;
   if (syncBuild !== ASSET_BUILD || typeof window.MTMSync?.initializeAccountIsolation !== "function") {
     const repairKey = `mtm-shell-repair-${ASSET_BUILD}`;
-    if (sessionStorage.getItem(repairKey)) throw new Error("MTM Test could not finish updating its cached files. Reload once while connected to the internet.");
+    if (sessionStorage.getItem(repairKey)) throw new Error("MTM could not finish updating its cached files. Reload once while connected to the internet.");
     sessionStorage.setItem(repairKey, "1");
     if ("caches" in window) {
       const keys = await caches.keys();
