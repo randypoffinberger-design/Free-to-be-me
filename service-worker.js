@@ -1,10 +1,13 @@
-const CACHE='mtm-production-v0.10.0-4';
+const CACHE='mtm-production-v0.10.1-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './styles.css?v=0.10.0-production-4',
-  './sync.js?v=0.10.0-production-4',
-  './app.js?v=0.10.0-production-4',
+  "./access.js?v=0.10.1-production-1",
+  "./offline-key.js?v=0.10.1-production-1",
+  "./offline-access.js?v=0.10.1-production-1",
+  './styles.css?v=0.10.1-production-1',
+  './sync.js?v=0.10.1-production-1',
+  './app.js?v=0.10.1-production-1',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -49,7 +52,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-production-v'))&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-production-v')||key.startsWith('mtm-paywall-v')||key.startsWith('mtm-test-paywall-v'))&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
 });
@@ -57,7 +60,7 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url = new URL(event.request.url);
-  if(url.origin !== self.location.origin || url.pathname.startsWith('/v1/') || url.pathname === '/health')return;
+  if(url.origin !== self.location.origin || !url.pathname.startsWith(new URL('./',self.location.href).pathname) || url.pathname.startsWith('/v1/') || url.pathname === '/health')return;
   if(event.request.mode==='navigate'){
     event.respondWith(
       caches.open(CACHE).then(async cache=>{
@@ -85,3 +88,6 @@ self.addEventListener('fetch',event=>{
     })
   );
 });
+
+self.addEventListener('push',event=>{event.waitUntil(self.registration.showNotification('MTM support',{body:'You have a support update. Open the inbox to read it.',tag:'mtm-support',data:{url:new URL('./index.html#support',self.registration.scope).href}}));});
+self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil((async()=>{const target=new URL('./index.html#support',self.registration.scope).href;const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});const found=windows.find(w=>w.url.startsWith(self.registration.scope));if(found){await found.focus();await found.navigate(target);}else await self.clients.openWindow(target);})());});

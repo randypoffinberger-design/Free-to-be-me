@@ -1,7 +1,7 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.0-production-4";
-const APP = { name: "More than Measured", version: "0.10.0", schemaVersion: 5 };
+const ASSET_BUILD = "0.10.1-production-1";
+const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 6,
@@ -140,22 +140,25 @@ const getAll = (s) =>
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
-const put = (s, v) =>
-  new Promise((res, rej) => {
+const put = async (s, v) => {
+  await window.MTMAccess.requireWrite(s,v?.id,v);
+  return new Promise((res, rej) => {
     const r = tx(s, "readwrite").put(v);
     r.onsuccess = async () => {
       try { await window.MTMSync?.onLocalPut(s, v); res(v); } catch (e) { rej(e); }
     };
     r.onerror = () => rej(r.error);
   });
+};
 const clearStore = (s) =>
   new Promise((res, rej) => {
     const r = tx(s, "readwrite").clear();
     r.onsuccess = () => res();
     r.onerror = () => rej(r.error);
   });
-const deleteItem = (s, id) =>
-  new Promise((res, rej) => {
+const deleteItem = async (s, id) => {
+  await window.MTMAccess.requireWrite(s,id,null,true);
+  return new Promise((res, rej) => {
     const lookup = tx(s).get(id);
     lookup.onerror = () => rej(lookup.error);
     lookup.onsuccess = () => {
@@ -166,6 +169,7 @@ const deleteItem = (s, id) =>
       r.onerror = () => rej(r.error);
     };
   });
+};
 async function getSetting(k, f = null) {
   const a = await getAll("settings");
   return a.find((x) => x.id === k)?.value ?? f;
@@ -274,6 +278,8 @@ async function searchVillage(query) {
 }
 
 const routes = {
+  support: renderSupport,
+  babysitterHome: () => MTMAccess.babysitterHome(),
   home: renderHome,
   village: renderVillage,
   child: renderChild,
@@ -311,26 +317,8 @@ const routes = {
 };
 
 const ACCOUNT_ONLY_ROUTES = new Set(["home", "village", "subscription", "settings", "backup", "about", "sync"]);
-async function getEntitlement() {
-  const account = await window.MTMSync?.state?.(), entitlement = account?.entitlement;
-  if (!entitlement?.enforced) return { access: true, kind: "development", label: "Development access" };
-  const level = entitlement.level || entitlement.accessLevel;
-  if (level === "owner") return { access: true, kind: "owner", label: "Permanent owner access" };
-  if (entitlement.subscriptionStatus === "active" || level === "subscriber")
-    return { access: true, kind: "subscriber", label: "Active subscription" };
-  const trialEndsAt = entitlement.trialEndsAt ? new Date(entitlement.trialEndsAt) : null;
-  if (trialEndsAt && trialEndsAt > new Date()) {
-    const remaining = Math.max(1, Math.ceil((trialEndsAt - new Date()) / 86400000));
-    return { access: true, kind: "trial", label: `${remaining} trial ${remaining === 1 ? "day" : "days"} remaining`, trialEndsAt };
-  }
-  return { access: false, kind: "expired", label: "Trial ended" };
-}
-
-async function renderSubscription() {
-  const status = await getEntitlement();
-  view.innerHTML = `<section class="hero"><h1>🌈 Full MTM access</h1><p>More than Measured includes a ${ACCESS.trialDays}-day full-access trial. After the trial, an active household subscription is required.</p></section><div class="card subscription-card"><h2>${esc(status.label)}</h2>${status.access ? `<p>This development build remains fully unlocked while subscriptions are being prepared.</p>` : `<p>Your account and saved information are still here. Subscribe to reopen MTM's features.</p>`}<div class="btn-row"><button class="btn secondary" data-go="sync">Account</button><button class="btn secondary" data-go="backup">Export my data</button></div></div><div class="banner"><strong>Your information stays yours.</strong> An expired trial or subscription never deletes existing records. Before enforcement is enabled, account controls, privacy choices, export, and account deletion will remain available.</div>`;
-  bindRouteButtons();
-}
+async function getEntitlement() { return window.MTMAccess.status(); }
+async function renderSubscription() { return window.MTMAccess.renderSubscription(); }
 
 function applyRouteChrome(activeRoute = currentRoute) {
   const isHome = activeRoute === "home";
@@ -349,9 +337,7 @@ async function performNavigation(r, options = {}) {
     route = routes[r] ? r : "home";
     if (route !== currentRoute) routeStack.push(route);
   }
-  const entitlement = await getEntitlement(),account=await window.MTMSync?.state?.();
-  const freeBabysitterAccess=route==="babysitters"&&Boolean(account?.user?.isBabysitter);
-  if (!entitlement.access && !ACCOUNT_ONLY_ROUTES.has(route) && !freeBabysitterAccess) route = "subscription";
+  route = await window.MTMAccess.route(route);
   if (profileAgeTimer) {
     clearInterval(profileAgeTimer);
     profileAgeTimer = null;
@@ -362,6 +348,7 @@ async function performNavigation(r, options = {}) {
   applyRouteChrome(route);
   try {
     await routes[route]();
+    await window.MTMAccess.readonlyChrome();
   } catch (error) {
     console.error(`Route "${route}" failed`, error);
     view.innerHTML = `<div class="banner"><strong>Could not open this section:</strong> ${esc(error?.message || String(error))}</div><div class="btn-row"><button class="btn secondary" data-go="home" type="button">Return home</button><button class="btn secondary" data-go="${route}" type="button">Try again</button></div>`;
@@ -383,9 +370,9 @@ async function refreshVisibleRouteFromSync(){
   if(!remoteRefreshPending||remoteRefreshRunning||modal.open)return;
   if(document.activeElement?.matches("input, textarea, select, [contenteditable=true]"))return;
   remoteRefreshPending=false;
-  if(currentRoute==="sync"||!routes[currentRoute])return;
+  if(currentRoute==="sync"||currentRoute==="support"||!routes[currentRoute])return;
   remoteRefreshRunning=true;
-  try{await routes[currentRoute]();}finally{remoteRefreshRunning=false;}
+  try{await navigate(currentRoute);}finally{remoteRefreshRunning=false;}
 }
 const card = (i, t, d, r) =>
   `<button class="card-button" data-go="${r}"><span class="emoji">${i}</span><strong>${t}</strong><small>${d}</small></button>`;
@@ -1769,6 +1756,7 @@ async function getDailyCare(profileId) {
 }
 
 async function openDailyCareProfile() {
+  if((await MTMSync.state()).householdRole==='babysitter')return MTMAccess.dailyCare();
   const profiles = await getAll("profiles");
   if (!profiles.length) return alert("Create a child profile first.");
   let profileId = profiles[0].id;
@@ -2214,6 +2202,7 @@ async function showBirthdayGreetingsIfNeeded() {
 function openFoodClaimsGuide() { openInfoGuide("🥛 Food dyes, sugar, dairy & A2 milk", `<p>Food can affect comfort, digestion, sleep, energy, and behavior in any child, but food dyes, sugar, dairy, or A1 milk have not been shown to cause autism. Removing them is not an established treatment for autism itself.</p><h3>Food dyes</h3><p>FDA says most children have no adverse effects from approved color additives, although some evidence suggests certain children may be sensitive. If you notice a repeatable change, record the exact product, dye, amount, timing, symptoms, sleep, illness, and other possible triggers. Labels may list Red 40, Yellow 5, Yellow 6, or Blue 1.</p><h3>Sugar</h3><p>Sugar does not cause autism. A high-sugar eating pattern can crowd out nutrients and affect teeth, appetite, and energy. Exciting situations where sweets are served can also change behavior, so look for repeatable individual patterns rather than assuming activity or distress came from sugar.</p><h3>Dairy, milk allergy, and lactose intolerance</h3><p>A true cow’s-milk allergy is an immune reaction to milk protein and can be serious or life-threatening. Lactose intolerance is difficulty digesting milk sugar and more often causes gas, bloating, diarrhea, nausea, or abdominal pain. These are different conditions. Removing dairy can reduce protein, calcium, vitamin D, calories, and safe-food options, so broad restriction should involve the child’s clinician or pediatric dietitian.</p><h3>What is A2 dairy?</h3><p>Most ordinary cow’s milk contains both A1 and A2 forms of a protein called beta-casein. A2 milk comes from cows selected to produce only the A2 form. It is still cow’s milk, has broadly similar nutrition, and usually contains lactose unless the label also says lactose-free.</p><ul><li>Small human trials suggest A2 milk may cause less digestive discomfort than conventional milk for some people, but findings are mixed and do not establish an autism-specific benefit.</li><li>A2 milk does <strong>not</strong> treat autism and should not be presented as improving core autistic traits.</li><li>It is not a treatment for proven lactose intolerance because ordinary A2 milk still contains lactose.</li><li>It is <strong>not safe for a cow’s-milk allergy</strong>; it still contains milk proteins capable of causing an allergic reaction.</li><li>If a clinician says a cautious trial is appropriate, record the product, amount, symptoms, timing, stool pattern, and other changes rather than changing several foods at once.</li></ul><h3>A safer way to investigate</h3><ul><li>Get urgent help for trouble breathing, throat or tongue swelling, faintness, or a rapidly worsening reaction.</li><li>Use this Food Diary’s allergy, reaction, and sensitivity fields to record patterns.</li><li>Do not deliberately re-expose a child to a suspected allergen without medical guidance.</li><li>Consider constipation, reflux, dental pain, infection, sleep loss, hunger, and medication effects before blaming one ingredient.</li></ul><div class="education-links"><a class="education-link" href="https://www.fda.gov/consumers/consumer-updates/how-safe-are-color-additives" target="_blank" rel="noopener"><strong>FDA color-additive safety</strong><span>Current evidence, sensitivities, reactions, and labeling.</span><small>Official source ↗</small></a><a class="education-link" href="https://www.niddk.nih.gov/health-information/digestive-diseases/lactose-intolerance/symptoms-causes" target="_blank" rel="noopener"><strong>Lactose intolerance and milk allergy</strong><span>NIDDK explains the different causes and symptoms.</span><small>Official source ↗</small></a><a class="education-link" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11215337/" target="_blank" rel="noopener"><strong>A2 milk clinical trial</strong><span>A randomized crossover trial showing mixed gastrointestinal results.</span><small>Research source ↗</small></a></div>`); }
 
 async function renderFoodDiary() {
+  if((await MTMSync.state()).householdRole==='babysitter')return MTMAccess.foodDiary();
   const profiles = await getAll("profiles");
   if (!profiles.length) { view.innerHTML = `<div class="empty card"><h2>Create a child profile first</h2><button class="btn" data-go="child">Create profile</button></div>`; bindRouteButtons(); return; }
   let profileId = profiles[0].id, entries = [], editingId = null;
@@ -2696,10 +2685,6 @@ async function renderBabysitters(){
     let state=await window.MTMSync.state();if(!state.token)throw new Error("Sign in through Accounts & Sync to use Find a Babysitter.");
     if(!state.user){const account=await window.MTMSync.api("/v1/account");state={...state,user:account.user};await window.MTMSync.saveState(state);}
     let myProfileResult=state.user?.isBabysitter?await window.MTMSync.api("/v1/community/babysitters/me"):null;
-    if(state.user?.isBabysitter&&!myProfileResult?.profile){
-      const mine=await window.MTMSync.api("/v1/community/babysitters?scope=mine&offset=0"),fallback=mine.babysitters?.find(item=>item.isSelfManaged);
-      if(fallback)myProfileResult={profile:fallback,needsAccountLink:false};
-    }
     const myProfile=myProfileResult?.profile||null,needsAccountLink=Boolean(myProfileResult?.needsAccountLink);
     myBabysitterProfileId=myProfile?.id||null;
     communityBabysitters=[];
@@ -2707,6 +2692,14 @@ async function renderBabysitters(){
       <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
       <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="manageBabysitterShares" class="btn secondary" type="button">View or share child access</button><button id="myBabysitterProfile" class="btn secondary" type="button">${needsAccountLink?"Connect and manage my profile":myProfile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
       <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, ZIP, experience, or availability</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, weekends, CPR…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Public profiles</option><option value="mine">My profile and nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location, name, or service detail, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
+    if(state.user?.isBabysitter){
+      view.querySelector('.babysitter-search')?.remove();
+      $("#nominateBabysitter").hidden=true;
+      $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile,state.user,needsAccountLink);
+      $("#manageBabysitterShares").textContent="My shared households";
+      $("#manageBabysitterShares").onclick=()=>navigate("babysitterHome");
+      return;
+    }
     $("#nominateBabysitter").onclick=openBabysitterNominationForm;
     $("#manageBabysitterShares").onclick=()=>navigate("sync");
     $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile,state.user,needsAccountLink);
@@ -3403,14 +3396,20 @@ async function renderPottyTracker() {
   const profiles = await getAll("profiles"), logs = await getAll("pottyLogs");
   if (!profiles.length) {
     view.innerHTML = `<div class="empty card"><div class="big">🚽</div><h2>Create a child profile first</h2><p>Potty-training records are connected to a child.</p><button id="pottyCreateProfile" class="btn">Create profile</button></div>`;
+
     $("#pottyCreateProfile").onclick = openProfileForm;
     return;
   }
-  view.innerHTML = `<section class="hero"><h1>🚽 Potty Training Tracker</h1><p>Record each day with patience, privacy, and no comparison.</p></section><div class="potty-entry card"><div class="field"><label>Child</label><select id="pottyProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="pottyDate" type="date" value="${isoToday()}"></div><div class="potty-count-grid"><label><span>💧 Pees in potty</span><input id="pottyPees" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>💩 Poops in potty</span><input id="pottyPoops" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label><span>🧺 Accidents</span><input id="pottyAccidents" type="number" min="0" step="1" inputmode="numeric" value="0"></label></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="pottyNotes" placeholder="What helped, timing, signs noticed, or anything worth remembering"></textarea></div><button id="savePottyDay" class="btn full" type="button">Save day</button></div><div id="pottyStats"></div><h2 class="section-title">Recent days</h2><div id="pottyHistory" class="potty-history"></div>`;
+  view.innerHTML = `<section class="hero"><h1>🚽 Potty Training Tracker</h1><p>Record each day with patience, privacy, and no comparison.</p></section><div class="potty-entry card"><div class="field"><label>Child</label><select id="pottyProfile">${profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="pottyDate" type="date" value="${isoToday()}"></div><div class="potty-count-grid"><label><span>💧 Pees in potty</span><input id="pottyPees" type="number" min="0" step="1" inputmode="numeric" placeholder="0" value=""></label><label><span>💩 Poops in potty</span><input id="pottyPoops" type="number" min="0" step="1" inputmode="numeric" placeholder="0" value=""></label><label><span>🧺 Accidents</span><input id="pottyAccidents" type="number" min="0" step="1" inputmode="numeric" placeholder="0" value=""></label></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="pottyNotes" placeholder="What helped, timing, signs noticed, or anything worth remembering"></textarea></div><button id="savePottyDay" class="btn full" type="button">Save day</button></div><div id="pottyStats"></div><h2 class="section-title">Recent days</h2><div id="pottyHistory" class="potty-history"></div>`;
+  for (const id of ['pottyPees','pottyPoops','pottyAccidents']) {
+    const input=document.getElementById(id);
+    input.addEventListener('focus',()=>{if(input.value!=='' && Number(input.value)===0)input.value='';});
+    input.addEventListener('input',()=>{if(/^0[0-9]+$/.test(input.value))input.value=String(Number(input.value));});
+  }
   const selectedLogs = () => logs.filter((x) => x.profileId === $("#pottyProfile").value).sort((a, b) => b.date.localeCompare(a.date));
   const loadDay = () => {
     const item = logs.find((x) => x.profileId === $("#pottyProfile").value && x.date === $("#pottyDate").value);
-    $("#pottyPees").value = item?.pees ?? 0; $("#pottyPoops").value = item?.poops ?? 0; $("#pottyAccidents").value = item?.accidents ?? 0; $("#pottyNotes").value = item?.notes || "";
+    $("#pottyPees").value = item?.pees || ''; $("#pottyPoops").value = item?.poops || ''; $("#pottyAccidents").value = item?.accidents || ''; $("#pottyNotes").value = item?.notes || "";
     $("#savePottyDay").textContent = item ? "Update day" : "Save day";
   };
   const draw = () => {
@@ -4099,10 +4098,7 @@ function openCaregiverRegulationGuides() {
   openInfoGuide("🌱 Regulation & confidence", `${visualGuideFigure("supporting-autistic-children.webp","12 ways to better support autistic children")}${visualGuideFigure("supporting-emotional-regulation.webp","Supporting emotional regulation")}${visualGuideFigure("nurture-confidence.webp","12 ways to nurture confidence")}`);
 }
 
-function openSupportMessagingInfo() {
-  modalBody.innerHTML = `<h2>🤝 Support messaging</h2><div class="banner"><strong>Planning preview — messaging is not connected yet.</strong><br>No employee is monitoring this page, and nothing entered elsewhere in the app is sent to a support team.</div><p>The future service is intended to give caregivers a clear place to ask non-urgent questions, get help navigating More than Measured resources, and share feedback with an authorized support person.</p><h3>Planned support topics</h3><div class="list">${SUPPORT_MESSAGING_PLAN.topics.map(([,label,description])=>`<div class="list-item"><div><strong>${esc(label)}</strong><p>${esc(description)}</p></div></div>`).join("")}</div><h3>How a future conversation should work</h3><ol><li>Sign in through a verified caregiver account and choose a support topic.</li><li>See service hours, the expected response window, privacy notice, and emergency limits <strong>before</strong> sending.</li><li>Create a request that receives a timestamp, status, and conversation number.</li><li>An authorized responder accepts the request, replies, and can provide links or escalate it to the correct support role.</li><li>The caregiver can return to the conversation, receive notifications, download or delete eligible data, and see when the request is closed.</li></ol><h3>Boundaries being built in now</h3><ul>${SUPPORT_MESSAGING_PLAN.boundaries.map((item)=>`<li>${esc(item)}</li>`).join("")}</ul><h3>What still has to exist before launch</h3><ul><li>Secure accounts, identity and household permissions, and server-side message storage.</li><li>An employee dashboard with assignment, unread, waiting, closed, and escalation states.</li><li>Encryption in transit and at rest, access logging, staff permissions, retention limits, deletion tools, backups, and breach procedures.</li><li>Notification controls that do not expose sensitive message text on a lock screen.</li><li>Written response standards, staff training, supervision, service hours, coverage, and a plan for messages received when the service is closed.</li><li>Terms, consent, privacy disclosures, subscription rules if applicable, and legal review before real caregiver information is collected.</li></ul><div class="banner"><strong>Need help now?</strong><br>If someone is in immediate danger or has a medical emergency, call 911 or go to the nearest emergency room. In the United States, call or text <strong>988</strong> or use <a href="https://988lifeline.org/" target="_blank" rel="noopener">988Lifeline.org</a> for suicide, mental-health, or substance-use crisis support. This future MtM service will not replace emergency or crisis care.</div><p class="hint">The topic IDs, status language, boundaries, and planned workflow on this page are structured so they can be reused when the account and server phase begins, without presenting a fake message box today.</p>`;
-  modal.showModal();
-}
+function openSupportMessagingInfo(){if(modal.open)modal.close();navigate('support');}
 
 async function openCaregiverReflections() {
   let entries = (await getAll("notes")).filter((item) => item.kind === "caregiverReflection"),
@@ -4418,6 +4414,8 @@ async function collectBackup() {
     appVersion: APP.version,
     schemaVersion: APP.schemaVersion,
     exportedAt: nowISO(),
+    sourceAccountId: (await MTMSync.state()).user?.id || null,
+    sourceHouseholdId: (await MTMSync.state()).householdId || null,
     counts: Object.fromEntries(
       Object.entries(data).map(([k, v]) => [k, v.length]),
     ),
@@ -4465,6 +4463,7 @@ function validateBackup(b) {
       throw new Error(`Backup section ${s} is invalid.`);
 }
 async function previewRestore(file) {
+  if(!(await MTMAccess.status(true)).canRestore)throw new Error("Restore is unavailable during the free trial unless support grants a recovery exception.");
   const b = JSON.parse(await file.text());
   validateBackup(b);
   modalBody.innerHTML = `<h2>Restore preview</h2><div class="card"><p><strong>Created:</strong> ${fmtDate(b.exportedAt)}</p><p><strong>App version:</strong> ${esc(b.appVersion)}</p><p><strong>Profiles:</strong> ${b.data.profiles.length}</p><p><strong>Wins:</strong> ${b.data.achievements.length}</p><p><strong>Speech & Language entries:</strong> ${b.data.words.length}</p><p><strong>My Day entries:</strong> ${(b.data.notes || []).filter((item) => item.kind === "dayEvent").length}</p><p><strong>Potty-training days:</strong> ${(b.data.pottyLogs || []).length}</p><p><strong>Appointments:</strong> ${(b.data.appointments || []).length}</p><p><strong>To-do items:</strong> ${(b.data.todos || []).length}</p><p><strong>Notes:</strong> ${b.data.notes.length}</p></div><div class="banner" style="margin-top:12px">A safety checkpoint will be created before current data changes.</div><div class="btn-row"><button id="replaceRestore" type="button" class="btn danger">Replace current data</button><button id="mergeRestore" type="button" class="btn secondary">Merge safely</button></div>`;
@@ -4472,34 +4471,49 @@ async function previewRestore(file) {
   $("#replaceRestore").onclick = () => performRestore(b, "replace");
   $("#mergeRestore").onclick = () => performRestore(b, "merge");
 }
+const restoreRequestIds = new WeakMap();
 async function performRestore(b, mode) {
+  const buttons=[...modalBody.querySelectorAll('button')];buttons.forEach(x=>x.disabled=true);
   try {
+    validateBackup(b);
+    const ids=restoreRequestIds.get(b)||{};
+    if(!ids[mode] && !(await MTMAccess.status(true)).canRestore)throw new Error("Restoring needs paid or complimentary access, or a support exception during your active trial.");
     await createSnapshot(`Before ${mode} restore`);
-    const stores = STORE_NAMES.filter((x) => x !== "snapshots");
-    if (mode === "replace") for (const s of stores) await clearStore(s);
-    for (const s of stores) {
-      const existing =
-        mode === "merge"
-          ? new Set((await getAll(s)).map((x) => x.id))
-          : new Set();
-      for (const item of b.data[s] || [])
-        if (!existing.has(item.id)) await put(s, item);
-    }
-    modal.close();
-    alert("Restore completed successfully.");
-    navigate("backup");
-  } catch (e) {
-    alert(`Restore failed: ${e.message}`);
-  }
+    const state=await MTMSync.state();
+    const requestId=ids[mode] ||= crypto.randomUUID();restoreRequestIds.set(b,ids);
+    await MTMSync.restoreRemote(b,mode,requestId);
+    MTMAccess.invalidate();modal.close();alert("Household restore completed successfully.");await navigate("backup");
+  } catch(e) { alert(`Restore failed: ${e.message}`); }
+  finally {buttons.forEach(x=>x.disabled=false);}
 }
+
 async function renderBackup() {
+  if(!(await MTMAccess.status()).access)return MTMAccess.renderExport();
   const last = await getSetting("lastBackupAt"),
     snaps = (await getAll("snapshots")).sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
-  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Your family data stays on this device unless you export it yourself.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, Wins, communication entries, potty-training records, caregiver tools, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
+  view.innerHTML = `<section class="hero"><h1>💾 Backup & Restore</h1><p>Export a portable copy of your saved family data. Household sync also stores shared information on the server.</p></section><h2 class="section-title">Complete local backup</h2><div class="card"><p>Exports profiles, Wins, communication entries, potty-training records, caregiver tools, notes, and settings into one versioned file.</p><div class="btn-row"><button id="exportBtn" class="btn">Export complete backup</button><button id="restoreBtn" class="btn secondary">Restore from file</button></div><p class="hint">Last manual backup: ${last ? fmtDate(last) : "None yet"}</p></div><h2 class="section-title">Safety checkpoints</h2><div class="card"><p>The app keeps up to five internal checkpoints before risky operations.</p><div class="btn-row"><button id="checkpointBtn" class="btn secondary">Create checkpoint now</button></div><p class="hint">Saved checkpoints: ${snaps.length}</p></div><div class="banner" style="margin-top:18px"><strong>Important:</strong> Removing the PWA or clearing browser storage can erase local data. Export backups regularly and store copies somewhere safe.</div>`;
   $("#exportBtn").onclick = exportBackup;
-  $("#restoreBtn").onclick = () => $("#restoreInput").click();
+  $("#restoreBtn").onclick = async () => {
+    const button=$("#restoreBtn");button.disabled=true;
+    const showRestoreNotice=message=>{
+      modalBody.innerHTML='<h2 id="restoreNoticeTitle">Restore unavailable</h2><p id="restoreNoticeText" role="status"></p><button id="closeRestoreNotice" class="btn" type="button">OK</button><button id="restoreContactSupport" class="btn secondary" type="button">Contact support</button>';
+      $("#restoreNoticeText").textContent=message;
+      $("#closeRestoreNotice").onclick=()=>modal.close();
+      $("#restoreContactSupport").onclick=()=>{modal.close();navigate("support");};
+      if(!modal.open)modal.showModal();
+      $("#closeRestoreNotice").focus();
+    };
+    try {
+      const access=await MTMAccess.status(true);
+      if(!access.canRestore){showRestoreNotice(access.kind==='offline'?'Connect to the internet to verify restore permission.':'Restoring requires paid or complimentary access, or a support exception during your active trial.');return;}
+      modalBody.innerHTML='<h2>Restore from backup</h2><p>Restore permission verified. Choose your backup file to continue.</p><button id="chooseRestoreFile" class="btn">Choose backup file</button><button id="cancelRestoreFile" class="btn secondary">Cancel</button>';
+      if(!modal.open)modal.showModal();
+      $("#chooseRestoreFile").onclick=()=>{modal.close();$("#restoreInput").click();};
+      $("#cancelRestoreFile").onclick=()=>modal.close();
+    }catch(error){showRestoreNotice(error.message);}finally{button.disabled=false;}
+  };
   $("#checkpointBtn").onclick = async () => {
     await createSnapshot("Manual checkpoint");
     alert("Safety checkpoint created.");
@@ -4531,7 +4545,7 @@ async function renderSettings() {
       savedProfileDisplay === "exact" && !exactReady
         ? "yearsMonths"
         : savedProfileDisplay;
-  view.innerHTML = `<section class="hero"><h1>⚙️ Settings</h1><p>Choose how profiles and speech filters work for your family.</p></section><div class="card settings-card access-card"><h3>Access</h3><p><strong>${esc(accessStatus.label)}</strong></p><p class="hint">New accounts receive ${ACCESS.trialDays} days of full access. Owner and active household subscription access will be confirmed by the server before enforcement is enabled.</p><button class="btn secondary" data-go="subscription" type="button">View access details</button></div><div class="card settings-card"><h3>Profile card display</h3><div class="field"><label>Show beneath the child’s name</label><select id="profileDisplay"><option value="birthDate" ${profileDisplay === "birthDate" ? "selected" : ""}>Birth date</option><option value="years" ${profileDisplay === "years" ? "selected" : ""}>Age in whole years — 2 yo</option><option value="yearsMonths" ${profileDisplay === "yearsMonths" ? "selected" : ""}>Age in years and months — 2 years 3 months</option><option value="exact" ${profileDisplay === "exact" ? "selected" : ""}>Live exact age — years, months, days, hours, minutes, seconds</option><option value="none" ${profileDisplay === "none" ? "selected" : ""}>Nothing</option></select></div><button id="saveProfileDisplay" class="btn" type="button">Save profile display</button></div><div class="card settings-card"><h3>Speech & Language filter defaults</h3><p class="hint">These choices load when the tracker opens and whenever Clear filters is pressed.</p><div class="form-grid settings-filter-grid"><div class="field"><label>Child</label><select id="defaultVocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}" ${d.profile === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Default search</label><input id="defaultVocabSearch" type="search" value="${esc(d.search || "")}" placeholder="Blank shows everything"></div><div class="field"><label>Category</label><select id="defaultVocabCategory"><option value="">All categories</option>${categories.map((c) => `<option ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Sort</label><select id="defaultVocabSort"><option value="alpha" ${d.sort === "alpha" ? "selected" : ""}>Alphabetical</option><option value="category" ${d.sort === "category" ? "selected" : ""}>Category</option><option value="newest" ${d.sort === "newest" ? "selected" : ""}>Date first said — newest</option><option value="oldest" ${d.sort === "oldest" ? "selected" : ""}>Date first said — oldest</option></select></div><div class="field"><label>Year</label><input id="defaultVocabYear" type="number" min="1900" max="2100" inputmode="numeric" value="${esc(d.year || "")}" placeholder="All years"></div><div class="field"><label>Month</label><select id="defaultVocabMonth"><option value="">All months</option>${Array.from(
+  view.innerHTML = `<section class="hero"><h1>⚙️ Settings</h1><p>Choose how profiles and speech filters work for your family.</p></section><div class="card settings-card access-card"><h3>Access</h3><p><strong>${esc(accessStatus.label)}</strong></p><p class="hint">Households can start a ${ACCESS.trialDays}-day trial without a credit card. One membership covers the household.</p><button class="btn secondary" data-go="subscription" type="button">View access details</button></div><div class="card settings-card"><h3>Profile card display</h3><div class="field"><label>Show beneath the child’s name</label><select id="profileDisplay"><option value="birthDate" ${profileDisplay === "birthDate" ? "selected" : ""}>Birth date</option><option value="years" ${profileDisplay === "years" ? "selected" : ""}>Age in whole years — 2 yo</option><option value="yearsMonths" ${profileDisplay === "yearsMonths" ? "selected" : ""}>Age in years and months — 2 years 3 months</option><option value="exact" ${profileDisplay === "exact" ? "selected" : ""}>Live exact age — years, months, days, hours, minutes, seconds</option><option value="none" ${profileDisplay === "none" ? "selected" : ""}>Nothing</option></select></div><button id="saveProfileDisplay" class="btn" type="button">Save profile display</button></div><div class="card settings-card"><h3>Speech & Language filter defaults</h3><p class="hint">These choices load when the tracker opens and whenever Clear filters is pressed.</p><div class="form-grid settings-filter-grid"><div class="field"><label>Child</label><select id="defaultVocabProfile"><option value="all">All children</option>${profiles.map((p) => `<option value="${p.id}" ${d.profile === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Default search</label><input id="defaultVocabSearch" type="search" value="${esc(d.search || "")}" placeholder="Blank shows everything"></div><div class="field"><label>Category</label><select id="defaultVocabCategory"><option value="">All categories</option>${categories.map((c) => `<option ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Sort</label><select id="defaultVocabSort"><option value="alpha" ${d.sort === "alpha" ? "selected" : ""}>Alphabetical</option><option value="category" ${d.sort === "category" ? "selected" : ""}>Category</option><option value="newest" ${d.sort === "newest" ? "selected" : ""}>Date first said — newest</option><option value="oldest" ${d.sort === "oldest" ? "selected" : ""}>Date first said — oldest</option></select></div><div class="field"><label>Year</label><input id="defaultVocabYear" type="number" min="1900" max="2100" inputmode="numeric" value="${esc(d.year || "")}" placeholder="All years"></div><div class="field"><label>Month</label><select id="defaultVocabMonth"><option value="">All months</option>${Array.from(
     { length: 12 },
     (_, i) => {
       const value = String(i + 1).padStart(2, "0"),
@@ -4626,6 +4640,7 @@ function setupDrawer() {
     ["💾", "Backup & Restore", "backup"],
     ["⚙️", "Settings", "settings"],
     ["🔄", "Accounts & Sync", "sync"],
+    ["💬", "Contact support", "support"],
     ["ℹ️", "About", "about"],
   ];
   $("#drawerNav").innerHTML = links
@@ -4722,3 +4737,58 @@ async function init() {
 init().catch((err) => {
   view.innerHTML = `<div class="banner"><strong>Startup error:</strong> ${esc(err.message)}</div>`;
 });
+
+async function mountSupportInbox(host,request,{admin=false,isCurrent=()=>true,signedIn=true}={}){
+ const mount=Symbol();host.supportMount=mount;
+ const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ let revision=0,offset=0,listSnapshot="";const valid=n=>host.supportMount===mount&&isCurrent()&&host.isConnected&&n===revision;
+ const status=s=>({open:'Waiting for support',waiting:'Support replied',closed:'Resolved'})[s]||s;
+ const notice=message=>{const n=host.querySelector('[data-notice]');if(n)n.textContent=message;};
+ const send=(path,body)=>request(path,{method:'POST',body:JSON.stringify(body)});
+ const intro=`<h2>${admin?'Support inbox':'Contact support'}</h2><p>${admin?'Private account conversations. Select a request to reply.':'Ask about account access, subscriptions, restores, family exceptions, or an app problem. Requests are private to your account and authorized support staff—not shared with your household.'}</p>${admin?'':'<p>No email is sent. Replies update automatically while this screen is open. Family records are not attached automatically. This is not live chat or emergency support.</p>'}<p><button type="button" class="btn secondary" data-notifications>Notification settings</button> <button type="button" class="btn secondary" data-test-push>Test notification</button> <button type="button" class="btn secondary" data-check-push>Check notification delivery</button></p><p data-notice role="status" aria-live="polite"></p>`;
+ if(!signedIn){host.innerHTML='<h2>Contact support</h2>'+'<p>Sign in to send a private support request.</p><button class="btn" data-go="sync">Create account / sign in</button>';return;}
+ async function list(quiet=false){const n=++revision;if(!quiet)host.innerHTML=intro+'<p>Loading requests…</p>';try{const {threads}=await request('/support?offset='+offset);if(!valid(n))return;const snapshot=JSON.stringify(threads);if(quiet===true&&snapshot===listSnapshot){watch(n,()=>list(true));return;}listSnapshot=snapshot;
+ host.innerHTML=intro+`<div style="display:flex;gap:12px;flex-wrap:wrap">${admin?'':'<button class="btn" data-new>New request</button>'}<button class="btn secondary" data-refresh>Refresh</button></div><div>${threads.slice(0,50).map(t=>`<article class="card" style="overflow-wrap:anywhere;min-width:0"><h3>${escape(t.subject)}</h3><p>${escape(status(t.status))} ${t.unread?' · '+t.unread+' unread':''}</p>${admin?`<p>${escape(t.display_name)} · ${escape(t.email)}</p>`:''}<p>${escape(new Date(t.updated_at).toLocaleString())}</p><button class="btn secondary" data-open="${escape(t.id)}">Open request</button></article>`).join('')||'<p>No support requests yet.</p>'}</div><div style="display:flex;gap:12px"><button class="btn secondary" data-prev ${offset?'':'disabled'}>Previous</button><button class="btn secondary" data-next ${threads.length>50?'':'disabled'}>Next</button></div>`;
+ notificationButton();watch(n,()=>list(true));host.querySelector('[data-new]')?.addEventListener('click',compose);host.querySelector('[data-refresh]').onclick=()=>list();
+ host.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>detail(b.dataset.open));host.querySelector('[data-prev]').onclick=()=>{offset=Math.max(0,offset-50);list();};host.querySelector('[data-next]').onclick=()=>{offset+=50;list();};
+ }catch(e){if(valid(n)){host.innerHTML=intro+'<button class="btn" data-retry>Try again</button>';notice(e.message);host.querySelector('[data-retry]').onclick=()=>list();}}}
+ function compose(){const n=++revision,requestId=crypto.randomUUID();host.innerHTML=intro+`<form data-compose><label>Topic<select name="topic"><option value="account">Account access</option><option value="billing">Subscription or payment</option><option value="restore">Backup or restore</option><option value="family">Family sharing exception</option><option value="bug">App problem</option><option value="feedback">Suggestion</option><option value="other">Other</option></select></label><label>Subject<input name="subject" required maxlength="120"></label><label>Message<textarea name="message" required maxlength="5000" rows="7"></textarea></label><p>Include only what support needs. Do not send passwords, payment details, or backup files.</p><button class="btn" type="submit">Send request</button> <button class="btn secondary" type="button" data-back>Cancel</button></form>`;styleFields();host.querySelector('[data-back]').onclick=()=>list();
+ host.querySelector('form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type=submit]'),data=new FormData(form);button.disabled=true;notice('Sending…');try{const result=await send('/support',{requestId,...Object.fromEntries(data)});if(valid(n))await detail(result.id);}catch(error){if(valid(n)){notice('Not confirmed sent. Your message is still here; try again when connected. '+error.message);button.disabled=false;}}};}
+ async function detail(id){const n=++revision;host.innerHTML=intro+'<p>Loading conversation…</p>';try{const {thread,messages}=await request('/support/'+id);if(!valid(n))return;const requestId=crypto.randomUUID();host.innerHTML=intro+`<button class="btn secondary" data-back>All requests</button><h3 style="overflow-wrap:anywhere">${escape(thread.subject)}</h3><p data-thread-status>${escape(status(thread.status))} · Reference ${escape(thread.id)}</p><div data-messages>${messages.map(m=>`<article class="card" style="overflow-wrap:anywhere;min-width:0"><strong>${m.sender==='admin'?'Support':'Account holder'}</strong><small> · ${escape(new Date(m.created_at).toLocaleString())}</small><p style="white-space:pre-wrap">${escape(m.body)}</p></article>`).join('')}</div><form><label>${thread.status==='closed'?'Reply to reopen this request':'Reply'}<textarea name="message" required maxlength="5000" rows="5"></textarea></label><button type="submit" class="btn">Send reply</button> <button type="button" class="btn secondary" data-refresh>Refresh conversation</button>${thread.status!=='closed'?' <button type="button" class="btn secondary" data-close>Mark resolved</button>':''}</form>`;styleFields();
+ host.querySelector('[data-back]').onclick=()=>list();host.querySelector('[data-refresh]').onclick=()=>detail(id);
+ host.querySelector('[data-close]')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await send('/support/'+id+'/close',{});if(valid(n))detail(id);}catch(error){if(valid(n)){notice(error.message);host.querySelector('[data-close]').disabled=false;}}});
+ host.querySelector('form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type=submit]');button.disabled=true;notice('Sending…');try{await send('/support/'+id+'/reply',{requestId,message:new FormData(form).get('message')});if(valid(n))detail(id);}catch(error){if(valid(n)){notice('Not confirmed sent. Your reply is still here; retry when connected. '+error.message);button.disabled=false;}}};
+ let lastSeq=messages.at(-1)?.seq||0;
+ if(document.visibilityState!=='hidden')await send('/support/'+id+'/seen',{seq:lastSeq}).catch(()=>{});
+ watch(n,async()=>{const update=await request('/support/'+id);if(!valid(n)||document.visibilityState==='hidden')return;
+ const fresh=update.messages.filter(m=>m.seq>lastSeq);
+ if(fresh.length){host.querySelector('[data-messages]').insertAdjacentHTML('beforeend',fresh.map(m=>`<article class="card" style="overflow-wrap:anywhere;min-width:0"><strong>${m.sender==='admin'?'Support':'Account holder'}</strong><small> · ${escape(new Date(m.created_at).toLocaleString())}</small><p style="white-space:pre-wrap">${escape(m.body)}</p></article>`).join(''));lastSeq=fresh.at(-1).seq;notice('New message received.');await send('/support/'+id+'/seen',{seq:lastSeq});}
+ host.querySelector('[data-thread-status]').textContent=status(update.thread.status)+' · Reference '+update.thread.id;
+ });
+ }catch(error){if(valid(n)){host.innerHTML=intro+'<button class="btn secondary" data-back>All requests</button>';notice(error.message);host.querySelector('[data-back]').onclick=()=>list();}}}
+ function styleFields(){notificationButton();host.querySelectorAll('input,select,textarea').forEach(el=>el.style.cssText='display:block;box-sizing:border-box;width:100%;max-width:100%;font:inherit;padding:12px;margin:8px 0 16px');host.querySelectorAll('button').forEach(el=>el.style.minHeight='44px');}
+ function watch(n,refresh){setTimeout(async()=>{if(!valid(n))return;try{if(document.visibilityState!=='hidden'&&navigator.onLine!==false)await refresh();}catch{}if(valid(n))watch(n,refresh);},5000);}
+ function notificationButton(){const button=host.querySelector('[data-notifications]');if(!button)return;
+ const subscription=async()=>{const r=await navigator.serviceWorker?.getRegistration();const sub=await r?.pushManager?.getSubscription();if(!sub)throw new Error('Enable notifications on this device first.');return sub;};
+ host.querySelector('[data-test-push]').onclick=async e=>{e.currentTarget.disabled=true;try{const sub=await subscription();await send('/support-notifications',{test:true,endpoint:sub.endpoint});notice('Test queued. Go to your Home Screen now; allow up to 30 seconds. Then return and check notification delivery.');}catch(error){notice(error.message);}finally{if(host.querySelector('[data-test-push]'))host.querySelector('[data-test-push]').disabled=false;}};
+ host.querySelector('[data-check-push]').onclick=async()=>{try{const sub=await subscription();const result=await send('/support-notifications',{check:true,endpoint:sub.endpoint});notice(!result.registered?'This device is not registered on the server. Turn notifications off, then enable them again.':(result.delivery?result.delivery.result+' ('+new Date(result.delivery.checked_at).toLocaleString()+'). ':'No delivery attempt recorded yet. ')+result.pending+' notification(s) pending.');}catch(error){notice(error.message);}};
+ button.onclick=async()=>{button.disabled=true;try{
+ if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error('On iPhone, add this app to your Home Screen and open it there to enable notifications.');
+ const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('Notifications are off. Allow them in your device settings, then try again.');
+ const registration=admin?await navigator.serviceWorker.register('./support-worker.js'):await navigator.serviceWorker.ready;
+ if(!registration.active)await new Promise((resolve,reject)=>{const w=registration.installing||registration.waiting;if(!w)return reject(new Error('Reopen support after the notification service finishes installing.'));w.addEventListener('statechange',()=>{if(w.state==='activated')resolve();if(w.state==='redundant')reject(new Error('Notification service did not install.'));});});
+ const existing=await registration.pushManager.getSubscription();
+ if(existing){await send('/support-notifications',{remove:true,endpoint:existing.endpoint});await existing.unsubscribe();notice('Notifications turned off on this device.');button.textContent='Enable notifications';}
+ else{const {publicKey}=await request('/support-notifications');const bytes=Uint8Array.from(atob(publicKey.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));const subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes});try{await send('/support-notifications',{subscription:subscription.toJSON()});}catch(e){await subscription.unsubscribe();throw e;}notice('Notifications enabled on this device for 30 days. Return to support to renew them.');button.textContent='Turn off notifications';}
+ }catch(e){notice(e.message);}finally{button.disabled=false;}};
+ if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(async reg=>{const sub=await reg?.pushManager?.getSubscription();if(!button.isConnected)return;button.textContent=sub?'Turn off notifications':'Enable notifications';if(sub)await send('/support-notifications',{subscription:sub.toJSON()}).catch(()=>{notice('Could not confirm notification registration. Check your connection and enable notifications again.');});}).catch(()=>{});
+ }
+ await list();
+}
+
+async function renderSupport(){
+ const account=await MTMSync.state();view.innerHTML='<section class="card" id="supportInbox"></section>';
+ const host=document.getElementById('supportInbox');
+ await mountSupportInbox(host,async(path,options)=>{const current=await MTMSync.state();if(current.user?.id!==account.user?.id)throw new Error('Account changed. Reopen support.');return MTMSync.api('/v1'+path,options);},{signedIn:Boolean(account.token),isCurrent:()=>currentRoute==='support'});
+ bindRouteButtons();
+}

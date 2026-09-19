@@ -69,16 +69,26 @@ test('production shell and worker use matching new build identifiers', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
-  for (const asset of ['styles.css', 'sync.js', 'app.js']) {
-    assert.ok(html.includes(asset + '?v=0.10.0-production-4'));
-    assert.ok(worker.includes(asset + '?v=0.10.0-production-4'));
+  for (const asset of ['styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js']) {
+    assert.ok(html.includes(asset + '?v=0.10.1-production-1'));
+    assert.ok(worker.includes(asset + '?v=0.10.1-production-1'));
   }
-  assert.ok(app.includes('const ASSET_BUILD = "0.10.0-production-4"'));
-  assert.ok(source.includes('const BUILD = "0.10.0-production-4"'));
-  assert.ok(worker.includes("mtm-production-v0.10.0-4"));
-  assert.ok(app.includes('version: "0.10.0", schemaVersion: 5'));
+  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-1"'));
+  assert.ok(source.includes('const BUILD = "0.10.1-production-1"'));
+  assert.ok(worker.includes("mtm-production-v0.10.1-1"));
+  assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));
   assert.doesNotMatch(source, /syncServer|saveServer/);
-  for (const match of worker.matchAll(/'\.\/([^']+)'/g)) {
-    assert.ok(fs.existsSync(path.join(root, match[1].split('?')[0])), match[1]);
+  for (const match of worker.matchAll(/["']\.\/([^"']+)["']/g)) {
+    assert.ok(fs.existsSync(path.join(root, match[1].split(/[?#]/)[0])), match[1]);
   }
+});
+
+test('production offline key matches the installed server and contains only public material', () => {
+  const context={window:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(root,'offline-key.js'),'utf8'),context);
+  const key=context.window.MTM_OFFLINE_PUBLIC_KEY;
+  assert.equal(key.x,'VYFbiecq54Gc_66uhsw5u_XEMaDLBP_20oKXhmjvjXI');
+  assert.equal(key.y,'iZMBmT_NWAIQSNDGO3wTEDYxyO43TrQJqHTlWKOPHwQ');
+  assert.equal(key.crv,'P-256'); assert.equal(key.d,undefined);
+  assert.equal(require('node:crypto').createPublicKey({key,format:'jwk'}).asymmetricKeyType,'ec');
 });
