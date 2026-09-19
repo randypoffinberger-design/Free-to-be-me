@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-production-1";
+const ASSET_BUILD = "0.10.1-production-2";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-db",

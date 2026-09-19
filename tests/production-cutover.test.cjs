@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(root, 'sync.js'), 'utf8');
 const legacy = 'https://randys.tail96598f.ts.net/mtm';
 const cloud = 'https://api.serenityvalleyworks.com/mtm';
 
-function harness(saved) {
+function harness(saved, respond = async () => ({ ok: true, json: async () => ({ ok: true }) })) {
   let record = structuredClone(saved), writes = 0;
   const requests = [];
   const db = { transaction() {
@@ -22,17 +22,39 @@ function harness(saved) {
         });
         return request;
       },
-      put(value) { record = structuredClone(value); writes++; return {}; },
+      put(value) { record = structuredClone(value); writes++; const request={}; queueMicrotask(()=>request.onsuccess?.()); return request; },
     }; } };
     return transaction;
   } };
   const context = vm.createContext({ db, window: { addEventListener() {} },
     setInterval() {}, navigator: { onLine: true },
-    fetch: async (url, options) => { requests.push({ url, options }); return { ok: true, json: async () => ({ ok: true }) }; },
+    fetch: async (url, options) => { requests.push({ url, options }); return respond(); },
   });
   vm.runInContext(source, context);
   return { sync: context.window.MTMSync, requests, record: () => record, writes: () => writes };
 }
+
+test('rejected saved sessions require sign-in without discarding account context', async () => {
+  const saved={id:'current',serverUrl:cloud,token:'expired',localDataOwnerId:'owner',householdId:'family',cursor:12};
+  const h=harness(saved,async()=>({ok:false,status:401,json:async()=>({error:'Authentication required.'})}));
+  await assert.rejects(h.sync.api('/v1/households'),{status:401});
+  assert.deepEqual(h.record(),{...saved,reauthRequired:true});
+});
+
+test('a delayed rejection cannot invalidate a newer sign-in',async()=>{
+  const saved={id:'current',serverUrl:cloud,token:'old'};
+  const h=harness(saved,async()=>{await h.sync.saveState({...saved,token:'new'});return {ok:false,status:401,json:async()=>({error:'Expired'})};});
+  await assert.rejects(h.sync.api('/v1/account'),{status:401});
+  assert.equal(h.record().token,'new');assert.equal(h.record().reauthRequired,undefined);
+});
+
+test('wrong passwords and temporary network failures do not invalidate saved access',async()=>{
+  const saved={id:'current',serverUrl:cloud,token:'saved'};
+  const login=harness(saved,async()=>({ok:false,status:401,json:async()=>({error:'Wrong password'})}));
+  await assert.rejects(login.sync.api('/v1/auth/login'),{status:401});assert.deepEqual(login.record(),saved);
+  const offline=harness(saved,async()=>{throw new TypeError('Network unavailable');});
+  await assert.rejects(offline.sync.api('/v1/account'),TypeError);assert.deepEqual(offline.record(),saved);
+});
 
 test('saved production account migrates persistently before its first API request', async () => {
   const original = { id: 'current', serverUrl: legacy, token: 'fixture-token', user: { id: 'user-1' },
@@ -70,12 +92,12 @@ test('production shell and worker use matching new build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js']) {
-    assert.ok(html.includes(asset + '?v=0.10.1-production-1'));
-    assert.ok(worker.includes(asset + '?v=0.10.1-production-1'));
+    assert.ok(html.includes(asset + '?v=0.10.1-production-2'));
+    assert.ok(worker.includes(asset + '?v=0.10.1-production-2'));
   }
-  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-1"'));
-  assert.ok(source.includes('const BUILD = "0.10.1-production-1"'));
-  assert.ok(worker.includes("mtm-production-v0.10.1-1"));
+  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-2"'));
+  assert.ok(source.includes('const BUILD = "0.10.1-production-2"'));
+  assert.ok(worker.includes("mtm-production-v0.10.1-2"));
   assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));
   assert.doesNotMatch(source, /syncServer|saveServer/);
   for (const match of worker.matchAll(/["']\.\/([^"']+)["']/g)) {

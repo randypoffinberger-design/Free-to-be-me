@@ -5,7 +5,7 @@ window.MTMAccess = (() => {
   const locked = (kind,label) => ({access:false,canWrite:false,canRestore:false,kind,label});
   async function status(force=false) {
     const sync=window.MTMSync,s=await sync.state();
-    if(!s.token||!s.user)return locked('signed-out','Create an account or sign in');
+    if(!s.token||!s.user||s.reauthRequired)return locked('signed-out','Create an account or sign in');
     if(!s.householdId)return locked('no-household','Create or join a household');
     const key=identity(s),tick=performance.now();
     if(verified?.key!==key)verified=null;
