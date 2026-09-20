@@ -1,13 +1,13 @@
-const CACHE='mtm-production-v0.10.1-4';
+const CACHE='mtm-production-v0.10.1-5';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  "./access.js?v=0.10.1-production-4",
-  "./offline-key.js?v=0.10.1-production-4",
-  "./offline-access.js?v=0.10.1-production-4",
-  './styles.css?v=0.10.1-production-4',
-  './sync.js?v=0.10.1-production-4',
-  './app.js?v=0.10.1-production-4',
+  "./access.js?v=0.10.1-production-5",
+  "./offline-key.js?v=0.10.1-production-5",
+  "./offline-access.js?v=0.10.1-production-5",
+  './styles.css?v=0.10.1-production-5',
+  './sync.js?v=0.10.1-production-5',
+  './app.js?v=0.10.1-production-5',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
