@@ -1,13 +1,16 @@
-const CACHE='mtm-production-v0.10.1-5';
+const CACHE='mtm-production-v0.10.1-6';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  "./access.js?v=0.10.1-production-5",
-  "./offline-key.js?v=0.10.1-production-5",
-  "./offline-access.js?v=0.10.1-production-5",
-  './styles.css?v=0.10.1-production-5',
-  './sync.js?v=0.10.1-production-5',
-  './app.js?v=0.10.1-production-5',
+  './analytics.js?v=0.10.1-production-6',
+  './analytics-frame.html',
+  './analytics-frame.js',
+  "./access.js?v=0.10.1-production-6",
+  "./offline-key.js?v=0.10.1-production-6",
+  "./offline-access.js?v=0.10.1-production-6",
+  './styles.css?v=0.10.1-production-6',
+  './sync.js?v=0.10.1-production-6',
+  './app.js?v=0.10.1-production-6',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -61,6 +64,11 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url = new URL(event.request.url);
   if(url.origin !== self.location.origin || !url.pathname.startsWith(new URL('./',self.location.href).pathname) || url.pathname.startsWith('/v1/') || url.pathname === '/health')return;
+  // The hidden analytics document must never replace the offline app shell.
+  if(url.pathname===new URL('./analytics-frame.html',self.location.href).pathname){
+    event.respondWith(caches.match('./analytics-frame.html').then(cached=>cached||fetch(event.request)));
+    return;
+  }
   if(event.request.mode==='navigate'){
     event.respondWith(
       caches.open(CACHE).then(async cache=>{

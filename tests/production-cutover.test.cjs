@@ -31,8 +31,19 @@ function harness(saved, respond = async () => ({ ok: true, json: async () => ({ 
     fetch: async (url, options) => { requests.push({ url, options }); return respond(); },
   });
   vm.runInContext(source, context);
-  return { sync: context.window.MTMSync, requests, record: () => record, writes: () => writes };
+  return { sync: context.window.MTMSync, window: context.window, requests, record: () => record, writes: () => writes };
 }
+
+test('analytics receives successful API results only and cannot break registration', async () => {
+  const data={user:{id:'new-user'}};
+  const h=harness(undefined,async()=>({ok:true,json:async()=>data}));
+  let calls=0;
+  h.window.MTMAnalytics={response(path,options,result){calls++;assert.equal(path,'/v1/auth/register');assert.equal(result,data);throw Error('Analytics blocked');}};
+  assert.equal(await h.sync.api('/v1/auth/register',{method:'POST'}),data);assert.equal(calls,1);
+  const failed=harness(undefined,async()=>({ok:false,status:400,json:async()=>({error:'Not created'})}));
+  failed.window.MTMAnalytics={response(){calls++;}};
+  await assert.rejects(failed.sync.api('/v1/auth/register',{method:'POST'}));assert.equal(calls,1);
+});
 
 test('rejected saved sessions require sign-in without discarding account context', async () => {
   const saved={id:'current',serverUrl:cloud,token:'expired',localDataOwnerId:'owner',householdId:'family',cursor:12};
@@ -92,12 +103,12 @@ test('production shell and worker use matching new build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js']) {
-    assert.ok(html.includes(asset + '?v=0.10.1-production-5'));
-    assert.ok(worker.includes(asset + '?v=0.10.1-production-5'));
+    assert.ok(html.includes(asset + '?v=0.10.1-production-6'));
+    assert.ok(worker.includes(asset + '?v=0.10.1-production-6'));
   }
   assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-3"'));
   assert.ok(source.includes('const BUILD = "0.10.1-production-3"'));
-  assert.ok(worker.includes("mtm-production-v0.10.1-5"));
+  assert.ok(worker.includes("mtm-production-v0.10.1-6"));
   assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));
   assert.doesNotMatch(source, /syncServer|saveServer/);
   for (const match of worker.matchAll(/["']\.\/([^"']+)["']/g)) {

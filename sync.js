@@ -134,7 +134,9 @@ window.MTMSync = (() => {
       request.onsuccess=()=>{const current=request.result;if(current?.token===s.token&&normalizeServerUrl(current.serverUrl||defaultProductionServer())===serverUrl)store.put({...current,reauthRequired:true});};
       transaction.oncomplete=resolve;transaction.onabort=()=>reject(transaction.error);transaction.onerror=()=>reject(transaction.error);
     });
-    if(!response.ok)throw Object.assign(new Error(data.error||"Server request failed"),{status:response.status}); return data;
+    if(!response.ok)throw Object.assign(new Error(data.error||"Server request failed"),{status:response.status});
+    try { await window.MTMAnalytics?.response(path, options, data, s); } catch {}
+    return data;
   }
   async function recordConflict(localStore, localRecord, remote, reason="Both this device and the household changed this record.") {
     const id=metaId(localStore,remote.entityId); await rawPut("syncConflicts",{id,entityType:localStore,entityId:remote.entityId,local:structuredClone(localRecord||null),remote,reason,createdAt:iso()});
