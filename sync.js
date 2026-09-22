@@ -115,15 +115,15 @@ window.MTMSync = (() => {
   }
   const syncable = (store, valueOrId) => SYNCED_STORES.has(store) && !(store === "settings" && DEVICE_SETTINGS.has(typeof valueOrId === "object" ? valueOrId.id : valueOrId));
   const metaId = (store,id) => `${store}:${id}`;
-  async function queue(store, id, operation, payload) {
+  async function queue(store, id, operation, payload, analyticsVersion = 0) {
     const s=await state(); if(!s.householdId) return;
     const meta=await rawGet("syncMeta",metaId(store,id));
     const existing=(await rawAll("syncOutbox")).find(x=>x.entityType===store&&x.entityId===id);
     const item={id:existing?.id||uuid(),mutationId:uuid(),entityType:store,entityId:id,
-      operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
+      analyticsVersion,operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
     await rawPut("syncOutbox",item);
   }
-  async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value); schedule(); }
+  async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value,1); schedule(); }
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
     const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultProductionServer());

@@ -3,6 +3,7 @@
   const origin = 'https://randypoffinberger-design.github.io';
   if (location.origin !== origin || window.parent === window) return;
   const id = 'G-28YF2Y4987';
+  const debug = new URLSearchParams(location.search || '').get('debug') === '1' ? { debug_mode: true } : {};
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   gtag('js', new Date());
@@ -13,6 +14,7 @@
     const { name, params: p } = event.data;
     let params;
     if (name === 'sign_up') params = { method: 'email' };
+    else if (['household_created', 'child_profile_created', 'first_record_created'].includes(name)) params = {};
     else if (name === 'trial_start') params = { trial_days: 7 };
     else if (['begin_checkout', 'purchase'].includes(name)) {
       const plan = p?.items?.[0]?.item_variant;
@@ -23,7 +25,7 @@
         params.transaction_id = p.transaction_id;
       }
     } else return;
-    gtag('event', name, { ...params, send_to: id, page_location: safePage, page_referrer: '', page_title: 'More Than Measured' });
+    gtag('event', name, { ...params, ...debug, send_to: id, page_location: safePage, page_referrer: '', page_title: 'More Than Measured' });
   });
   const script = document.createElement('script'); script.async = true;
   script.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;

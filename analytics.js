@@ -4,7 +4,7 @@ window.MTMAnalytics = (() => {
   const apiOrigin = 'https://api.serenityvalleyworks.com/mtm';
   let frame, ready = false;
   const queue = [], memory = new Map(), checking = new Set();
-  function read(key) { try { return JSON.parse(localStorage.getItem('mtm-ga4:' + key)); } catch { return memory.get(key); } }
+  function read(key) { try { return JSON.parse(localStorage.getItem('mtm-ga4:' + key)) ?? memory.get(key); } catch { return memory.get(key); } }
   function write(key, value) { memory.set(key, value); try { localStorage.setItem('mtm-ga4:' + key, JSON.stringify(value)); } catch {} }
   function send(name, params, key) {
     if (!active || read('sent:' + key)) return;
@@ -19,7 +19,7 @@ window.MTMAnalytics = (() => {
   if (active) {
     frame = document.createElement('iframe');
     frame.hidden = true; frame.title = 'MTM conversion measurement';
-    frame.src = 'analytics-frame.html'; frame.referrerPolicy = 'no-referrer';
+    frame.src = 'analytics-frame.html' + (new URLSearchParams(location.search || '').get('analytics_debug') === '1' ? '?debug=1' : ''); frame.referrerPolicy = 'no-referrer';
     window.addEventListener('message', event => {
       if (event.source === frame.contentWindow && event.origin === location.origin && event.data === 'mtm-analytics-ready') { ready = true; flush(); }
     });
@@ -53,10 +53,19 @@ window.MTMAnalytics = (() => {
       if (method === 'POST' && path === '/v1/auth/register' && data.user?.id) {
         send('sign_up', { method: 'email' }, 'signup:' + data.user.id);
       }
+      if (method === 'POST' && state.user?.id) {
+        let events = [];
+        if (path === '/v1/households' && data.household?.id) events = data.analyticsEvents || [];
+        if (path === '/v1/sync/push') events = (data.results || []).filter(r => r.status === 'accepted').flatMap(r => r.analyticsEvents || []);
+        for (const event of events) {
+          const allowed = path === '/v1/households' ? ['household_created'] : ['child_profile_created', 'first_record_created'];
+          if (allowed.includes(event.name) && /^[0-9a-f-]{36}$/i.test(event.key || '')) send(event.name, {}, 'funnel:' + event.key);
+        }
+      }
       const match = path.match(/^\/v1\/households\/([^/]+)\/(trial|billing\/checkout|access)$/);
       if (!match || !state.user?.id) return;
       const householdId = decodeURIComponent(match[1]);
-      if (method === 'POST' && match[2] === 'trial' && data.entitlement?.kind === 'trial' && data.entitlement.trialEndsAt) {
+      if (method === 'POST' && match[2] === 'trial' && data.trialStarted === true && data.entitlement?.kind === 'trial' && data.entitlement.trialEndsAt) {
         send('trial_start', { trial_days: 7 }, 'trial:' + householdId + ':' + data.entitlement.trialEndsAt);
       }
       if (method === 'POST' && match[2] === 'billing/checkout' && typeof data.url === 'string' && new URL(data.url).origin === 'https://checkout.stripe.com') {
