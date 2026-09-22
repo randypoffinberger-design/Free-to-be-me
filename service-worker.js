@@ -1,17 +1,17 @@
-const CACHE='mtm-production-v0.10.1-8';
+const CACHE='mtm-production-v0.10.1-9';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
-  './analytics.js?v=0.10.1-production-8',
+  './analytics.js?v=0.10.1-production-9',
   './analytics-frame.html',
   './analytics-frame.js',
-  "./access.js?v=0.10.1-production-8",
-  "./offline-key.js?v=0.10.1-production-8",
-  "./offline-access.js?v=0.10.1-production-8",
-  './styles.css?v=0.10.1-production-8',
-  './sync.js?v=0.10.1-production-8',
-  './library-books.js?v=0.10.1-production-8',
-  './app.js?v=0.10.1-production-8',
+  "./access.js?v=0.10.1-production-9",
+  "./offline-key.js?v=0.10.1-production-9",
+  "./offline-access.js?v=0.10.1-production-9",
+  './styles.css?v=0.10.1-production-9',
+  './sync.js?v=0.10.1-production-9',
+  './library-books.js?v=0.10.1-production-9',
+  './app.js?v=0.10.1-production-9',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
