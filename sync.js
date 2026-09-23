@@ -127,9 +127,11 @@ window.MTMSync = (() => {
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
     const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultProductionServer());
+    const usageRequest = path === "/v1/analytics/activity";
+    if (usageRequest && (!s.token || switching || document.visibilityState !== "visible" || !navigator.onLine)) return;
     const response=await fetch(`${serverUrl}${path}`,{...options,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
     const data=await response.json().catch(()=>({error:`HTTP ${response.status}`}));
-    if(response.status===401&&s.token&&!path.startsWith('/v1/auth/'))await new Promise((resolve,reject)=>{
+    if(response.status===401&&s.token&&!usageRequest&&!path.startsWith('/v1/auth/'))await new Promise((resolve,reject)=>{
       const transaction=db.transaction('accountState','readwrite'),store=transaction.objectStore('accountState'),request=store.get('current');
       request.onsuccess=()=>{const current=request.result;if(current?.token===s.token&&normalizeServerUrl(current.serverUrl||defaultProductionServer())===serverUrl)store.put({...current,reauthRequired:true});};
       transaction.oncomplete=resolve;transaction.onabort=()=>reject(transaction.error);transaction.onerror=()=>reject(transaction.error);
@@ -189,6 +191,61 @@ window.MTMSync = (() => {
   }finally{applyingRemote=false;}schedule();}
   window.addEventListener("online",schedule);
   setInterval(()=>syncNow(),5000);
+
+  const USAGE_FEATURES = new Set([
+    "home", "my-day", "skill-building", "speech-language", "potty-training",
+    "caregiver-corner", "sleep-sanctuary", "asd-friendly-fun", "health-wellness",
+    "profile", "food-diary", "screen-time", "toy-exchange", "babysitter-search",
+    "recommendations", "products", "support"
+  ]);
+
+  function analyticsDevice() {
+    // Inspect locally; send only these coarse labels, never the user-agent.
+    const ua = navigator.userAgent || "";
+    const platform =
+      /iPad/i.test(ua) || (/Macintosh|Mac OS X/i.test(ua) && navigator.maxTouchPoints > 1) ? "ipados" :
+      /iPhone|iPod/i.test(ua) ? "ios" :
+      /Android/i.test(ua) ? "android" :
+      /Windows/i.test(ua) ? "windows" :
+      /Macintosh|Mac OS X/i.test(ua) ? "macos" :
+      /Linux/i.test(ua) ? "linux" : "unknown";
+    const client =
+      navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)")?.matches ? "pwa" :
+      /Edg(?:A|iOS)?\//i.test(ua) ? "edge" :
+      /CriOS|Chrome\//i.test(ua) ? "chrome" :
+      /FxiOS|Firefox\//i.test(ua) ? "firefox" :
+      /Safari\//i.test(ua) ? "safari" : "browser";
+    return { platform, client };
+  }
+
+  async function trackActivity(feature = "") {
+    let timeout;
+    try {
+      if (document.visibilityState !== "visible" || !navigator.onLine || switching) return;
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 10000);
+      await api("/v1/analytics/activity", {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify({
+          ...analyticsDevice(),
+          version: window.MTM_APP_VERSION || "",
+          ...(USAGE_FEATURES.has(feature) ? { feature } : {})
+        })
+      });
+    } catch {
+      // Best effort only: no UI errors, sync state changes or offline queue.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  setInterval(() => { void trackActivity(); }, 60000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void trackActivity();
+  });
+  window.addEventListener("online", () => { void trackActivity(); });
+
   async function switchHousehold(id){
     if(switching)throw new Error("A household switch is already in progress.");
     switching=true;
@@ -236,7 +293,7 @@ window.MTMSync = (() => {
       await reloadAfterRestore();
     }finally{switching=false;}
   }
-  return {restoreRemote,reloadAfterRestore,switchHousehold,isSwitching:()=>switching,build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,clearDeletedAccountData,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultProductionServer};
+  return {restoreRemote,reloadAfterRestore,switchHousehold,isSwitching:()=>switching,build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,trackActivity,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,clearDeletedAccountData,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultProductionServer};
 })();
 
 function passwordResetTokenFromLink(){

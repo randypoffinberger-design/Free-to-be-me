@@ -2,6 +2,27 @@
 
 const ASSET_BUILD = "0.10.1-production-3";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
+window.MTM_APP_VERSION = APP.version;
+const ANALYTICS_FEATURES = Object.freeze({
+  home: "home",
+  myDay: "my-day",
+  skills: "skill-building",
+  speech: "speech-language",
+  vocabulary: "speech-language",
+  potty: "potty-training",
+  caregiver: "caregiver-corner",
+  sleep: "sleep-sanctuary",
+  fun: "asd-friendly-fun",
+  health: "health-wellness",
+  child: "profile",
+  food: "food-diary",
+  screenTime: "screen-time",
+  toys: "toy-exchange",
+  babysitters: "babysitter-search",
+  recommendations: "recommendations",
+  products: "products",
+  support: "support"
+});
 const ACCESS = { trialDays: 7, enforcementSource: "server" };
 const DB_NAME = "ftbm-db",
   DB_VERSION = 6,
@@ -348,8 +369,15 @@ async function performNavigation(r, options = {}) {
   }
   if(communityRefreshTimer){clearInterval(communityRefreshTimer);communityRefreshTimer=null;}
   if(screenTimerInterval){clearInterval(screenTimerInterval);screenTimerInterval=null;}
+  const previousRoute = currentRoute;
   currentRoute = route;
   applyRouteChrome(route);
+  if (route !== previousRoute) {
+    try {
+      const feature = Object.hasOwn(ANALYTICS_FEATURES, route) ? ANALYTICS_FEATURES[route] : "";
+      Promise.resolve(window.MTMSync?.trackActivity?.(feature)).catch(() => {});
+    } catch { /* Analytics must not interrupt navigation. */ }
+  }
   try {
     await routes[route]();
     await window.MTMAccess.readonlyChrome();

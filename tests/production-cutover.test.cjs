@@ -27,7 +27,7 @@ function harness(saved, respond = async () => ({ ok: true, json: async () => ({ 
     return transaction;
   } };
   const context = vm.createContext({ db, window: { addEventListener() {} },
-    setInterval() {}, navigator: { onLine: true },
+    setInterval() {}, navigator: { onLine: true }, document: { addEventListener() {} },
     fetch: async (url, options) => { requests.push({ url, options }); return respond(); },
   });
   vm.runInContext(source, context);
@@ -103,12 +103,12 @@ test('production shell and worker use matching new build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['sensory-play.js', 'library-books.js', 'styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js']) {
-    assert.ok(html.includes(asset + '?v=0.10.1-production-10'));
-    assert.ok(worker.includes(asset + '?v=0.10.1-production-10'));
+    assert.ok(html.includes(asset + '?v=0.10.1-production-11'));
+    assert.ok(worker.includes(asset + '?v=0.10.1-production-11'));
   }
   assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-3"'));
   assert.ok(source.includes('const BUILD = "0.10.1-production-3"'));
-  assert.ok(worker.includes("mtm-production-v0.10.1-10"));
+  assert.ok(worker.includes("mtm-production-v0.10.1-11"));
   assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));
   assert.doesNotMatch(source, /syncServer|saveServer/);
   for (const match of worker.matchAll(/["']\.\/([^"']+)["']/g)) {
