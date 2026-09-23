@@ -203,8 +203,8 @@ window.MTMSync = (() => {
     // Inspect locally; send only these coarse labels, never the user-agent.
     const ua = navigator.userAgent || "";
     const platform =
-      /iPad/i.test(ua) || (/Macintosh|Mac OS X/i.test(ua) && navigator.maxTouchPoints > 1) ? "ipados" :
       /iPhone|iPod/i.test(ua) ? "ios" :
+      /iPad/i.test(ua) || (/Macintosh|Mac OS X/i.test(ua) && navigator.maxTouchPoints > 1) ? "ipados" :
       /Android/i.test(ua) ? "android" :
       /Windows/i.test(ua) ? "windows" :
       /Macintosh|Mac OS X/i.test(ua) ? "macos" :

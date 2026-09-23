@@ -1,4 +1,4 @@
-const CACHE='mtm-production-v0.10.1-11';
+const CACHE='mtm-production-v0.10.1-12';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   OFFLINE_PAGE,
