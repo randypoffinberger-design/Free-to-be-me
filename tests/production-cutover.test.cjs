@@ -103,13 +103,13 @@ test('production shell and worker use matching new build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['sensory-play.js', 'library-books.js', 'styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js']) {
-    const version=['sync.js','access.js','app.js'].includes(asset)?'0.10.1-dual-role-6':'0.10.1-production-11';
+    const version=['sync.js','access.js','app.js'].includes(asset)?'0.10.1-modules-1':'0.10.1-production-11';
     assert.ok(html.includes(asset + '?v=' + version));
     assert.ok(worker.includes(asset + '?v=' + version));
   }
   assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-3"'));
   assert.ok(source.includes('const BUILD = "0.10.1-production-3"'));
-  assert.ok(worker.includes("mtm-production-v0.10.1-dual-role-6"));
+  assert.ok(worker.includes("mtm-production-v0.10.1-modules-1"));
   assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));
   assert.doesNotMatch(source, /syncServer|saveServer/);
   for (const match of worker.matchAll(/["']\.\/([^"']+)["']/g)) {

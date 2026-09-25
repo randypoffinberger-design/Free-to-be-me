@@ -152,6 +152,42 @@ window.MTMSync = (() => {
       analyticsVersion,operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
     await rawPut("syncOutbox",item);
   }
+  // Layout, outbox entry and account check share a transaction. A household
+  // switch cannot place a layout into another account's active vault halfway
+  // through saving; the normal sync protocol still handles remote conflicts.
+  async function saveLayoutSetting(id, value, expectedValue, expectedAccount) {
+    if (!['home','caregiver','sleep','fun'].some(section => id === `moduleLayout:v1:household:${encodeURIComponent(expectedAccount.householdId)}:${section}`)) throw new Error('Invalid household layout key.');
+    await MTMAccess.requireWrite('settings', id, {id,value});
+    if (switching) throw new Error('Wait for the household switch to finish.');
+    const timestamp = iso(), mutationId = uuid();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(['accountState','settings','syncMeta','syncOutbox'], 'readwrite');
+      let failure = null, count = 0;
+      const requests = [
+        transaction.objectStore('accountState').get('current'),
+        transaction.objectStore('settings').get(id),
+        transaction.objectStore('syncMeta').get(metaId('settings',id)),
+        transaction.objectStore('syncOutbox').getAll()
+      ];
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => { failure ||= transaction.error; };
+      transaction.onabort = () => reject(failure || transaction.error || new Error('Layout could not be saved.'));
+      for (const request of requests) request.onsuccess = () => {
+        if (++count !== requests.length) return;
+        try {
+          const [account, existing, meta, outbox] = requests.map(r=>r.result);
+          if (switching || !account?.token || account.token !== expectedAccount.token || account.user?.id !== expectedAccount.user?.id || account.householdId !== expectedAccount.householdId || account.householdRole === 'babysitter') throw new Error('The account or household changed. Reopen this section before saving.');
+          if (JSON.stringify(existing?.value ?? null) !== JSON.stringify(expectedValue)) throw new Error('This layout changed on another device. Cancel and reopen this section.');
+          const record = {id,value:structuredClone(value),updatedAt:timestamp};
+          const pending = outbox.find(x=>x.entityType==='settings' && x.entityId===id);
+          transaction.objectStore('settings').put(record);
+          transaction.objectStore('syncOutbox').put({id:pending?.id || uuid(),mutationId,entityType:'settings',entityId:id,operation:'upsert',payload:record,baseRevision:meta?.revision||0,queuedAt:timestamp});
+        } catch (error) { failure=error;transaction.abort(); }
+      };
+    });
+    schedule();
+  }
+
   async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value,1); schedule(); }
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
@@ -328,7 +364,7 @@ window.MTMSync = (() => {
       await reloadAfterRestore();
     }finally{switching=false;}
   }
-  return {mode,householdsForMode,switchMode,ensureMode,restoreRemote,reloadAfterRestore,switchHousehold,isSwitching:()=>switching,build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,trackActivity,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,clearDeletedAccountData,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultProductionServer};
+  return {saveLayoutSetting,mode,householdsForMode,switchMode,ensureMode,restoreRemote,reloadAfterRestore,switchHousehold,isSwitching:()=>switching,build:BUILD,onLocalPut,onLocalDelete,syncNow,queueExisting,state,saveState,api,trackActivity,resolveConflict,rawAll,clearTemporaryShareData,activateAccount,signOutAccount,clearDeletedAccountData,removeCurrentHouseholdData,initializeAccountIsolation,defaultServer:defaultProductionServer};
 })();
 
 function passwordResetTokenFromLink(){
