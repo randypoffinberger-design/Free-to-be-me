@@ -32,7 +32,7 @@ window.MTMAccess = (() => {
           if([401,403].includes(error.status)){verified=null;window.MTMOffline?.clear();return locked('invalid','Sign in again to verify access.');}
           const offline=await window.MTMOffline?.read(s);
           if(offline)return offline;
-          return {...locked('offline',s.user?.isBabysitter?'Connect to verify the parent’s shared access.':'Connect to verify access; saved data can still be exported.'),canRead:false};
+          return {...locked('offline',s.householdRole==='babysitter'?'Connect to verify the parent’s shared access.':'Connect to verify access; saved data can still be exported.'),canRead:false};
         } finally {pending=null;}
       })();
     }
@@ -58,15 +58,19 @@ window.MTMAccess = (() => {
   const readRoutes=new Set(['child','vocabulary','skills','potty','myDay','screenTime','food','lifeSkills','caregiver']);
   async function route(requested) {
     if(typeof modal!=='undefined'&&modal.open)modal.close();
+    try{await MTMSync.ensureMode();}catch{/* Offline clients retain their account-scoped selection. */}
     if(publicRoutes.has(requested))return requested;
     const account=await MTMSync.state();
-    if(account.user?.isBabysitter){
+    if(!account.token||!account.user||account.reauthRequired)return 'sync';
+    const sitterMode=MTMSync.mode(account)==='babysitter';
+    if(requested==='babysitterHome'&&!sitterMode)return 'sync';
+    if(sitterMode){
       if(['babysitters','babysitterHome'].includes(requested))return requested;
       if(['home','subscription'].includes(requested)||!account.householdId)return 'babysitterHome';
       if(!['child','vocabulary','myDay','potty','caregiver','food','screenTime'].includes(requested))return 'babysitterHome';
     }
     const s=await status();
-    if(account.user?.isBabysitter && !s.access && !s.canRead)return 'babysitterHome';
+    if(sitterMode && !s.access && !s.canRead)return 'babysitterHome';
     if(['signed-out','invalid','no-household'].includes(s.kind))return 'sync';
     if(['subscription','backup'].includes(requested))return requested;
     if(s.access)return requested;
@@ -116,7 +120,7 @@ window.MTMAccess = (() => {
     }
     if(!readRoutes.has(currentRoute))return;
     if((await status()).canWrite)return;
-    const banner=document.createElement('p');banner.className='banner';banner.textContent=(await MTMSync.state()).user?.isBabysitter?'Read-only access. Ask the parent to check the shared access window.':'Read-only access: saved information is preserved. Renew or contact support to make changes.';view.prepend(banner);
+    const banner=document.createElement('p');banner.className='banner';banner.textContent=(await MTMSync.state()).householdRole==='babysitter'?'Read-only access. Ask the parent to check the shared access window.':'Read-only access: saved information is preserved. Renew or contact support to make changes.';view.prepend(banner);
     // Mutation handlers are also guarded at the storage layer; navigation and export stay available.
     view.querySelectorAll('button[type="submit"]').forEach(b=>b.disabled=true);
   }
@@ -139,15 +143,30 @@ window.MTMAccess = (() => {
     const s=await MTMSync.state();if(!s.token)return [];
     const result=await MTMSync.api('/v1/households');return result.households;
   }
-  async function renderSwitcher(){
-    document.getElementById('quickHouseholdSwitch')?.remove();
-    const s=await MTMSync.state();if(!s.user?.isBabysitter||currentRoute==='products')return;
-    let list;try{list=await households();}catch{return;}
-    const bar=document.createElement('nav');bar.id='quickHouseholdSwitch';bar.className='card';bar.setAttribute('aria-label','Switch household');
-    const title=document.createElement('strong');title.textContent=s.householdName?`Caring for: ${s.householdName}`:'Choose a household';bar.append(title);
+  let changingView=false;
+  async function renderSwitcher(inDrawer=false){
+    const switcherId=inDrawer?'drawerModeSwitch':'quickHouseholdSwitch';
+    document.getElementById(switcherId)?.remove();
+    if(!inDrawer&&!['sync','babysitterHome'].includes(currentRoute))return;
+    const s=await MTMSync.state();if(!s.token||!s.user||s.reauthRequired)return;
+    let list=[];try{list=await households();}catch{/* Keep the mode switch visible when offline. */}
+    if(identity(await MTMSync.state())!==identity(s)||(!inDrawer&&!['sync','babysitterHome'].includes(currentRoute)))return;
+    if(!s.user.isBabysitter&&s.householdRole!=='babysitter'&&!s.lastSitterHouseholdId&&!list.some(h=>h.role==='babysitter'))return;
+    const selectedMode=MTMSync.mode(s);
+    const bar=document.createElement(inDrawer?'section':'nav');bar.id=switcherId;bar.className='card';bar.setAttribute('aria-label','Account view and household');
+    const title=document.createElement('strong');title.textContent=selectedMode==='family'?'Family / Personal view':'Babysitter view';bar.append(title);
+    const modes=document.createElement('div');modes.className='btn-row';bar.append(modes);
+    if(inDrawer){bar.setAttribute('style','min-width:0; margin:0 0 8px;');modes.setAttribute('style','display:grid; grid-template-columns:minmax(0,1fr); gap:6px; margin-top:8px;');}
+    for(const [mode,label] of [['family','Family / Personal'],['babysitter','Babysitter']]){
+      const button=document.createElement('button');button.type='button';button.className='btn secondary';button.textContent=label;button.setAttribute('aria-pressed',String(mode===selectedMode));
+      if(inDrawer)button.setAttribute('style',`width:100%; min-height:44px; white-space:normal; background:${mode===selectedMode?'var(--lavender, #eee7f7)':'transparent'}; border:1px solid var(--line);`);
+      button.onclick=async()=>{if(changingView)return;changingView=true;bar.querySelectorAll('button').forEach(b=>b.disabled=true);try{await MTMSync.switchMode(mode);await navigate(mode==='family'?'home':'babysitterHome');}catch(e){alert(e.message);bar.querySelectorAll('button').forEach(b=>b.disabled=false);}finally{changingView=false;}};modes.append(button);
+    }
+    if(inDrawer){document.getElementById('drawerNav')?.prepend(bar);return;}
+    const householdTitle=document.createElement('p');householdTitle.textContent=s.householdName?`${selectedMode==='babysitter'?'Caring for':'Household'}: ${s.householdName}`:selectedMode==='babysitter'?'No parent-shared household selected.':'Create or join a personal household in Account and household.';bar.append(householdTitle);
     const buttons=document.createElement('div');buttons.className='btn-row';bar.append(buttons);
-    for(const h of list){const button=document.createElement('button');button.type='button';button.className='btn secondary';button.textContent=h.name;button.setAttribute('aria-pressed',String(h.id===s.householdId));
-      button.onclick=async()=>{buttons.querySelectorAll('button').forEach(b=>b.disabled=true);try{await MTMSync.switchHousehold(h.id);await navigate('babysitterHome');}catch(e){alert(e.message);buttons.querySelectorAll('button').forEach(b=>b.disabled=false);}};buttons.append(button);}
+    for(const h of MTMSync.householdsForMode(list,selectedMode)){const button=document.createElement('button');button.type='button';button.className='btn secondary';button.textContent=h.name;button.setAttribute('aria-pressed',String(h.id===s.householdId));
+      button.onclick=async()=>{if(changingView)return;changingView=true;bar.querySelectorAll('button').forEach(b=>b.disabled=true);try{await MTMSync.switchHousehold(h.id);await navigate(selectedMode==='family'?'home':'babysitterHome');}catch(e){alert(e.message);bar.querySelectorAll('button').forEach(b=>b.disabled=false);}finally{changingView=false;}};buttons.append(button);}
     view.prepend(bar);
   }
   async function dailyCare(){
@@ -164,7 +183,7 @@ window.MTMAccess = (() => {
   }
   async function babysitterHome(){
     const s=await MTMSync.state(),profiles=s.sharedProfileId==='*'?await getAll('profiles'):[];
-    view.innerHTML=`<section class="hero"><h1>Babysitter care</h1><p>Your babysitter account is free. Parents choose which children to share and when access ends.</p></section><div class="card"><h2>${esc(s.householdName||'Your shared households')}</h2>${s.accessExpiresAt?`<p>Shared access ends ${esc(new Date(s.accessExpiresAt).toLocaleString())}.</p>`:''}${s.sharedProfileId==='*'?`<label>Child for quick note<select id="sitterNoteChild">${profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'Child')}</option>`).join('')}</select></label>`:''}<div class="btn-row">${s.householdId?'<button class="btn" data-go="myDay">My Day</button><button class="btn" id="sitterNote">Add note</button><button class="btn" data-go="potty">Potty entries</button><button class="btn" data-go="vocabulary">Words and sentences</button><button class="btn" data-go="screenTime">Screen time</button><button class="btn secondary" data-go="food">View Food Diary</button><button class="btn secondary" id="sitterDailyCare">Daily Care &amp; Safety</button><button class="btn secondary" data-go="child">Child information</button>':''}<button class="btn secondary" data-go="sync">Accept invitation / account</button><button class="btn secondary" data-go="babysitters">My babysitter profile</button></div><p>Use the household buttons above to switch families. Notes and entries are saved only to the selected household. You can add and update words, sentences, and daily potty totals. You can add screen-time entries and view the Food Diary. You cannot change the Food Diary, edit other existing household information, or delete records.</p></div>`;
+    view.innerHTML=`<section class="hero"><h1>Babysitter care</h1><p>Your babysitter profile is free and separate from shared child access. Parents choose which children to share and when access ends.</p></section><div class="card"><h2>${esc(s.householdName||'Your shared households')}</h2>${s.accessExpiresAt?`<p>Shared access ends ${esc(new Date(s.accessExpiresAt).toLocaleString())}.</p>`:''}${s.sharedProfileId==='*'?`<label>Child for quick note<select id="sitterNoteChild">${profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'Child')}</option>`).join('')}</select></label>`:''}<div class="btn-row">${s.householdId?'<button class="btn" data-go="myDay">My Day</button><button class="btn" id="sitterNote">Add note</button><button class="btn" data-go="potty">Potty entries</button><button class="btn" data-go="vocabulary">Words and sentences</button><button class="btn" data-go="screenTime">Screen time</button><button class="btn secondary" data-go="food">View Food Diary</button><button class="btn secondary" id="sitterDailyCare">Daily Care &amp; Safety</button><button class="btn secondary" data-go="child">Child information</button>':''}<button class="btn secondary" data-go="sync">Accept invitation / account</button><button class="btn secondary" data-go="babysitters">My babysitter profile</button></div><p>Open Accounts &amp; Sync to switch families or return to your Family / Personal view. Notes and entries are saved only to the selected household. You can add and update words, sentences, and daily potty totals. You can add screen-time entries and view the Food Diary. You cannot change the Food Diary, edit other existing household information, or delete records.</p></div>`;
     if(document.querySelector('#sitterDailyCare'))document.querySelector('#sitterDailyCare').onclick=dailyCare;
     bindRouteButtons();
     document.getElementById('sitterNote')?.addEventListener('click',async()=>{
@@ -179,5 +198,5 @@ window.MTMAccess = (() => {
     if(typeof view!=='undefined')view.replaceChildren();
     navigate('babysitterHome');
   });
-  return {status,requireWrite,route,renderSubscription,renderExport,readonlyChrome,babysitterHome,foodDiary,dailyCare,invalidate:()=>{verified=null;}};
+  return {isChangingView:()=>changingView,renderSwitcher,status,requireWrite,route,renderSubscription,renderExport,readonlyChrome,babysitterHome,foodDiary,dailyCare,invalidate:()=>{verified=null;}};
 })();

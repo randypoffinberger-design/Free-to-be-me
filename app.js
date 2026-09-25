@@ -2731,7 +2731,7 @@ async function renderBabysitters(){
       <div class="banner"><strong>Families make the final decision:</strong> MTM does not run background checks, verify credentials, employ babysitters, or guarantee safety. Interview candidates, check references, confirm qualifications, and decide whether someone is right for your child.</div>
       <div class="btn-row"><button id="nominateBabysitter" class="btn" type="button">Recommend a babysitter</button><button id="manageBabysitterShares" class="btn secondary" type="button">View or share child access</button><button id="myBabysitterProfile" class="btn secondary" type="button">${needsAccountLink?"Connect and manage my profile":myProfile?"Manage my babysitter profile":state.user?.isBabysitter?"Create my babysitter profile":"List myself as a babysitter"}</button></div>
       <section class="card babysitter-search"><h2>Search near you</h2><div class="form-grid two-col"><div class="field"><label>Search name, area, city, state, ZIP, experience, or availability</label><input id="babysitterSearch" type="search" placeholder="Berkeley Springs, weekends, CPR…"></div><div class="field"><label>Show</label><select id="babysitterView"><option value="approved">Public profiles</option><option value="mine">My profile and nominations</option></select></div></div><button id="searchBabysitters" class="btn full" type="button">Search</button><p id="babysitterResultCount" class="hint" role="status">Enter a location, name, or service detail, then press Search. No profiles are downloaded until you search.</p></section><div id="babysitterResults" class="babysitter-list"></div><nav id="babysitterPager" aria-label="Babysitter search pages"></nav>`;
-    if(state.user?.isBabysitter){
+    if(window.MTMSync.mode(state)==="babysitter"){
       view.querySelector('.babysitter-search')?.remove();
       $("#nominateBabysitter").hidden=true;
       $("#myBabysitterProfile").onclick=()=>openMyBabysitterProfile(myProfile,state.user,needsAccountLink);
@@ -2750,11 +2750,12 @@ async function renderBabysitters(){
 
 async function openMyBabysitterProfile(profile,user,needsAccountLink=false){
   if(!user?.isBabysitter){
-    if(!confirm("Mark this account as a babysitter account? Creating and managing your profile is free."))return;
+    if(!confirm("Add a free babysitter profile? You can still use your Family / Personal view."))return;
     try{
       const result=await window.MTMSync.api("/v1/account/babysitter-status",{method:"POST",body:JSON.stringify({isBabysitter:true})});
       const state=await window.MTMSync.state();await window.MTMSync.saveState({...state,user:result.user});
       user=result.user;
+      await window.MTMAccess.renderSwitcher();
     }catch(error){return alert(error.message);}
   }
   modalBody.innerHTML=`<h2>${needsAccountLink?"Connect and manage":profile?"Manage":"Create"} my babysitter profile</h2><div class="banner">${needsAccountLink?"This approved listing uses the same email as your account. Save it once to connect it to your account, then you can edit or remove it here. ":""}Your email stays private. Parents contact you through MTM, and you decide whether to reply.</div><div class="form-grid">
@@ -4656,6 +4657,7 @@ function renderAbout() {
 }
 
 function openDrawer() {
+  window.MTMAccess.renderSwitcher(true).catch(()=>{});
   $("#drawer").classList.add("open");
   $("#drawer").setAttribute("aria-hidden", "false");
   $("#scrim").classList.remove("hidden");
