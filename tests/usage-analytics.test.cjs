@@ -120,11 +120,11 @@ test('resolved navigation counts visits, not sync rerenders or access-denied des
   const source = read('app.js'), calls = [];
   const mapping = source.slice(source.indexOf('const ANALYTICS_FEATURES'), source.indexOf('const ACCESS'));
   const navigation = source.slice(source.indexOf('async function performNavigation('), source.indexOf('\nfunction navigate('));
-  const window = { MTMSync: { trackActivity: feature => { calls.push(feature); } },
+  const window = { MTMLayouts: { mountExisting: async () => {}, isSaving: () => false, dispose() {} }, MTMSync: { trackActivity: feature => { calls.push(feature); } },
     MTMAccess: { route: async route => route === 'health' ? 'subscription' : route, readonlyChrome: async () => {} } };
   const context = vm.createContext({ window, routes: Object.fromEntries(['home', 'child', 'myDay', 'health', 'subscription'].map(r => [r, async () => {}])),
     currentRoute: '', routeStack: [], profileAgeTimer: null, communityRefreshTimer: null, screenTimerInterval: null,
-    applyRouteChrome() {}, closeDrawer() {}, view: { focus() {} }, history: { replaceState() {} }, console });
+    navigate() {}, applyRouteChrome() {}, closeDrawer() {}, view: { focus() {} }, history: { replaceState() {} }, console });
   vm.runInContext(mapping + navigation, context);
   for (const route of ['home', 'home', 'child', 'child', 'myDay', 'child', 'home', 'health', 'health']) {
     await context.performNavigation(route);

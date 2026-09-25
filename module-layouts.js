@@ -37,7 +37,7 @@ window.MTMLayouts = (() => {
     next.order[index] = newId;return normalize('home', next);
   }
   function dispose() { if (active) {active.disposed = true;active.frame?.classList.remove('home-layout-editing');}active = null; }
-  async function mount({section, container, presentation, navigate, actions, descriptions = {}}) {
+  async function mount({section, container, presentation, navigate, actions, descriptions = {}, renderItem = null}) {
     dispose();
     const session = {editing: false, saving: false, disposed: false};active = session;
     session.frame = section === 'home' ? container.closest('.preserved-home') : null;
@@ -72,8 +72,12 @@ window.MTMLayouts = (() => {
       session.frame?.classList.toggle('home-layout-editing', session.editing);
       if (!session.editing) {
         if (canCustomize && section !== 'home') toolbar.append(button('Customize', () => {draft = clone(layout);session.editing = true;message.textContent = 'Move or replace shortcuts. Choose Done to save; Cancel leaves your layout unchanged.';draw();}));
+        if (renderItem) {
+          for (const id of layout.order) container.append(renderItem(id));
+        } else {
         container.innerHTML = layout.order.map((id, index) => modules.render(id, {presentation, description: descriptions[id], homeSlot: section === 'home' ? index : null})).join('');
         modules.bind(container, {navigate, actions});
+        }
         if (!layout.order.length) message.textContent = 'All modules are hidden. Choose Customize to restore them.';
         return;
       }
@@ -148,5 +152,41 @@ window.MTMLayouts = (() => {
     }
     draw();
   }
-  return Object.freeze({key, normalize, move, replace, mount, dispose, requestEditor: section => {if (!modules.sections[section]) throw new Error('Unknown section');requestedEditor = section;}, isEditing: () => Boolean(active?.editing), isSaving: () => Boolean(active?.saving)});
+  // Keep original DOM nodes and handlers, including their captured profile data.
+  async function mountExisting({route, view, navigate}) {
+    const section = {child:'growth', speech:'speech', health:'health', sensory:'sensory', skills:'skills', resources:'resources', food:'food', safety:'safety'}[route];
+    if (!section) return;
+    const cards = [...view.querySelectorAll('.card-button')];
+    if (!cards.length) return; // Profile creation and empty states retain their own controls.
+    const nodes = new Map(), descriptions = {};
+    for (const id of modules.sections[section]) {
+      const item = modules.get(id);
+      const node = cards.find(card => item.shortcut ? card.matches(item.shortcut.selector) : card.dataset.go === item.destination.route);
+      if (!node) throw new Error('A section card could not be matched: '+item.title);
+      nodes.set(id,node);descriptions[id]=node.querySelector('small')?.textContent || item.description;
+    }
+    const groups = [...new Set([...nodes.values()].map(node=>node.parentElement))];
+    const first = nodes.values().next().value;
+    const container = document.createElement('div');container.className='grid section-grid module-cards';
+    first.before(container);
+    // Keep a single grid; Growth Journey's profile list and action buttons stay outside it.
+    for (const node of nodes.values()) node.remove();
+    const outerGrid = container.parentElement;
+    if (outerGrid.classList.contains('grid')) outerGrid.before(container);
+    for (const group of groups) {
+      if (group.classList.contains('grid') && !group.children.length) {
+        if (group.previousElementSibling?.matches('h2.section-title') && group !== outerGrid) group.previousElementSibling.remove();
+        group.remove();
+      }
+    }
+    if (section==='growth' && container.previousElementSibling?.matches('h2.section-title')) container.previousElementSibling.textContent='Progress and growth tools';
+    // Render originals initially too, including when access rules disable customization.
+    container.append(...nodes.values());
+    await mount({section,container,presentation:'card',navigate,descriptions,renderItem:id=>nodes.get(id)});
+    if (active && !active.disposed && container.isConnected) active.originalCards=[...nodes.values()];
+  }
+  function originalCard(selector) {
+    return active && !active.disposed ? active.originalCards?.find(card=>card.matches(selector)) : null;
+  }
+  return Object.freeze({mountExisting, originalCard, key, normalize, move, replace, mount, dispose, requestEditor: section => {if (!modules.sections[section]) throw new Error('Unknown section');requestedEditor = section;}, isEditing: () => Boolean(active?.editing), isSaving: () => Boolean(active?.saving)});
 })();

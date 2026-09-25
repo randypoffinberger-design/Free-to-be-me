@@ -156,7 +156,7 @@ window.MTMSync = (() => {
   // switch cannot place a layout into another account's active vault halfway
   // through saving; the normal sync protocol still handles remote conflicts.
   async function saveLayoutSetting(id, value, expectedValue, expectedAccount) {
-    if (!['home','caregiver','sleep','fun'].some(section => id === `moduleLayout:v1:household:${encodeURIComponent(expectedAccount.householdId)}:${section}`)) throw new Error('Invalid household layout key.');
+    if (!['home','caregiver','sleep','fun','growth','speech','health','sensory','skills','resources','food','safety'].some(section => id === `moduleLayout:v1:household:${encodeURIComponent(expectedAccount.householdId)}:${section}`)) throw new Error('Invalid household layout key.');
     await MTMAccess.requireWrite('settings', id, {id,value});
     if (switching) throw new Error('Wait for the household switch to finish.');
     const timestamp = iso(), mutationId = uuid();

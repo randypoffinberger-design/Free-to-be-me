@@ -418,6 +418,7 @@ async function performNavigation(r, options = {}) {
   }
   try {
     await routes[route]();
+    await window.MTMLayouts.mountExisting({route, view, navigate});
     await window.MTMAccess.readonlyChrome();
   } catch (error) {
     console.error(`Route "${route}" failed`, error);
@@ -459,7 +460,7 @@ function moduleActions() {
       // Reuse the section's existing handlers and profile selection after guarded navigation.
       await navigate(route);
       if (currentRoute !== route) return;
-      const target = view.querySelector(selector);
+      const target = view.querySelector(selector) || window.MTMLayouts.originalCard(selector);
       if (!target && route === 'child' && view.querySelector('#addProfile')) return;
       if (!target || typeof target.onclick !== 'function') throw new Error('This shortcut is unavailable. Open its section and try again.');
       return await target.onclick(new MouseEvent('click'));

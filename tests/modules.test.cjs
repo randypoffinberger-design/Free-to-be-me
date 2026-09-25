@@ -92,11 +92,11 @@ test('new assets are in the offline cache and load before the application',()=>{
   const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
   const sw=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
   for(const file of ['modules.js','module-layouts.js','modules.css']){
-    assert.ok(index.includes(`${file}?v=0.10.1-modules-1`));
-    assert.ok(sw.includes(`${file}?v=0.10.1-modules-1`));
+    assert.ok(index.includes(`${file}?v=0.10.1-modules-2`));
+    assert.ok(sw.includes(`${file}?v=0.10.1-modules-2`));
   }
   assert.ok(index.indexOf('modules.js?')<index.indexOf('app.js?'));
-  assert.ok(sw.includes("const CACHE='mtm-production-v0.10.1-modules-1'"));
+  assert.ok(sw.includes("const CACHE='mtm-production-v0.10.1-modules-2'"));
 });
 
 
