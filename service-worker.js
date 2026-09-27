@@ -1,6 +1,7 @@
-const CACHE='mtm-production-v0.10.1-modules-2';
+const CACHE='mtm-production-v0.10.1-analytics-2';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
+  "./interaction-usage.js?v=analytics-2",
   OFFLINE_PAGE,
   "./modules.js?v=0.10.1-modules-2",
   "./module-layouts.js?v=0.10.1-modules-2",
@@ -12,7 +13,7 @@ const CRITICAL_ASSETS=[
   "./offline-key.js?v=0.10.1-production-11",
   "./offline-access.js?v=0.10.1-production-11",
   './styles.css?v=0.10.1-production-11',
-  './sync.js?v=0.10.1-modules-2',
+  './sync.js?v=analytics-2-0.10.1-modules-2',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
   './app.js?v=0.10.1-modules-2',

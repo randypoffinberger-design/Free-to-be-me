@@ -95,6 +95,7 @@ window.MTMSync = (() => {
     if(current.user?.id&&!current.localDataOwnerId)await saveState({...current,localDataOwnerId:current.user.id});
   }
   async function activateAccount(auth){
+    interactionUsage.reset();
     if(switching)throw new Error('Wait for the household switch to finish before changing accounts.');
     const current=await readState(),nextId=auth.user.id,currentId=current.localDataOwnerId||current.user?.id||null;
     let context=null;
@@ -105,6 +106,7 @@ window.MTMSync = (() => {
     await saveState(next);return next;
   }
   async function signOutAccount(){
+    interactionUsage.reset();
     if(switching)throw new Error('Wait for the household switch to finish before signing out.');
     try{const r=await navigator.serviceWorker?.getRegistration();await (await r?.pushManager?.getSubscription())?.unsubscribe();}catch{}
     const current=await readState(),ownerId=current.localDataOwnerId||current.user?.id||null;
@@ -193,8 +195,9 @@ window.MTMSync = (() => {
   async function api(path, options={}) {
     const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultProductionServer());
     const usageRequest = path === "/v1/analytics/activity";
-    if (usageRequest && (!s.token || switching || document.visibilityState !== "visible" || !navigator.onLine)) return;
-    const response=await fetch(`${serverUrl}${path}`,{...options,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
+    if (usageRequest && (!s.token || switching || document.visibilityState !== "visible" || !navigator.onLine || (options.usageToken && options.usageToken !== s.token))) return;
+    const {usageToken, ...fetchOptions}=options;
+    const response=await fetch(`${serverUrl}${path}`,{...fetchOptions,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
     const data=await response.json().catch(()=>({error:`HTTP ${response.status}`}));
     if(response.status===401&&s.token&&!usageRequest&&!path.startsWith('/v1/auth/'))await new Promise((resolve,reject)=>{
       const transaction=db.transaction('accountState','readwrite'),store=transaction.objectStore('accountState'),request=store.get('current');
@@ -283,33 +286,34 @@ window.MTMSync = (() => {
     return { platform, client };
   }
 
-  async function trackActivity(feature = "") {
+  // Analytics asset failures must never prevent account or family-data access.
+  const interactionUsage = window.MTMInteractionUsage?.() || {interact(){},take(){return null;},reset(){}};
+  for (const event of ['pointerdown','pointermove','keydown','touchstart','scroll']) {
+    window.addEventListener(event, interactionUsage.interact, {passive:true});
+  }
+  async function trackActivity(feature) {
     let timeout;
     try {
-      if (document.visibilityState !== "visible" || !navigator.onLine || switching) return;
+      if (document.visibilityState !== 'visible' || !navigator.onLine || switching) { interactionUsage.reset(); return; }
+      const stateBefore = await state();
+      if (!stateBefore.token) { interactionUsage.reset(); return; }
+      const openedFeature = feature === undefined ? undefined : (USAGE_FEATURES.has(feature) ? feature : '');
+      const measured = interactionUsage.take(openedFeature);
+      if (!measured) return;
       const controller = new AbortController();
       timeout = setTimeout(() => controller.abort(), 10000);
-      await api("/v1/analytics/activity", {
-        method: "POST",
-        signal: controller.signal,
-        body: JSON.stringify({
-          ...analyticsDevice(),
-          version: window.MTM_APP_VERSION || "",
-          ...(USAGE_FEATURES.has(feature) ? { feature } : {})
-        })
+      await api('/v1/analytics/activity', {
+        method: 'POST', signal: controller.signal, usageToken: stateBefore.token,
+        body: JSON.stringify({ ...analyticsDevice(), version: window.MTM_APP_VERSION || '',
+          measurementVersion: 2, eventId: crypto.randomUUID(), ...measured,
+          ...(openedFeature ? {feature:openedFeature} : {}) })
       });
-    } catch {
-      // Best effort only: no UI errors, sync state changes or offline queue.
-    } finally {
-      clearTimeout(timeout);
-    }
+    } catch { /* Optional, best effort; never queued or replayed across accounts. */ }
+    finally { clearTimeout(timeout); }
   }
-
   setInterval(() => { void trackActivity(); }, 60000);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void trackActivity();
-  });
-  window.addEventListener("online", () => { void trackActivity(); });
+  document.addEventListener('visibilitychange', () => { interactionUsage.reset(false); });
+  window.addEventListener('offline', () => { interactionUsage.reset(false); });
 
   async function switchHousehold(id,requestedMode=null){
     if(switching)throw new Error("A household switch is already in progress.");

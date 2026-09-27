@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
+const createInteractionUsage = require('../interaction-usage.js');
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
@@ -13,6 +15,7 @@ function harness({ token = 'test-token', ua = '', touch = 0, standalone = false,
   const document = { visibilityState: 'visible', addEventListener(type, callback) { events[type] = callback; } };
   const navigator = { onLine: true, userAgent: ua, maxTouchPoints: touch, standalone };
   const window = { MTM_APP_VERSION: '0.10.1', matchMedia: () => ({ matches: pwa }),
+    MTMInteractionUsage: () => createInteractionUsage({now:()=>Date.now(),visible:()=>document.visibilityState==='visible',online:()=>navigator.onLine}),
     addEventListener(type, callback) { (events[type] ||= []).push(callback); } };
   const db = { transaction() {
     const transaction = { objectStore() { return {
@@ -30,7 +33,7 @@ function harness({ token = 'test-token', ua = '', touch = 0, standalone = false,
     }; } };
     return transaction;
   } };
-  vm.runInNewContext(read('sync.js'), { db, window, document, navigator, AbortController,
+  vm.runInNewContext(read('sync.js'), { db, window, document, navigator, AbortController, crypto,
     setInterval(callback, ms) { intervals.push({ callback, ms }); },
     setTimeout(callback) { timeouts.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timeouts.delete(id); },
@@ -48,31 +51,34 @@ test('usage sends authenticated coarse labels; heartbeat has no feature or priva
   await h.sync.trackActivity('home');
   assert.equal(h.requests[0].url, 'https://api.example/mtm/v1/analytics/activity');
   assert.equal(h.requests[0].options.headers.Authorization, 'Bearer test-token');
-  assert.deepEqual(h.requests[0].body, { platform: 'ios', client: 'pwa', version: '0.10.1', feature: 'home' });
+  assert.deepEqual({...h.requests[0].body,eventId:undefined}, { platform: 'ios', client: 'pwa', version: '0.10.1', feature: 'home',measurementVersion:2,activeSeconds:0,activeFeature:'',eventId:undefined });
   assert.equal(h.intervals.filter(x => x.ms === 60000).length, 1);
   h.intervals.find(x => x.ms === 60000).callback();
   await flush();
+  assert.equal(h.requests.length,1,'idle heartbeat sends nothing');
+  h.events.pointerdown[0]({isTrusted:true});
+  h.intervals.find(x => x.ms === 60000).callback();await flush();
   assert.equal(h.requests[1].body.feature, undefined);
   await h.sync.trackActivity('private search text');
   assert.equal(h.requests[2].body.feature, undefined);
   assert.equal(h.timeouts.size, 0);
 });
 
-test('hidden, offline and signed-out clients send nothing; foreground and online resume immediately', async () => {
+test('hidden, offline and signed-out clients send nothing; foreground alone does not imply activity', async () => {
   const h = harness();
   h.document.visibilityState = 'hidden'; await h.sync.trackActivity('home');
   h.events.visibilitychange(); await flush(); assert.equal(h.requests.length, 0);
   h.document.visibilityState = 'visible'; h.navigator.onLine = false;
   await h.sync.trackActivity(); assert.equal(h.requests.length, 0);
   h.navigator.onLine = true; h.events.visibilitychange(); await flush();
-  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests.length, 0);
   for (const handler of h.events.online) handler();
-  await flush(); assert.equal(h.requests.length, 2);
+  await flush(); assert.equal(h.requests.length, 0);
   const signedOut = harness({ token: '' });
   await signedOut.sync.trackActivity('home'); assert.equal(signedOut.requests.length, 0);
   const interrupted = harness();
   interrupted.beforeRead(() => { interrupted.document.visibilityState = 'hidden'; });
-  await interrupted.sync.trackActivity(); assert.equal(interrupted.requests.length, 0);
+  await interrupted.sync.trackActivity('home'); assert.equal(interrupted.requests.length, 0);
 });
 
 test('device detection handles desktop-mode iPads, iOS standalone and major operating systems', async () => {
@@ -86,10 +92,15 @@ test('device detection handles desktop-mode iPads, iOS standalone and major oper
     [{ ua: 'Linux Firefox/140' }, 'linux', 'firefox'],
     [{ ua: 'unrecognized' }, 'unknown', 'browser']
   ]) {
-    const h = harness(options); await h.sync.trackActivity();
+    const h = harness(options); await h.sync.trackActivity('home');
     assert.equal(h.requests[0].body.platform, platform);
     assert.equal(h.requests[0].body.client, client);
   }
+});
+test('an account change between state reads drops telemetry instead of attributing it to the new account',async()=>{
+  const h=harness();let reads=0;
+  h.beforeRead(()=>{if(++reads===2)h.saved().token='different-account-token';});
+  await h.sync.trackActivity('home');assert.equal(h.requests.length,0);
 });
 
 test('analytics 401, server, parsing and network errors are silent and do not flag reauthentication', async () => {
@@ -111,9 +122,9 @@ test('stalled usage request is aborted without affecting the next heartbeat', as
   const h = harness({ respond: options => ++attempts > 1
     ? { ok: true, json: async () => ({ ok: true }) }
     : new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(Error('Aborted')))) });
-  const pending = h.sync.trackActivity(); await flush();
+  const pending = h.sync.trackActivity('home'); await flush();
   for (const timeout of h.timeouts.values()) timeout();
-  await pending; await h.sync.trackActivity(); assert.equal(h.requests.length, 2);
+  await pending; await h.sync.trackActivity('profile'); assert.equal(h.requests.length, 2);
 });
 
 test('resolved navigation counts visits, not sync rerenders or access-denied destinations', async () => {
