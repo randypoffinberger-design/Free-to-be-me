@@ -1,8 +1,9 @@
-const CACHE='mtm-production-v0.10.1-analytics-2';
+const CACHE='mtm-production-v0.10.1-food-2';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   "./interaction-usage.js?v=analytics-2",
   OFFLINE_PAGE,
+  "./food-patterns.js?v=0.10.1-food-2",
   "./modules.js?v=0.10.1-modules-2",
   "./module-layouts.js?v=0.10.1-modules-2",
   "./modules.css?v=0.10.1-modules-2",
@@ -16,7 +17,7 @@ const CRITICAL_ASSETS=[
   './sync.js?v=analytics-2-0.10.1-modules-2',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
-  './app.js?v=0.10.1-modules-2',
+  './app.js?v=0.10.1-food-2',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',

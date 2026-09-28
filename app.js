@@ -1897,6 +1897,8 @@ function dayEventCard(entry, profiles, includeDate = false) {
   if (entry.durationMinutes) details.push(durationText(entry.durationMinutes));
   if (entry.intensity) details.push(`Intensity ${entry.intensity}/5`);
   if (entry.screenType) details.push(entry.screenType);
+  const foods = window.MTMFoodPatterns.timeline(entry.foodItems);
+  if (foods) details.push(foods);
   if (entry.screenPurpose) details.push(entry.screenPurpose);
   return `<div class="day-entry card"><div class="day-entry-icon">${esc(entry.emoji || "•")}</div><div class="day-entry-body"><strong>${esc(entry.label)}</strong><span>${includeDate ? `${fmtDate(entry.occurredAt)} • ` : ""}${clockTime(entry.occurredAt)} • ${esc(profile?.name || "Child")}${details.length ? ` • ${esc(details.join(" • "))}` : ""}</span>${entry.notes ? `<p>${esc(entry.notes)}</p>` : ""}</div><div class="day-entry-actions"><button class="small-action edit-day-event" data-id="${entry.id}" type="button">Edit</button><button class="small-action danger-link delete-day-event" data-id="${entry.id}" type="button">Delete</button></div></div>`;
 }
@@ -1905,15 +1907,15 @@ function buildDayInsights(events) {
   const usable = events.filter((entry) => entry.occurredAt).sort((a, b) => dayEventTime(a) - dayEventTime(b));
   const recordedDays = new Set(usable.map((entry) => localDayKey(dayEventTime(entry))));
   if (recordedDays.size < 7) return { ready: false, days: recordedDays.size, insights: [] };
-  const predictors = usable.filter((entry) => !entry.outcome && !["behavior", "sleepOutcome", "wellbeing"].includes(entry.category));
-  const outcomes = usable.filter((entry) => entry.outcome || ["behavior", "sleepOutcome"].includes(entry.category));
+  const predictors = usable.filter((entry) => !entry.outcome && !["behavior", "sleepOutcome", "wellbeing", "response"].includes(entry.category));
+  const outcomes = usable.filter((entry) => entry.outcome || ["behavior", "sleepOutcome", "response"].includes(entry.category));
   const groups = new Map();
   for (const predictor of predictors) {
-    const key = predictor.label.toLocaleLowerCase(), group = groups.get(key) || { label: predictor.label, count: 0, matches: new Map() };
+    const key = JSON.stringify([predictor.profileId,predictor.label.toLocaleLowerCase()]), group = groups.get(key) || { profileId:predictor.profileId, label: predictor.label, count: 0, matches: new Map() };
     group.count++;
     const matchedOutcomes = new Set();
     for (const outcome of outcomes) {
-      const gap = dayEventTime(outcome) - dayEventTime(predictor), windowMs = outcome.category === "sleepOutcome" ? 12 * 3600000 : 3600000;
+      const gap = dayEventTime(outcome) - dayEventTime(predictor), windowMs = outcome.category === "sleepOutcome" ? 12 * 3600000 : outcome.category === "response" && [2,6,12,24].includes(Number(outcome.responseWindowHours)) ? Number(outcome.responseWindowHours) * 3600000 : 3600000;
       if (outcome.profileId !== predictor.profileId || gap < 0 || gap > windowMs) continue;
       const outcomeKey = outcome.label.toLocaleLowerCase();
       if (matchedOutcomes.has(outcomeKey)) continue;
@@ -1926,41 +1928,73 @@ function buildDayInsights(events) {
   }
   const insights = [];
   for (const group of groups.values()) {
-    if (group.count < 3) continue;
+    if (group.count < 3 || new Set(usable.filter(e=>e.profileId===group.profileId).map(e=>localDayKey(dayEventTime(e)))).size < 7) continue;
     for (const match of group.matches.values()) if (match.count >= 2)
-      insights.push({ predictor: group.label, outcome: match.label, matches: Math.min(match.count, group.count), total: group.count, hours: match.window / 3600000 });
+      insights.push({ profileId:group.profileId, predictor: group.label, outcome: match.label, matches: Math.min(match.count, group.count), total: group.count, hours: match.window / 3600000 });
   }
   insights.sort((a, b) => b.matches / b.total - a.matches / a.total || b.matches - a.matches);
   return { ready: true, days: recordedDays.size, insights: insights.slice(0, 4) };
 }
 
 async function openDayEventForm(profiles, bubble, existing = null) {
-  const occurred = existing ? dayEventTime(existing) : new Date(), selectedBubble = bubble || DAY_BUBBLES.find((item) => item.id === existing?.bubbleId) || { id: existing?.bubbleId, label: existing?.label, emoji: existing?.emoji, category: existing?.category, outcome: existing?.outcome };
+  const occurred = existing ? dayEventTime(existing) : new Date(), selectedBubble = bubble || DAY_BUBBLES.find((item) => item.id === existing?.bubbleId) || { id: existing?.bubbleId, label: existing?.label, emoji: existing?.emoji, category: existing?.category, outcome: existing?.outcome, responseWindowHours:existing?.responseWindowHours };
   const isScreen = selectedBubble.category === "screen";
+  const isMeal = selectedBubble.id === "meal";
   modalBody.innerHTML = `<h2>${existing ? "Edit" : "Log"} ${esc(selectedBubble.emoji || "")} ${esc(selectedBubble.label)}</h2><div class="form-grid"><div class="field"><label>Child</label><select id="dayProfile">${profiles.map((profile) => `<option value="${profile.id}" ${existing?.profileId === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="form-grid two-col"><div class="field"><label>Date</label><input id="dayDate" type="date" value="${localDayKey(occurred)}"></div><div class="field"><label>Time</label><input id="dayTime" type="time" value="${localTimeValue(occurred)}"></div></div><div class="field"><label>Duration in minutes <span class="hint">(optional)</span></label><input id="dayDuration" type="number" min="0" max="1440" inputmode="numeric" value="${existing?.durationMinutes || ""}"></div>${isScreen ? `<div class="form-grid two-col"><div class="field"><label>Screen or activity</label><select id="screenType">${SCREEN_TYPES.map((item) => `<option ${existing?.screenType === item ? "selected" : ""}>${item}</option>`).join("")}</select></div><div class="field"><label>Purpose</label><select id="screenPurpose">${SCREEN_PURPOSES.map((item) => `<option ${existing?.screenPurpose === item ? "selected" : ""}>${item}</option>`).join("")}</select></div></div>` : ""}<div class="field"><label>Intensity <span class="hint">(optional)</span></label><select id="dayIntensity"><option value="">Not recorded</option>${[1,2,3,4,5].map((n) => `<option value="${n}" ${Number(existing?.intensity) === n ? "selected" : ""}>${n}${n === 1 ? " — low" : n === 5 ? " — high" : ""}</option>`).join("")}</select></div><div class="field"><label>Notes <span class="hint">(optional)</span></label><textarea id="dayNotes" placeholder="What happened, what helped, or anything worth remembering…">${esc(existing?.notes || "")}</textarea></div><button id="saveDayEvent" class="btn full" type="button">Save to My Day</button></div>`;
+  let foodEditor = null;
+  if (isMeal) {
+    const host=document.createElement('div');host.id='meal-food-fields';
+    modalBody.querySelector('#dayDuration').closest('.field').before(host);
+    foodEditor=window.MTMFoodPatterns.editor(host,existing?.foodItems,await getDayEvents(),()=>$("#dayProfile").value);
+    $("#dayProfile").addEventListener('change',()=>foodEditor.updateSuggestions());
+  }
   modal.showModal();
   if (!existing && myDayFilterProfile !== "all" && profiles.some((profile) => profile.id === myDayFilterProfile)) $("#dayProfile").value = myDayFilterProfile;
+  foodEditor?.updateSuggestions();
   $("#saveDayEvent").onclick = async () => {
+    let foodItems;
+    try { if (foodEditor) foodItems=foodEditor.read(); } catch(error) { alert(error.message); return; }
     const date = $("#dayDate").value, time = $("#dayTime").value;
     if (!date || !time) return alert("Choose a date and time.");
     const occurredAt = new Date(`${date}T${time}:00`).toISOString(), timestamp = nowISO();
-    await put("notes", { ...(existing || {}), id: existing?.id || uid(), kind: "dayEvent", profileId: $("#dayProfile").value, bubbleId: selectedBubble.id, label: selectedBubble.label, emoji: selectedBubble.emoji || "•", category: selectedBubble.category || "activity", outcome: Boolean(selectedBubble.outcome), occurredAt, durationMinutes: Number($("#dayDuration").value) || null, intensity: Number($("#dayIntensity").value) || null, notes: $("#dayNotes").value.trim(), screenType: isScreen ? $("#screenType").value : null, screenPurpose: isScreen ? $("#screenPurpose").value : null, createdAt: existing?.createdAt || timestamp, updatedAt: timestamp, syncStatus: "local" });
+    await put("notes", { ...(existing || {}), id: existing?.id || uid(), kind: "dayEvent", ...(isMeal ? {foodItems, foodSchemaVersion:1} : {}), profileId: $("#dayProfile").value, bubbleId: selectedBubble.id, label: selectedBubble.label, emoji: selectedBubble.emoji || "•", category: selectedBubble.category || "activity", outcome: Boolean(selectedBubble.outcome), responseWindowHours: selectedBubble.responseWindowHours || null, occurredAt, durationMinutes: Number($("#dayDuration").value) || null, intensity: Number($("#dayIntensity").value) || null, notes: $("#dayNotes").value.trim(), screenType: isScreen ? $("#screenType").value : null, screenPurpose: isScreen ? $("#screenPurpose").value : null, createdAt: existing?.createdAt || timestamp, updatedAt: timestamp, syncStatus: "local" });
     myDayFilterDate = date;
     modal.close();
     navigate(currentRoute === "screenTime" ? "screenTime" : "myDay");
   };
 }
 
-async function openCustomBubbleForm() {
+async function openCustomBubbleForm(editId = null) {
   const current = await getSetting("myDayCustomBubbles", []);
-  modalBody.innerHTML = `<h2>➕ Create a custom bubble</h2><div class="form-grid"><div class="field"><label>Name</label><input id="customBubbleName" maxlength="40" placeholder="Grandma's house"></div><div class="field"><label>Icon or emoji</label><input id="customBubbleEmoji" maxlength="8" placeholder="🏡"></div><div class="field"><label>Type</label><select id="customBubbleCategory"><option value="activity">Activity or event</option><option value="food">Food or drink</option><option value="health">Health or medication</option><option value="sleep">Sleep event</option><option value="behavior">Behavior or response</option><option value="sleepOutcome">Sleep difficulty</option><option value="wellbeing">Positive or comfortable moment</option></select></div><button id="saveCustomBubble" class="btn full" type="button">Add bubble</button></div>${current.length ? `<h3>Custom bubbles</h3><div class="list">${current.map((bubble) => `<div class="list-item"><div><strong>${esc(bubble.emoji || "🔹")} ${esc(bubble.label)}</strong><div class="hint">${esc(bubble.category)}</div></div><button class="small-action danger-link delete-custom-bubble" data-id="${esc(bubble.id)}" type="button">Delete</button></div>`).join("")}</div>` : ""}`;
+  const editing=current.find(b=>b.id===editId);
+  modalBody.innerHTML = `<h2>${editing ? "Edit custom bubble" : "➕ Create a custom bubble"}</h2><div class="form-grid"><div class="field"><label>Name</label><input id="customBubbleName" maxlength="40" placeholder="Grandma's house"></div><div class="field"><label>Icon or emoji</label><input id="customBubbleEmoji" maxlength="8" placeholder="🏡"></div><div class="field"><label>Type</label><select id="customBubbleCategory"><option value="activity">Activity or event</option><option value="food">Food or drink</option><option value="health">Health or medication</option><option value="sleep">Sleep event</option><option value="behavior">Behavior or response</option><option value="sleepOutcome">Sleep difficulty</option><option value="response">Symptom or other response</option><option value="wellbeing">Positive or comfortable moment</option></select></div><div class="field"><label>Response window (for symptom/response bubbles)</label><select id="customResponseWindow"><option value="2">Within 2 hours</option><option value="6">Within 6 hours</option><option value="12">Within 12 hours</option><option value="24" selected>Within 24 hours</option></select><span class="hint">An observation setting, not a medical recommendation. Sleep difficulty bubbles use the overnight window.</span></div>${editing ? `<label><input id="applyBubbleHistory" type="checkbox"> Also apply the type and response window to existing entries for this bubble in this household. Dates, notes and other recorded details stay unchanged.</label>` : ""}<button id="saveCustomBubble" class="btn full" type="button">${editing ? "Save changes" : "Add bubble"}</button></div>${current.length ? `<h3>Custom bubbles</h3><div class="list">${current.map((bubble) => `<div class="list-item"><div><strong>${esc(bubble.emoji || "🔹")} ${esc(bubble.label)}</strong><div class="hint">${esc(bubble.category)}</div></div><button class="small-action edit-custom-bubble" data-id="${esc(bubble.id)}" type="button">Edit</button><button class="small-action danger-link delete-custom-bubble" data-id="${esc(bubble.id)}" type="button">Delete</button></div>`).join("")}</div>` : ""}`;
+  if(editing){
+    $("#customBubbleName").value=editing.label;
+    $("#customBubbleEmoji").value=editing.emoji || "";
+    $("#customBubbleCategory").value=editing.category;
+    $("#customResponseWindow").value=String(editing.responseWindowHours || 24);
+  }
+  const windowField=$("#customResponseWindow").closest('.field');
+  const updateWindow=()=>{windowField.hidden=$("#customBubbleCategory").value!=="response";};
+  $("#customBubbleCategory").onchange=updateWindow;updateWindow();
+  document.querySelectorAll('.edit-custom-bubble').forEach(button=>button.onclick=()=>openCustomBubbleForm(button.dataset.id));
   modal.showModal();
   $("#saveCustomBubble").onclick = async () => {
     const label = $("#customBubbleName").value.trim();
     if (!label) return alert("Enter a bubble name.");
     const category = $("#customBubbleCategory").value, current = await getSetting("myDayCustomBubbles", []);
-    current.push({ id: `custom-${uid()}`, label, emoji: $("#customBubbleEmoji").value.trim() || "🔹", category, outcome: ["behavior", "sleepOutcome", "wellbeing"].includes(category) });
-    await setSetting("myDayCustomBubbles", current);
+    const updated={ ...(editing || {}), id: editing?.id || `custom-${uid()}`, label, emoji: $("#customBubbleEmoji").value.trim() || "🔹", category,
+      responseWindowHours:category==="response" ? Number($("#customResponseWindow").value) : null,
+      outcome:["behavior","sleepOutcome","wellbeing","response"].includes(category) };
+    const button=$("#saveCustomBubble");button.disabled=true;
+    try {
+      if(editing && $("#applyBubbleHistory").checked){
+        for(const entry of await getDayEvents()) if(entry.bubbleId===editing.id){
+          await put("notes",{...entry,category:updated.category,outcome:updated.outcome,responseWindowHours:updated.responseWindowHours,updatedAt:nowISO(),syncStatus:"local"});
+        }
+      }
+      await setSetting("myDayCustomBubbles",editing ? current.map(b=>b.id===editing.id?updated:b) : [...current,updated]);
+    } catch(error){button.disabled=false;alert("Could not finish saving. Some entries may have been updated; retry to finish. " + error.message);return;}
     modal.close();
     renderMyDay();
   };
@@ -1981,7 +2015,16 @@ async function renderMyDay() {
   if (!myDayFilterDate) myDayFilterDate = localDayKey();
   const bubbles = await getDayBubbles(), allEvents = await getDayEvents(), selectedEvents = allEvents.filter((entry) => localDayKey(dayEventTime(entry)) === myDayFilterDate && (myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile)).sort((a, b) => dayEventTime(a) - dayEventTime(b));
   const insightEvents = allEvents.filter((entry) => myDayFilterProfile === "all" || entry.profileId === myDayFilterProfile), insight = buildDayInsights(insightEvents);
-  view.innerHTML = `<section class="hero"><h1>🫧 My Day</h1><p>Tap a bubble to record what happened and when. Over time, MTM can show possible patterns without claiming that one event caused another.</p></section><div class="card day-picker"><div class="form-grid two-col"><div class="field"><label>Child</label><select id="myDayProfile"><option value="all">All children</option>${profiles.map((profile) => `<option value="${profile.id}" ${myDayFilterProfile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="myDayDate" type="date" value="${myDayFilterDate}"></div></div></div><h2 class="section-title">What happened?</h2><div class="day-bubbles">${bubbles.map((bubble) => `<button class="day-bubble day-${esc(bubble.category)}" data-bubble-id="${esc(bubble.id)}" type="button"><span>${esc(bubble.emoji || "•")}</span><strong>${esc(bubble.label)}</strong></button>`).join("")}<button id="addCustomBubble" class="day-bubble day-custom" type="button"><span>＋</span><strong>Custom bubble</strong></button></div><div class="btn-row"><button class="btn secondary" data-go="screenTime">Open screen-time tracker</button></div><h2 class="section-title">Timeline</h2><div class="day-timeline">${selectedEvents.length ? selectedEvents.map((entry) => dayEventCard(entry, profiles)).join("") : `<div class="empty card"><p>No events recorded for this day.</p></div>`}</div><h2 class="section-title">Possible patterns</h2>${!insight.ready ? `<div class="card"><p>Record events on at least seven different days before MTM looks for possible patterns.</p><p class="hint">Days recorded: ${insight.days} of 7</p></div>` : insight.insights.length ? `<div class="pattern-list">${insight.insights.map((item) => `<div class="card pattern-card"><strong>${esc(item.outcome)} followed ${esc(item.predictor)}</strong><p>Logged within ${item.hours === 1 ? "1 hour" : `${item.hours} hours`} ${item.matches} of ${item.total} recorded times.</p></div>`).join("")}</div>` : `<div class="card"><p>No repeated pattern meets the display threshold yet. Keep recording ordinary days as well as difficult ones.</p></div>`}<div class="banner pattern-disclaimer"><strong>Correlation is not causation.</strong> These summaries only compare what was recorded. Missing entries, routines, illness, environment, and other factors can change the result.</div>`;
+  view.innerHTML = `<section class="hero"><h1>🫧 My Day</h1><p>Tap a bubble to record what happened and when. Over time, MTM can show possible patterns without claiming that one event caused another.</p></section><div class="card day-picker"><div class="form-grid two-col"><div class="field"><label>Child</label><select id="myDayProfile"><option value="all">All children</option>${profiles.map((profile) => `<option value="${profile.id}" ${myDayFilterProfile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></div><div class="field"><label>Day</label><input id="myDayDate" type="date" value="${myDayFilterDate}"></div></div></div><h2 class="section-title">What happened?</h2><div class="day-bubbles">${bubbles.map((bubble) => `<button class="day-bubble day-${esc(bubble.category)}" data-bubble-id="${esc(bubble.id)}" type="button"><span>${esc(bubble.emoji || "•")}</span><strong>${esc(bubble.label)}</strong></button>`).join("")}<button id="addCustomBubble" class="day-bubble day-custom" type="button"><span>＋</span><strong>Custom bubble</strong></button></div><div class="btn-row"><button class="btn secondary" data-go="screenTime">Open screen-time tracker</button></div><h2 class="section-title">Timeline</h2><div class="day-timeline">${selectedEvents.length ? selectedEvents.map((entry) => dayEventCard(entry, profiles)).join("") : `<div class="empty card"><p>No events recorded for this day.</p></div>`}</div><h2 class="section-title">Possible patterns</h2>${!insight.ready ? `<div class="card"><p>Record events on at least seven different days before MTM looks for possible patterns.</p><p class="hint">Days recorded: ${insight.days} of 7</p></div>` : insight.insights.length ? `<div class="pattern-list">${insight.insights.map((item) => `<div class="card pattern-card"><strong>${esc(item.outcome)} followed ${esc(item.predictor)}</strong><p class="hint">${esc(profiles.find(p=>p.id===item.profileId)?.name || "Child")}</p><p>Logged within ${item.hours === 1 ? "1 hour" : `${item.hours} hours`} ${item.matches} of ${item.total} recorded times.</p></div>`).join("")}</div>` : `<div class="card"><p>No repeated pattern meets the display threshold yet. Keep recording ordinary days as well as difficult ones.</p></div>`}<div class="banner pattern-disclaimer"><strong>Correlation is not causation.</strong> These summaries only compare what was recorded. Missing entries, routines, illness, environment, and other factors can change the result.</div>`;
+  const foodReport=document.createElement('section');foodReport.id='food-response-report';view.append(foodReport);
+  window.MTMFoodPatterns.mountReport(foodReport,allEvents,profiles,myDayFilterProfile,(result,context)=>{
+    const format=value=>new Date(value).toLocaleString();
+    modalBody.innerHTML=`<h2>${esc(result.name)} and ${esc(result.outcomeLabel.toLowerCase())}</h2><p>All confirmed eating occasions in the selected period. Pending windows do not count in the summary. A response can follow more than one food or meal.</p>${result.occasions.map(o=>{
+      const nearby=context.filter(e=>e.id!==o.meal.id && Date.parse(e.occurredAt)>=Date.parse(o.meal.occurredAt)-2*3600000 && Date.parse(e.occurredAt)<=o.end).sort((a,b)=>Date.parse(a.occurredAt)-Date.parse(b.occurredAt));
+      return `<div class="card"><h3>${esc(format(o.meal.occurredAt))}</h3><p>${esc(window.MTMFoodPatterns.timeline(o.meal.foodItems))}</p>${o.meal.notes?`<p>${esc(o.meal.notes)}</p>`:''}<p><strong>${o.pending?'Observation window still open':o.matches.length?`${o.matches.length} matching response entry/entries`:'No matching response recorded'}</strong></p><p class="hint">Window ends ${esc(format(o.end))}.</p><details><summary>Surrounding events (including the preceding 2 hours)</summary>${nearby.length?nearby.map(e=>`<p><strong>${esc(e.label)}</strong> · ${esc(format(e.occurredAt))}${e.intensity?` · Intensity ${esc(e.intensity)}/5`:''}${e.durationMinutes?` · ${esc(e.durationMinutes)} minutes`:''}<br>${esc(window.MTMFoodPatterns.timeline(e.foodItems))}${e.notes?`<br>${esc(e.notes)}`:''}</p>`).join(''):'<p>No other events recorded in this window.</p>'}</details></div>`;
+    }).join('')}<button id="closeFoodPatterns" class="btn full" type="button">Close</button>`;
+    modal.showModal();$("#closeFoodPatterns").onclick=()=>modal.close();
+  });
   $("#myDayProfile").onchange = (event) => { myDayFilterProfile = event.target.value; renderMyDay(); };
   $("#myDayDate").onchange = (event) => { myDayFilterDate = event.target.value || localDayKey(); renderMyDay(); };
   document.querySelectorAll("[data-bubble-id]").forEach((button) => button.onclick = () => openDayEventForm(profiles, bubbles.find((bubble) => bubble.id === button.dataset.bubbleId)));
