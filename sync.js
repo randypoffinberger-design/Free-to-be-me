@@ -3,7 +3,7 @@
 /* The UI always reads application data from IndexedDB. This module only moves
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
-  const BUILD = "0.10.1-production-3";
+  const BUILD = "0.10.1-onboarding-1";
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
@@ -379,7 +379,46 @@ function clearPasswordResetFromLink(){
   const url=new URL(location.href);url.searchParams.delete("reset");history.replaceState(null,"",`${url.pathname}${url.search}${url.hash}`);
 }
 
+let stopEmailVerificationWatch = () => {};
+function watchEmailVerification(sync, initial) {
+  stopEmailVerificationWatch();
+  let timer, stopped = false, checking = false;
+  const identity = value => JSON.stringify([value.serverUrl, value.user?.id, value.token]);
+  const original = identity(initial);
+  const stop = () => {
+    stopped = true;
+    clearTimeout(timer);
+    window.removeEventListener('focus', check);
+    document.removeEventListener('visibilitychange', check);
+  };
+  async function check() {
+    if (stopped || checking) return;
+    clearTimeout(timer);
+    checking = true;
+    try {
+      const state = await sync.state();
+      if (currentRoute !== 'sync' || !document.getElementById('resendVerification') || identity(state) !== original || state.reauthRequired) return stop();
+      if (document.visibilityState === 'hidden' || !navigator.onLine) return;
+      const account = await sync.api('/v1/account');
+      const latest = await sync.state();
+      if (stopped || latest.reauthRequired || identity(latest) !== original || currentRoute !== 'sync') return stop();
+      if (account.user?.id === initial.user.id && account.user.emailVerified === true) {
+        await sync.saveState({ ...latest, user: account.user });
+        stop();
+        await acceptPendingInvitation(sync);
+        await navigate(sync.mode(await sync.state()) === 'babysitter' ? 'babysitterHome' : 'home');
+      }
+    } catch { /* Authentication and resend controls remain available after a transient failure. */ }
+    finally { checking = false; if (!stopped) timer = setTimeout(check, 5000); }
+  }
+  stopEmailVerificationWatch = stop;
+  window.addEventListener('focus', check);
+  document.addEventListener('visibilitychange', check);
+  timer = setTimeout(check, 5000);
+}
+
 async function renderSyncCenter(){
+  stopEmailVerificationWatch();
   const sync=window.MTMSync;
   try{await sync.ensureMode();}catch{/* Keep account recovery available offline. */}
   const outbox=await sync.rawAll("syncOutbox"),conflicts=await sync.rawAll("syncConflicts");
@@ -408,10 +447,13 @@ async function renderSyncCenter(){
   ${resetToken?`<div class="card"><h3>Choose a new password</h3><p class="hint">This one-time link expires 30 minutes after it was requested.</p><div class="form-grid"><div class="field"><label>New password (10+ characters)</label><input id="resetPassword" type="password" autocomplete="new-password"></div><div class="field"><label>Confirm new password</label><input id="resetPasswordConfirm" type="password" autocomplete="new-password"></div><button id="finishPasswordReset" class="btn">Reset password</button></div></div>`:""}
   ${signedIn?`<div class="card"><h3>Signed in as</h3><p><strong>${esc(s.user?.displayName||"Account")}</strong><br>${esc(s.user?.email||"")}</p></div><div class="card"><h3>Household</h3><div id="householdArea"><p>Loading memberships…</p></div><div class="btn-row"><button id="syncNow" class="btn">Sync now</button><span id="syncStatus" class="hint" role="status">${esc(status)}</span><button id="prepareData" class="btn secondary">Add existing local data</button><button id="logoutSync" class="btn secondary">Sign out</button></div><p class="hint">Signing out stores this account's local records privately on this device and removes them from the signed-out view.</p></div><div class="card"><h3>Change password</h3><p class="hint">Changing it signs this account out on other devices.</p><div class="form-grid"><div class="field"><label>Current password</label><input id="currentPassword" type="password" autocomplete="current-password"></div><div class="field"><label>New password (10+ characters)</label><input id="newPassword" type="password" autocomplete="new-password"></div><div class="field"><label>Confirm new password</label><input id="newPasswordConfirm" type="password" autocomplete="new-password"></div><button id="changePassword" class="btn secondary">Change password</button></div></div>`:`<div class="card"><h3>Sign in</h3><form id="signInForm" class="form-grid"><div class="field"><label for="syncEmail">Email</label><input id="syncEmail" name="username" type="email" autocomplete="section-signin username" required autocapitalize="none" spellcheck="false"></div><div class="field"><label for="syncPassword">Password</label><input id="syncPassword" name="password" type="password" autocomplete="section-signin current-password" required></div><div class="btn-row"><button id="loginSync" class="btn" type="submit">Sign in</button><button id="forgotPassword" class="btn secondary" type="button">Forgot password?</button></div></form><h3>Create free account</h3><p class="hint">Creating an account is free. Parents create or join a household before entering information. Babysitter accounts remain free and use parent-approved shared access.</p><form id="registerForm" class="form-grid"><div class="field"><label for="regName">Your name</label><input id="regName" name="name" autocomplete="section-register name" required></div><div class="field"><label for="regEmail">Email</label><input id="regEmail" name="username" type="email" autocomplete="section-register username" required autocapitalize="none" spellcheck="false"></div><div class="field"><label for="regPassword">Password (10+ characters)</label><input id="regPassword" name="new-password" type="password" autocomplete="section-register new-password" minlength="10" required></div><label class="check-option"><input id="regBabysitter" type="checkbox"> I am a babysitter and want to create a free searchable profile</label><button id="registerSync" class="btn" type="submit">Create account</button></form></div>`}
   <h2 id="syncDecisionsTitle" class="section-title">Sync decisions${conflicts.length?` (${conflicts.length})`:""}</h2><div id="syncDecisions" class="list">${syncConflictMarkup(conflicts)}</div>`;
+  view.querySelector('.hero')?.insertAdjacentHTML('beforeend', '<p class="hint">Create account → verify email → create or join a household → activate access if needed → start using MTM.</p>');
+  if (!signedIn) view.querySelector('#registerSync')?.closest('.card').querySelector('h3:nth-of-type(2)')?.insertAdjacentHTML('afterend', '<p class="hint">Parent household access starts with a free 7-day trial: no card required and no automatic charge. Afterward, choose $12.99/month or $99.99/year. Joining a household uses its existing access; babysitter registration remains free.</p>');
   if(signedIn&&s.user?.emailVerified===false){
     view.innerHTML=`<section class="hero"><h1>Verify your email</h1><p>We sent a verification link to ${esc(s.user.email)}. Open the link within 30 minutes to finish setting up this account.</p></section><div class="card"><p>If the message did not arrive, request another after two minutes. Check your spam folder too.</p><div class="btn-row"><button id="resendVerification" class="btn" type="button">Resend verification email</button><button id="verificationSignout" class="btn secondary" type="button">Sign out</button></div></div>`;
     $("#resendVerification").onclick=async()=>{const button=$("#resendVerification");button.disabled=true;try{await sync.api("/v1/account/email-verification/resend",{method:"POST",body:"{}"});alert("Verification email sent.");}catch(e){alert(e.message);}finally{button.disabled=false;}};
     $("#verificationSignout").onclick=async()=>{await sync.signOutAccount();renderSyncCenter();};
+    if (!s.reauthRequired) watchEmailVerification(sync, s);
     return;
   }
   if(signedIn){
@@ -455,12 +497,54 @@ async function renderSyncCenter(){
     $("#forgotPassword").onclick=async()=>{const email=prompt("Enter the email address used for this MTM account:",$("#syncEmail").value.trim());if(!email?.trim())return;try{const d=await sync.api("/v1/auth/password/forgot",{method:"POST",body:JSON.stringify({email:email.trim()})});alert(d.message);}catch(e){alert(e.message);}};
   }else{
     $("#changePassword").onclick=async()=>{const currentPassword=$("#currentPassword").value,newPassword=$("#newPassword").value,confirmPassword=$("#newPasswordConfirm").value;if(newPassword!==confirmPassword)return alert("The new passwords do not match.");try{const d=await sync.api("/v1/account/password",{method:"POST",body:JSON.stringify({currentPassword,newPassword})});await sync.saveState({...await sync.state(),token:d.token});$("#currentPassword").value="";$("#newPassword").value="";$("#newPasswordConfirm").value="";alert("Password changed. Other signed-in devices will need the new password.");}catch(e){alert(e.message);}};
-    try{const d=await sync.api("/v1/households");d.households=sync.householdsForMode(d.households,sync.mode(s));const area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];if(!active&&s.householdId){await sync.removeCurrentHouseholdData();return renderSyncCenter();}area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Accept invitation</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}${["owner","caregiver"].includes(active?.role)?'<button id="inviteBabysitter" class="btn secondary">Share with a babysitter</button>':""}${active&&active.role!=="owner"?'<button id="leaveHousehold" class="btn secondary">Leave this household</button>':""}</div>${["owner","caregiver"].includes(active?.role)?'<div id="currentShares"><p class="hint">Loading shared access…</p></div>':""}`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&(s.householdId!==active.id||s.householdRole!==active.role||(s.accessExpiresAt||null)!==(active.accessExpiresAt||null)))await sync.switchHousehold(active.id);if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{const selected=d.households.find(item=>item.id===e.target.value);await sync.switchHousehold(selected.id);renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.switchHousehold(result.household.id);renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Invitation code:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");if($("#leaveHousehold"))$("#leaveHousehold").onclick=async()=>{if(!confirm("Leave this household and remove its family data from this account on this device?"))return;try{await sync.api(`/v1/households/${encodeURIComponent(active.id)}/members/self`,{method:"DELETE"});await sync.removeCurrentHouseholdData();await renderSyncCenter();}catch(e){alert(e.message);}};await renderCurrentShares(sync,active);}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
+    try{const d=await sync.api("/v1/households");d.households=sync.householdsForMode(d.households,sync.mode(s));const area=$("#householdArea"),active=d.households.find(h=>h.id===s.householdId)||d.households[0];if(!active&&s.householdId){await sync.removeCurrentHouseholdData();return renderSyncCenter();}area.innerHTML=`${d.households.length?`<div class="field"><label>Active household</label><select id="activeHousehold">${d.households.map(h=>`<option value="${h.id}" ${h.id===active?.id?"selected":""}>${esc(h.name)} — ${esc(h.role)}${h.accessExpiresAt?` until ${esc(fmtDate(h.accessExpiresAt))}`:""}</option>`).join("")}</select></div>`:'<div class="banner">This account is not connected to a household yet.</div>'}<div class="btn-row"><button id="createHousehold" class="btn secondary">Create household</button><button id="joinInvite" class="btn secondary">Join existing household</button>${active?.role==="owner"?'<button id="inviteCaregiver" class="btn secondary">Invite caregiver</button><button id="inviteViewer" class="btn secondary">Invite viewer</button>':""}${["owner","caregiver"].includes(active?.role)?'<button id="inviteBabysitter" class="btn secondary">Share with a babysitter</button>':""}${active&&active.role!=="owner"?'<button id="leaveHousehold" class="btn secondary">Leave this household</button>':""}</div>${["owner","caregiver"].includes(active?.role)?'<div id="currentShares"><p class="hint">Loading shared access…</p></div>':""}`;$("#prepareData").classList.toggle("hidden",!active||["viewer","babysitter"].includes(active.role));if(active&&(s.householdId!==active.id||s.householdRole!==active.role||(s.accessExpiresAt||null)!==(active.accessExpiresAt||null)))await sync.switchHousehold(active.id);if($("#activeHousehold"))$("#activeHousehold").onchange=async e=>{const selected=d.households.find(item=>item.id===e.target.value);await sync.switchHousehold(selected.id);renderSyncCenter();};$("#createHousehold").onclick=async()=>{const name=prompt("Household name:");if(!name?.trim())return;try{const result=await sync.api("/v1/households",{method:"POST",body:JSON.stringify({name:name.trim()})});await sync.switchHousehold(result.household.id);const access=await MTMAccess.status(true);if(!access.access&&access.trialEligible)await navigate("subscription");else await renderSyncCenter();}catch(e){alert(e.message);}};$("#joinInvite").onclick=async()=>{const code=prompt("Enter the invitation code from your household owner:");if(code)await acceptInvitation(sync,code);};if($("#inviteCaregiver"))$("#inviteCaregiver").onclick=()=>createInvitation(sync,"caregiver");if($("#inviteBabysitter"))$("#inviteBabysitter").onclick=()=>createInvitation(sync,"babysitter");if($("#inviteViewer"))$("#inviteViewer").onclick=()=>createInvitation(sync,"viewer");if($("#leaveHousehold"))$("#leaveHousehold").onclick=async()=>{if(!confirm("Leave this household and remove its family data from this account on this device?"))return;try{await sync.api(`/v1/households/${encodeURIComponent(active.id)}/members/self`,{method:"DELETE"});await sync.removeCurrentHouseholdData();await renderSyncCenter();}catch(e){alert(e.message);}};await renderCurrentShares(sync,active);}catch(e){$("#householdArea").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
     await window.MTMAccess.renderSwitcher();
+    const accountState = await sync.state();
+    if (sync.mode(accountState) === 'family') {
+      const area = $("#householdArea");
+      const explanation = document.createElement('p');
+      explanation.className = 'hint';
+      explanation.textContent = 'A household keeps your family profiles, routines, and care information together. Create one for your family, or accept an invitation to an existing household.';
+      area?.prepend(explanation);
+      const access = await MTMAccess.status(true);
+      if (area && access.access) {
+        const continueButton = document.createElement('button');
+        continueButton.className = 'btn';
+        continueButton.textContent = 'Continue using MTM';
+        continueButton.onclick = () => navigate('home');
+        area.prepend(continueButton);
+      }
+      if (area && accountState.householdId && !access.access && access.trialEligible) {
+        const nextStep = document.createElement('section');
+        nextStep.className = 'onboarding-next';
+        nextStep.innerHTML = '<h3>Your household is ready</h3><p>Next: start a free 7-day trial. No card required and no automatic charge. Afterward, choose $12.99/month or $99.99/year.</p><button class="btn" type="button">View free trial offer</button>';
+        nextStep.querySelector('button').onclick = () => navigate('subscription');
+        area.prepend(nextStep);
+      }
+    }
     if(sync.mode(await sync.state())==="family"){const area=$("#householdArea");if(area&&!area.querySelector("[data-subscription-link]")){const accessLink=document.createElement("button");accessLink.className="btn";accessLink.dataset.subscriptionLink="true";accessLink.textContent="Trial and subscription";accessLink.onclick=()=>navigate("subscription");area.append(accessLink);}}
     $("#prepareData").hidden=true;
     $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{if(s.householdRole==="babysitter")await sync.clearTemporaryShareData();try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.signOutAccount();renderSyncCenter();};}
   bindSyncConflictActions(conflicts);
+  if (signedIn && sync.mode(await sync.state()) === 'family') {
+    const access = await MTMAccess.status();
+    if (['no-household', 'not-started'].includes(access.kind)) {
+      const settings = document.createElement('details');
+      settings.className = 'setup-account-settings';
+      settings.innerHTML = '<summary>Account settings and sync details</summary>';
+      const passwordCard = $('#changePassword')?.closest('.card');
+      if (passwordCard) settings.append(passwordCard);
+      for (const id of ['downloadAccountData', 'reviewAccountDeletion']) {
+        const section = document.getElementById(id)?.closest('.card');
+        if (section) settings.append(section);
+      }
+      for (const id of ['syncDecisionsTitle', 'syncDecisions']) {
+        const section = document.getElementById(id);
+        if (section) settings.append(section);
+      }
+      view.append(settings);
+    }
+  }
 }
 
 function invitationCodeFromLink(){

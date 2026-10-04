@@ -84,11 +84,13 @@ window.MTMAccess = (() => {
     const end=canceling&&s.cancelAt&&Date.parse(s.cancelAt)<Date.parse(s.paidUntil)?s.cancelAt:s.paidUntil;
     const heading=canceling?'Subscription canceled':s.label;
     const description=paid?(canceling?`Your household has full access until ${date(end)}. Your subscription will not renew.`:`Your household has paid access through ${date(s.paidUntil)}.`):s.kind==='complimentary'?'Your household has complimentary access. No payment is required.':s.kind==='expired'?'Your household access has ended. Your saved data is preserved and can be exported at any time. Subscribe for $12.99 per month or $99.99 per year to use the app again.':'Try MTM for 7 days without a credit card. Afterward, choose $12.99 per month or $99.99 per year. The free trial does not automatically charge you.';
+    const accessDescription=s.kind==='trial'?'Your free trial is active. No card required and no automatic charge. Afterward, choose $12.99/month or $99.99/year.':s.kind==='not-started'&&!owner?'Your household owner needs to activate access. Joining uses this household\'s access; you do not need to create another household.':s.kind==='not-started'&&!s.trialEligible?'This household has no active access and is not eligible for another trial. Subscribe or contact support to continue.':description;
     view.innerHTML=`<section class="hero"><h1>Your household’s MTM access</h1><p>One household membership covers you and your spouse.</p></section>
-      <div class="card"><h2>${esc(heading)}</h2><p>${esc(description)}</p>
+      <div class="card"><h2>${esc(heading)}</h2><p>${esc(accessDescription)}</p>
       ${s.kind==='trial'&&s.trialEndsAt?`<p>Trial ends: ${esc(new Date(s.trialEndsAt).toLocaleString())}</p>`:''}
-      <div class="btn-row">${s.trialEligible?'<button class="btn" id="startHouseholdTrial">Start free trial</button>':''}
-      ${owner&&s.checkoutAvailable&&!['paid','complimentary'].includes(s.kind)?'<button class="btn" data-plan="monthly">Subscribe — $12.99/month</button><button class="btn" data-plan="yearly">Subscribe — $99.99/year</button>':''}
+      <div class="btn-row">${!s.access&&s.trialEligible?'<button class="btn" id="startHouseholdTrial">Start free 7-day trial</button>':''}
+      ${s.access?'<button class="btn" id="continueUsingMTM">Continue using MTM</button>':''}
+      ${owner&&s.checkoutAvailable&&!['paid','complimentary'].includes(s.kind)?'<button class="btn secondary" data-plan="monthly">Subscribe — $12.99/month</button><button class="btn secondary" data-plan="yearly">Subscribe — $99.99/year</button>':''}
       ${owner&&s.provider==='stripe'?'<button class="btn secondary" id="manageBilling">Manage subscription</button>':''}
       <button class="btn secondary" data-go="sync">Account and household</button><button class="btn secondary" data-go="backup">${s.access?'Export or restore data':'Export your data'}</button>
       <button class="btn secondary" data-go="support">Contact support</button><button class="btn secondary" data-go="products">Product links — always free</button></div>
@@ -101,10 +103,20 @@ window.MTMAccess = (() => {
       try {
         const result=await MTMSync.api(`/v1/households/${encodeURIComponent(account.householdId)}/${path}`,{method:'POST',body:JSON.stringify(body)});
         verified=null;
-        if(result.url)location.assign(result.url);else await navigate('home');
+        if(result.url)location.assign(result.url);
+        else if(path==='trial') {
+          await window.MTMOnboarding.activated();
+          const progress=await window.MTMOnboarding.progress();
+          await navigate(progress.started&&!progress.completed&&!progress.dismissed?'gettingStarted':'home');
+        } else await navigate('home');
       }catch(e){alert(e.message);}finally{buttons.forEach(b=>b.disabled=false);}
     }
     document.getElementById('startHouseholdTrial')?.addEventListener('click',()=>act('trial'));
+    document.getElementById('continueUsingMTM')?.addEventListener('click',async()=>{
+      const progress=await window.MTMOnboarding.progress();
+      if(progress.task&&!progress.completed&&!progress.dismissed) await window.MTMOnboarding.begin(progress.task);
+      else await navigate('home');
+    });
     document.getElementById('manageBilling')?.addEventListener('click',()=>act('billing/portal'));
     view.querySelectorAll('[data-plan]').forEach(b=>b.addEventListener('click',()=>act('billing/checkout',{plan:b.dataset.plan})));
   }

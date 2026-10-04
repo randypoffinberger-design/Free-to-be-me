@@ -103,13 +103,13 @@ test('production shell and worker use matching new build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['sensory-play.js', 'library-books.js', 'styles.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js', 'food-patterns.js']) {
-    const version=['app.js','food-patterns.js'].includes(asset)?'0.10.1-food-2':asset==='sync.js'?'analytics-2-0.10.1-modules-2':['access.js','app.js'].includes(asset)?'0.10.1-modules-2':'0.10.1-production-11';
+    const version=['app.js','sync.js','access.js'].includes(asset)?'0.10.1-onboarding-1':asset==='food-patterns.js'?'0.10.1-food-2':'0.10.1-production-11';
     assert.ok(html.includes(asset + '?v=' + version));
     assert.ok(worker.includes(asset + '?v=' + version));
   }
-  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-production-3"'));
-  assert.ok(source.includes('const BUILD = "0.10.1-production-3"'));
-  assert.ok(worker.includes("mtm-production-v0.10.1-food-2"));
+  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-onboarding-1"'));
+  assert.ok(source.includes('const BUILD = "0.10.1-onboarding-1"'));
+  assert.ok(worker.includes("mtm-production-v0.10.1-onboarding-1"));
   assert.ok(html.indexOf('interaction-usage.js') < html.indexOf('sync.js'));
   assert.ok(worker.includes('./interaction-usage.js?v=analytics-2'));
   assert.ok(app.includes('version: "0.10.1", schemaVersion: 5'));

@@ -1,0 +1,12 @@
+.onboarding-next { padding: 16px 0; border-block: 1px solid var(--line); margin: 16px 0; }
+.onboarding-next h2 { font-size: 1.15rem; margin: 0 0 12px; }
+.onboarding-choices { margin: 20px 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.onboarding-choices .card-button { border-radius: 8px; min-height: 150px; }
+.onboarding-choices strong, .onboarding-choices small { overflow-wrap: anywhere; }
+.profile-optional, .setup-account-settings, .onboarding-all-tools { margin: 12px 0; padding-block: 12px; border-block: 1px solid var(--line); }
+.profile-optional > summary, .setup-account-settings > summary, .onboarding-all-tools > summary { cursor: pointer; font-weight: 650; min-height: 44px; padding: 10px 0; }
+.profile-optional .form-grid { margin-top: 12px; }
+.home-route .view:has(> .onboarding-next) { display: flex; flex-direction: column; padding-top: 58px; }
+.home-route .view > .onboarding-next { flex: 0 0 auto; align-self: stretch; padding: 12px 16px; margin: 0; background: var(--card); }
+.home-route .view:has(> .onboarding-next) .preserved-home { flex: 1 1 auto; height: auto; min-height: 0; }
+@media (max-width: 600px) { .onboarding-choices { grid-template-columns: minmax(0, 1fr); } .onboarding-choices .card-button { min-height: 100px; } .home-route .onboarding-next .btn { white-space: normal; } }
