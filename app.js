@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-onboarding-1";
+const ASSET_BUILD = "0.10.1-sensory-1";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 window.MTM_APP_VERSION = APP.version;
 const ANALYTICS_FEATURES = Object.freeze({
@@ -2598,15 +2598,8 @@ $("#materialPreferences").onclick=openMaterialPreferences;
 $("#amazonSensoryProducts").onclick=()=>openAmazonProductCatalog("sensory","Sensory products","Swings, climbing equipment, weighted items, compression products, vibrating items, and other movement equipment need correct installation, sizing, supervision, and a safe exit. Check choking, strangulation, fall, entrapment, overheating, and battery risks for the individual child.");
 $("#amazonSensoryProducts").remove();
 $("#sensoryProducts strong").textContent="Sensory products, clothing & grants";
-queueMicrotask(()=>{
-  const openSensoryGuidance=$("#sensoryProducts").onclick;
-  $("#sensoryProducts").onclick=()=>{
-    openSensoryGuidance();
-    const existingGuidance=modalBody.querySelector(".education-body")?.innerHTML||"";
-    openAmazonProductCatalog("sensory","Sensory products","Swings, climbing equipment, weighted items, compression products, vibrating items, and other movement equipment need correct installation, sizing, supervision, and a safe exit. Check choking, strangulation, fall, entrapment, overheating, and battery risks for the individual child.",existingGuidance);
-  };
-});
-$("#sensoryProducts").onclick=()=>openInfoGuide("🛍️ Sensory products",`<p>These caregiver-supplied shopping options may be useful for children who prefer soft, stretchy, breathable, or predictable clothing. They are not endorsements or guaranteed to suit every sensory profile. Confirm the current material blend, seams, tags, fit, care instructions, seller, return policy, and size chart.</p><div class="education-links"><a class="education-link" href="https://comfrt.com/collections/kids" target="_blank" rel="noopener"><strong>Comfrt kids collection</strong><span>Kids’ matching sets and soft loungewear options. Review fabric weight, warmth, fit, cuffs, seams, and sizing with the child’s preferences in mind.</span><small>Open collection ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609" target="_blank" rel="noopener"><strong>PatPat baby bamboo-viscose pajamas</strong><span>A snug-fit, two-way-zip baby pajama listing with footed and footless options. Confirm age, fit, zipper protection, fabric content, and current seller details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928" target="_blank" rel="noopener"><strong>PatPat toddler bamboo-viscose pajama set</strong><span>A snug-fit short-sleeve top and pants set listed for toddler sizes. Check the current size chart, waistband, seams, graphics, and material details.</span><small>Open Walmart product page ↗</small></a><a class="education-link" href="https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118" target="_blank" rel="noopener"><strong>WIBACKER two-piece bamboo-viscose pajamas</strong><span>A snug-fit two-piece toddler pajama listing. Verify current sizing, fabric blend, construction, seller, and care directions before ordering.</span><small>Open Walmart product page ↗</small></a></div><h3>Programs that may help with sensory equipment</h3><p>Availability, location, qualifying diagnosis or disability, requested item, and application windows differ. Ask whether shipping, installation, professional recommendations, and replacement costs are included.</p><div class="education-links"><a class="education-link" href="https://autismwish.org/" target="_blank" rel="noopener"><strong>AutismWish Embracing Autism Grant</strong><span>Applications and gifting opportunities for sensory items and therapeutic tools; current selection and membership rules are listed by the program.</span><small>Program page ↗</small></a><a class="education-link" href="https://handsinautism.iu.edu/partnerships/state/kappa-inc/sensory-kits.html" target="_blank" rel="noopener"><strong>HANDS in Autism sensory kits</strong><span>Indiana University program with a request option for a free personal-use sensory kit, subject to current availability and distribution rules.</span><small>Program page ↗</small></a><a class="education-link" href="https://zanesinc.org/" target="_blank" rel="noopener"><strong>Zane’s Inc. Family Support Fund</strong><span>Quarterly assistance for eligible children and adults with special needs in 20 Northeast Ohio counties, including adaptive equipment and therapy.</span><small>Regional program ↗</small></a></div><div class="banner"><strong>The child’s response is the test.</strong> “Bamboo,” “soft,” “snug,” or “sensory-friendly” wording does not guarantee comfort. A grant award also does not prove that an item is appropriate. Stop using clothing or equipment that causes overheating, restricted movement, skin irritation, pain, unsafe positioning, or distress.</div>`);}
+$("#sensoryProducts").onclick=()=>openAmazonProductCatalog("sensory","Sensory products","Swings, climbing equipment, weighted items, compression products, vibrating items, and other movement equipment need correct installation, sizing, supervision, and a safe exit. Check choking, strangulation, fall, entrapment, overheating, and battery risks for the individual child.",`<details class="education-card"><summary>Grants & shopping guidance</summary><div class="education-body"><h3>Programs that may help with sensory equipment</h3><p>Availability, location, qualifying diagnosis or disability, requested item, and application windows differ. Ask whether shipping, installation, professional recommendations, and replacement costs are included.</p><div class="education-links"><a class="education-link" href="https://autismwish.org/" target="_blank" rel="noopener"><strong>AutismWish Embracing Autism Grant</strong><span>Applications and gifting opportunities for sensory items and therapeutic tools; current selection and membership rules are listed by the program.</span><small>Program page ↗</small></a><a class="education-link" href="https://handsinautism.iu.edu/partnerships/state/kappa-inc/sensory-kits.html" target="_blank" rel="noopener"><strong>HANDS in Autism sensory kits</strong><span>Indiana University program with a request option for a free personal-use sensory kit, subject to current availability and distribution rules.</span><small>Program page ↗</small></a><a class="education-link" href="https://zanesinc.org/" target="_blank" rel="noopener"><strong>Zane’s Inc. Family Support Fund</strong><span>Quarterly assistance for eligible children and adults with special needs in 20 Northeast Ohio counties, including adaptive equipment and therapy.</span><small>Regional program ↗</small></a></div><div class="banner"><strong>The child’s response is the test.</strong> “Bamboo,” “soft,” “snug,” or “sensory-friendly” wording does not guarantee comfort. A grant award also does not prove that an item is appropriate. Stop using clothing or equipment that causes overheating, restricted movement, skin irritation, pain, unsafe positioning, or distress.</div></div></details>`);}
+
 
 async function openMaterialPreferences(){const profiles=await getAll("profiles");if(!profiles.length)return window.MTMOnboarding.requestProfile("Clothing and bedding preferences", "A child profile keeps comfort preferences with the right child.", () => openMaterialPreferences());let profileId=profiles[0].id;const draw=async()=>{const value=await getSetting(`materialPreferences:${profileId}`,{});modalBody.innerHTML=`<h2>🧵 Clothing & bedding preferences</h2><p class="hint">Texture preferences can change with temperature, illness, stress, fit, and the child’s control over the situation. Record observations rather than forcing tolerance.</p><div class="form-grid"><div class="field"><label>Child</label><select id="materialProfile">${profiles.map((p)=>`<option value="${p.id}" ${p.id===profileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Comfortable clothing materials</label><textarea id="comfortableClothing" placeholder="Soft cotton, fleece, smooth athletic fabric…">${esc(value.comfortableClothing||"")}</textarea></div><div class="field"><label>Difficult clothing materials</label><textarea id="difficultClothing" placeholder="Wool, denim, lace, stiff collars…">${esc(value.difficultClothing||"")}</textarea></div><div class="field"><label>Fit, seams, tags, and fasteners</label><textarea id="clothingDetails" placeholder="Loose or snug, tagless, flat seams, elastic waist, no buttons…">${esc(value.clothingDetails||"")}</textarea></div><div class="field"><label>Preferred bedding</label><textarea id="preferredBedding" placeholder="Jersey sheets, cool blanket, smooth pillowcase…">${esc(value.preferredBedding||"")}</textarea></div><div class="field"><label>Bedding to avoid</label><textarea id="avoidBedding" placeholder="Flannel, scratchy blankets, top sheet, heavy comforter…">${esc(value.avoidBedding||"")}</textarea></div><div class="field"><label>Temperature, pressure, and other notes</label><textarea id="materialNotes" placeholder="Sleeps cool, dislikes wrinkles, seeks compression…">${esc(value.notes||"")}</textarea></div><button id="saveMaterialPreferences" class="btn full">Save preferences</button></div>`;$("#materialProfile").onchange=async(e)=>{profileId=e.target.value;await draw();};$("#saveMaterialPreferences").onclick=async()=>{await setSetting(`materialPreferences:${profileId}`,{comfortableClothing:$("#comfortableClothing").value.trim(),difficultClothing:$("#difficultClothing").value.trim(),clothingDetails:$("#clothingDetails").value.trim(),preferredBedding:$("#preferredBedding").value.trim(),avoidBedding:$("#avoidBedding").value.trim(),notes:$("#materialNotes").value.trim(),updatedAt:nowISO()});alert("Material preferences saved.");};};await draw();modal.showModal();}
 
@@ -3412,47 +3405,73 @@ const INFO_GUIDE_VISUALS = {
 };
 function openInfoGuide(title, html){const visuals=(INFO_GUIDE_VISUALS[title]||[]).map(([file,label])=>visualGuideFigure(file,label)).join("");modalBody.innerHTML=`<h2>${title}</h2><div class="education-body">${html}${visuals}</div><button id="closeInfoGuide" class="btn full">Close</button>`;modal.showModal();$("#closeInfoGuide").onclick=()=>modal.close();}
 const AMAZON_PRODUCT_CATALOG=[
-  ["sensory","Jelly blocks","https://a.co/d/053DQAPU"],
-  ["sensory","Headphones","https://a.co/d/0cyIN1R5"],
-  ["sensory","Sensory sock","https://a.co/d/0i09ldOR"],
-  ["sensory","Sensory tubes","https://a.co/d/02CgZh1w"],
+  ["sensory sensory-climbing","Simplay3 wobble disk and climbing dome","https://www.amazon.com/dp/B0BVGHH1XP/"],
+  ["sensory sensory-movement","CALMPLAY kids rocking chair","https://www.amazon.com/dp/B0GHBD1NCD/"],
+  ["sensory sensory-positioning","HAHASOLE foam peapod sensory canoe","https://www.amazon.com/dp/B0FSZ9RHKJ/"],
+  ["sensory sensory-positioning","TED KANGAROO soft squeeze seat","https://www.amazon.com/dp/B0DS9GKL7L/"],
+  ["sensory sensory-movement","Spinner-X seated spinner","https://www.amazon.com/dp/B09NKRTS87/"],
+  ["sensory sensory-movement","GAKINUNE sensory spinning chair","https://www.amazon.com/dp/B0FC5M26WM/"],
+  ["sensory sensory-tactile","Special Supplies therapy putty, 4 strengths","https://www.amazon.com/dp/B01KWDGIEQ/"],
+  ["sensory sensory-tactile","Bedwina mini knobby sensory balls, 12-pack","https://www.amazon.com/dp/B0CBD7V367/"],
+  ["sensory sensory-tactile","AKIMRABY textured sensory puzzle mats, 8-piece","https://www.amazon.com/dp/B0G1BM3ZLM/"],
+  ["sensory sensory-positioning","Sensory bouncy band, 30-inch","https://www.amazon.com/dp/B0GX6412C1/"],
+  ["sensory sensory-movement","Hurtle scooter board with handles, cones and tow strap","https://www.amazon.com/dp/B0H72XBLST/"],
+  ["sensory sensory-movement","JOY SPOT! 36-inch toddler trampoline with foam handle","https://www.amazon.com/dp/B0GZNPDLVT/"],
+  ["sensory sensory-climbing","Rainbow Craft 6.6-foot ninja rope ladder","https://www.amazon.com/dp/B07MZMM6ZF/"],
+  ["sensory sensory-climbing","NUBUNI pop-up play tunnel","https://www.amazon.com/dp/B07YNF95BF/"],
+  ["sensory sensory-climbing","TECKMICO stepping stones, 10-pack","https://www.amazon.com/dp/B0DJQZK31K/"],
+  ["sensory sensory-climbing","Amazon Basics wood wobble balance board","https://www.amazon.com/dp/B07DWKNXNY/"],
+  ["sensory sensory-climbing","Acorn Avenue felt rocker balance board","https://www.amazon.com/dp/B0DPRB2WMJ/"],
+  ["sensory sensory-balls","Antsy Pants portable balance beam","https://www.amazon.com/dp/B0C7XW95DZ/"],
+  ["sensory sensory-balls","Garvee half balance ball, 23-inch","https://www.amazon.com/dp/B0DWK1S6ZG/"],
+  ["sensory sensory-positioning","EarthLite full-round bolster pillow","https://www.amazon.com/dp/B00122LCP2/"],
+  ["sensory sensory-balls","Trideer yoga and exercise ball","https://www.amazon.com/dp/B0FQCF9Z95/"],
+  ["sensory sensory-balls","Gaiam kids peanut ball chair","https://www.amazon.com/dp/B01C45GL88/"],
+  ["sensory sensory-swings","YuAnWe Textilene bucket-seat tree swing","https://www.amazon.com/dp/B0GHX9QZF7/"],
+  ["sensory sensory-swings","Trekassy 40-inch spider-web saucer swing","https://www.amazon.com/dp/B0CZL2F89W/"],
+  ["sensory sensory-swings","Trekassy 60-inch rectangle platform swing","https://www.amazon.com/dp/B0F99PBL63/"],
+  ["sensory sensory-swings","Trekassy 40-inch fabric saucer swing","https://www.amazon.com/dp/B082HNGMBP/"],
+  ["sensory sensory-tactile","Jelly blocks","https://a.co/d/053DQAPU"],
+  ["sensory sensory-sound","Headphones","https://a.co/d/0cyIN1R5"],
+  ["sensory sensory-positioning","Sensory sock","https://a.co/d/0i09ldOR"],
+  ["sensory sensory-tactile","Sensory tubes","https://a.co/d/02CgZh1w"],
   ["skill","Jump ropes","https://a.co/d/0ceCtN2R"],
   ["skill","Magnetic drawing board","https://a.co/d/02sZYKwv"],
-  ["sensory","Weighted lap pad","https://a.co/d/0gbodIhz"],
+  ["sensory sensory-positioning","Weighted lap pad","https://a.co/d/0gbodIhz"],
   ["speech","AAC device","https://a.co/d/0dWnDHoc"],
   ["speech","Portable AAC option","https://a.co/d/02qQb0hW"],
-  ["sensory","Sensory-friendly toothbrushes","https://a.co/d/06uoZBiN"],
+  ["sensory sensory-oral","Sensory-friendly toothbrushes","https://a.co/d/06uoZBiN"],
   ["skill","Shape sorter","https://a.co/d/0cjzwdrC"],
-  ["sensory","Fidget poppers","https://a.co/d/0hn0TNpC"],
-  ["sensory","Sensory tubes, second option","https://a.co/d/0gevzCYE"],
+  ["sensory sensory-tactile","Fidget poppers","https://a.co/d/0hn0TNpC"],
+  ["sensory sensory-tactile","Sensory tubes, second option","https://a.co/d/0gevzCYE"],
   ["skill","Learning dinosaurs","https://a.co/d/0bie34Tb"],
   ["speech","Board books","https://a.co/d/0fnzOmg5"],
-  ["sensory","Vibrating pillow","https://a.co/d/0cZHeXig"],
+  ["sensory sensory-positioning","Vibrating pillow","https://a.co/d/0cZHeXig"],
   ["skill","Food sorter","https://a.co/d/0hMK2xAp"],
-  ["sensory","Sensory book","https://a.co/d/07xsGVf2"],
+  ["sensory sensory-books","Sensory book","https://a.co/d/07xsGVf2"],
   ["speech","First words book","https://a.co/d/0doN7kgv"],
   ["sleep","Bunny sound player","https://a.co/d/0btWIQa0"],
-  ["sensory","Foam climbing blocks","https://a.co/d/0fV3yD1s"],
-  ["sensory","Sensory sand","https://a.co/d/0eKPhMBt"],
+  ["sensory sensory-climbing","Foam climbing blocks","https://a.co/d/0fV3yD1s"],
+  ["sensory sensory-tactile","Sensory sand","https://a.co/d/0eKPhMBt"],
   ["skill","Puzzles","https://a.co/d/0ffnLssf"],
   ["speech","Bubble keyboard","https://a.co/d/0hekujXl"],
-  ["sensory","Egg shakers","https://a.co/d/09RcTaoN"],
-  ["sensory","Movement scarves","https://a.co/d/067187bj"],
-  ["sensory","Crunchy sensory tubes","https://a.co/d/0j04Ljpr"],
-  ["sensory","Sensory bots","https://a.co/d/0hUGYrvC"],
+  ["sensory sensory-sound","Egg shakers","https://a.co/d/09RcTaoN"],
+  ["sensory sensory-movement","Movement scarves","https://a.co/d/067187bj"],
+  ["sensory sensory-tactile","Crunchy sensory tubes","https://a.co/d/0j04Ljpr"],
+  ["sensory sensory-tactile","Sensory bots","https://a.co/d/0hUGYrvC"],
   ["speech","Pop-it communication book","https://a.co/d/0enOAqhj"],
-  ["sensory","Sensory swing","https://a.co/d/0aIvFisb"],
-  ["sensory","Sensory swing, second option","https://a.co/d/0ey3rZ8J"],
-  ["sensory","Crash pad","https://a.co/d/064YtRQj"],
-  ["sensory","Stretch alien","https://a.co/d/0hv6r8xm"],
-  ["sensory","Swivel chair","https://a.co/d/0i9mt8lC"],
-  ["sensory","Sensory rocking chair","https://a.co/d/0fRybJXj"],
-  ["sensory","Noise-reducing headphones","https://a.co/d/0eyt08Px"],
-  ["sensory","Sensory floor mats","https://a.co/d/0fwsJJlv"],
-  ["sensory","Sensory tent","https://a.co/d/01rDYaNq"],
-  ["sensory","Grounding mat","https://a.co/d/0dV0nh0v"],
-  ["sensory","Indoor monkey bars","https://a.co/d/06P4pNf3"],
-  ["sensory","Indoor rock climbing equipment","https://a.co/d/0ha9bDtg"],
+  ["sensory sensory-swings","Sensory swing","https://a.co/d/0aIvFisb"],
+  ["sensory sensory-swings","Sensory swing, second option","https://a.co/d/0ey3rZ8J"],
+  ["sensory sensory-movement","Crash pad","https://a.co/d/064YtRQj"],
+  ["sensory sensory-tactile","Stretch alien","https://a.co/d/0hv6r8xm"],
+  ["sensory sensory-movement","Swivel chair","https://a.co/d/0i9mt8lC"],
+  ["sensory sensory-movement","Sensory rocking chair","https://a.co/d/0fRybJXj"],
+  ["sensory sensory-sound","Noise-reducing headphones","https://a.co/d/0eyt08Px"],
+  ["sensory sensory-tactile","Sensory floor mats","https://a.co/d/0fwsJJlv"],
+  ["sensory sensory-calm","Sensory tent","https://a.co/d/01rDYaNq"],
+  ["sensory sensory-calm","Grounding mat","https://a.co/d/0dV0nh0v"],
+  ["sensory sensory-climbing","Indoor monkey bars","https://a.co/d/06P4pNf3"],
+  ["sensory sensory-climbing","Indoor rock climbing equipment","https://a.co/d/0ha9bDtg"],
   ["speech","Wall magnetic board","https://a.co/d/0b6SQ4PY"],
   ["speech","Flash cards","https://a.co/d/0iMLv6QJ"],
   ["speech","Flash cards, second set","https://a.co/d/0hv7BbHp"],
@@ -3484,36 +3503,36 @@ const AMAZON_PRODUCT_CATALOG=[
   ["sleep","Additional sleep product","https://a.co/d/0cYNLTQY"],
   ["skill","Additional skill-building product","https://a.co/d/070lriT1"],
   ["sleep skill","Enifine washable bamboo-viscose bed pads, 3-pack","https://www.amazon.com/dp/B0FQBS1DRG/"],
-  ["sensory sleep","Jimonda bamboo-rayon short pajama sets, 4-piece","https://www.amazon.com/dp/B0F17K7JR1/"],
-  ["sensory","Boys cotton short-sleeve T-shirts, 5-pack","https://www.amazon.com/dp/B0CYPGCYKL/"],
-  ["sensory sleep","JunNeng bamboo-viscose long pajama sets, 4-piece","https://www.amazon.com/dp/B0D9GDS215/"],
-  ["sensory","Nautica sensory-friendly fleece full-zip hoodie","https://www.amazon.com/dp/B0916QWS8K/"],
-  ["sensory","The Sensory Project FlexiZip organic-cotton romper","https://www.amazon.com/dp/B0FJH2T26F/"],
-  ["sensory","VIAOKUTH toddler non-slip ankle socks, 6-pair set","https://www.amazon.com/dp/B0GVJZNJZC/"],
-  ["sensory","RIKUAOU boys short-sleeve compression shirt","https://www.amazon.com/dp/B0GL5DYFTG/"],
-  ["sensory","Special Supplies sensory therapy brushes, 6-pack","https://www.amazon.com/dp/B08MKX3THZ/"],
-  ["sensory","Kids seamless cotton ankle socks","https://www.amazon.com/dp/B0FDJVVL54/"],
-  ["sensory","Boys tagless cotton boxer briefs","https://www.amazon.com/dp/B0FD3QPQH6/"],
-  ["sensory","Feathers girls tagless cotton briefs, 5-pack","https://www.amazon.com/dp/B0FWKXJPDZ/"],
-  ["sensory","Essentia Topia girls cotton-blend T-shirt","https://www.amazon.com/dp/B0GLWHTVM9/"],
-  ["sensory","Bigant boys tagless dry-fit UPF 50+ shirt","https://www.amazon.com/dp/B0G5WPV6XN/"],
-  ["sensory sleep","PatPat bamboo-viscose toddler pajama set","https://www.amazon.com/dp/B0FFGXXQK2/"],
-  ["sensory sleep","Babee Reshinee bamboo-viscose girls pajama set","https://www.amazon.com/dp/B0DKJGJXG2/"],
-  ["sensory sleep","NTBAY toddler microfiber bedding set, 4-piece","https://www.amazon.com/dp/B09TKHVJ2B/"],
-  ["sensory sleep","HIG twin or twin-XL comforter set, 3-piece","https://www.amazon.com/dp/B081QV39TB/"],
-  ["sensory sleep","Elegant Comfort king microfiber sheet set, 4-piece","https://www.amazon.com/dp/B0C95GTT4K/"]
+  ["sensory sleep sensory-clothing","Jimonda bamboo-rayon short pajama sets, 4-piece","https://www.amazon.com/dp/B0F17K7JR1/"],
+  ["sensory sensory-clothing","Boys cotton short-sleeve T-shirts, 5-pack","https://www.amazon.com/dp/B0CYPGCYKL/"],
+  ["sensory sleep sensory-clothing","JunNeng bamboo-viscose long pajama sets, 4-piece","https://www.amazon.com/dp/B0D9GDS215/"],
+  ["sensory sensory-clothing","Nautica sensory-friendly fleece full-zip hoodie","https://www.amazon.com/dp/B0916QWS8K/"],
+  ["sensory sensory-clothing","The Sensory Project FlexiZip organic-cotton romper","https://www.amazon.com/dp/B0FJH2T26F/"],
+  ["sensory sensory-clothing","VIAOKUTH toddler non-slip ankle socks, 6-pair set","https://www.amazon.com/dp/B0GVJZNJZC/"],
+  ["sensory sensory-clothing","RIKUAOU boys short-sleeve compression shirt","https://www.amazon.com/dp/B0GL5DYFTG/"],
+  ["sensory sensory-tactile","Special Supplies sensory therapy brushes, 6-pack","https://www.amazon.com/dp/B08MKX3THZ/"],
+  ["sensory sensory-clothing","Kids seamless cotton ankle socks","https://www.amazon.com/dp/B0FDJVVL54/"],
+  ["sensory sensory-clothing","Boys tagless cotton boxer briefs","https://www.amazon.com/dp/B0FD3QPQH6/"],
+  ["sensory sensory-clothing","Feathers girls tagless cotton briefs, 5-pack","https://www.amazon.com/dp/B0FWKXJPDZ/"],
+  ["sensory sensory-clothing","Essentia Topia girls cotton-blend T-shirt","https://www.amazon.com/dp/B0GLWHTVM9/"],
+  ["sensory sensory-clothing","Bigant boys tagless dry-fit UPF 50+ shirt","https://www.amazon.com/dp/B0G5WPV6XN/"],
+  ["sensory sleep sensory-clothing","PatPat bamboo-viscose toddler pajama set","https://www.amazon.com/dp/B0FFGXXQK2/"],
+  ["sensory sleep sensory-clothing","Babee Reshinee bamboo-viscose girls pajama set","https://www.amazon.com/dp/B0DKJGJXG2/"],
+  ["sensory sleep sensory-clothing","NTBAY toddler microfiber bedding set, 4-piece","https://www.amazon.com/dp/B09TKHVJ2B/"],
+  ["sensory sleep sensory-clothing","HIG twin or twin-XL comforter set, 3-piece","https://www.amazon.com/dp/B081QV39TB/"],
+  ["sensory sleep sensory-clothing","Elegant Comfort king microfiber sheet set, 4-piece","https://www.amazon.com/dp/B0C95GTT4K/"]
 ];
 
 const OTHER_PRODUCT_CATALOG=[
   ["skill", "Brain Training Overnight Sensory Underwear for Bedwetting", "https://easytot.com/products/brain-training-overnight-sensory-underwear-for-bedwetting", "EasyTot", "Reusable overnight underwear by Super Undies with absorbent liners. Check fit, absorbency, care directions, and return terms for the current product."],
   ["sleep", "Hug Sleep Junior Sleep Pod", "https://hugsleep.com/products/sleep-pod-junior", "Hug Sleep", "A stretch-fabric sleep pod for children. Review the current size chart, age guidance, and manufacturer use instructions."],
 
-  ["sensory","Comfrt kids clothing collection","https://comfrt.com/collections/kids","Comfrt","Soft matching sets and loungewear; review weight, warmth, seams, fit, and sizing."],
-  ["sensory sleep","PatPat baby bamboo-viscose pajamas","https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609","Walmart","Baby pajamas with footed and footless options; verify the current fabric, size, fit, and seller."],
-  ["sensory sleep","PatPat toddler bamboo-viscose pajama set","https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928","Walmart","Toddler pajama set; check the current size chart, waistband, seams, material, and seller."],
-  ["sensory sleep","WIBACKER two-piece bamboo-viscose pajamas","https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118","Walmart","Two-piece toddler pajamas; verify sizing, fabric blend, construction, and care directions."],
-  ["sleep sensory","Comfrt Dreamer Blanket","https://comfrt.com/products/the-dreamer-blanket","Comfrt","A plush stretch blanket; check weight and dimensions and follow age-appropriate sleep guidance."],
-  ["sleep sensory","Galaxy star-and-moon projector","https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042","Walmart","Projector with lighting effects, timer, and speaker; use settings that fit the child's sensory response."],
+  ["sensory sensory-clothing","Comfrt kids clothing collection","https://comfrt.com/collections/kids","Comfrt","Soft matching sets and loungewear; review weight, warmth, seams, fit, and sizing."],
+  ["sensory sleep sensory-clothing","PatPat baby bamboo-viscose pajamas","https://www.walmart.com/ip/PatPat-Baby-Pajamas-Bamboo-Viscose-Snug-Fit-Footed-Footless-2-Way-Zipper-Footies-Sleep-N-Play-Pajamas-Gift-for-Baby-Girls-Boys/19491971609","Walmart","Baby pajamas with footed and footless options; verify the current fabric, size, fit, and seller."],
+  ["sensory sleep sensory-clothing","PatPat toddler bamboo-viscose pajama set","https://www.walmart.com/ip/PatPat-Pajamas-Sets-Viscose-from-Bamboo-Toddler-Boys-Snug-Fit-Pjs-Kids-Short-Sleeve-Graphic-Top-Pants-Breathable-Sleepwear-2-6T/17337172928","Walmart","Toddler pajama set; check the current size chart, waistband, seams, material, and seller."],
+  ["sensory sleep sensory-clothing","WIBACKER two-piece bamboo-viscose pajamas","https://www.walmart.com/ip/WIBACKER-2-Piece-Bamboo-Viscose-Snug-Fit-Pajamas-for-Unisex-Toddler-Boy-and-Girls-Blue-4-5-Years/8484557118","Walmart","Two-piece toddler pajamas; verify sizing, fabric blend, construction, and care directions."],
+  ["sleep sensory sensory-clothing","Comfrt Dreamer Blanket","https://comfrt.com/products/the-dreamer-blanket","Comfrt","A plush stretch blanket; check weight and dimensions and follow age-appropriate sleep guidance."],
+  ["sleep sensory sensory-calm","Galaxy star-and-moon projector","https://www.walmart.com/ip/Galaxy-Projector-Star-Moon-Projector-w-Remote-Control-55-Lighting-Effects-Night-Light-Projector-Time-Function-Build-in-Bluetooth-Speaker-Adult-Kids-P/626864042","Walmart","Projector with lighting effects, timer, and speaker; use settings that fit the child's sensory response."],
   ["sleep safety","Cubby Bed","https://cubbybeds.com/","Manufacturer","Enclosed safety-bed specifications and funding resources; individual clinical review is required."],
   ["sleep safety","The Safety Sleeper","https://safetysleeper.com/","Manufacturer","Portable enclosed-bed models and funding information; individual clinical review is required."],
   ["sleep safety","SleepSafe Beds","https://sleepsafebed.com/","Manufacturer","Fixed safety-bed models, accessories, and insurance guidance."],
@@ -3552,15 +3571,69 @@ const PRODUCT_CATALOG=[
   ...AMAZON_PRODUCT_CATALOG.map(([categories,name,url])=>[categories,name,url,"Amazon","Check the current listing, seller, size, age range, price, return terms, and safety information."]),
   ...OTHER_PRODUCT_CATALOG
 ];
+const SENSORY_PRODUCT_GROUPS=[
+  [
+    "sensory-swings",
+    "Swings & Suspended Equipment"
+  ],
+  [
+    "sensory-balls",
+    "Balls & Balance"
+  ],
+  [
+    "sensory-climbing",
+    "Balance & Climbing"
+  ],
+  [
+    "sensory-movement",
+    "Active Movement"
+  ],
+  [
+    "sensory-positioning",
+    "Positioning & Resistance"
+  ],
+  [
+    "sensory-tactile",
+    "Tactile Exploration"
+  ],
+  [
+    "sensory-clothing",
+    "Clothing & Bedding"
+  ],
+  [
+    "sensory-sound",
+    "Sound & Headphones"
+  ],
+  [
+    "sensory-calm",
+    "Visual & Calm Spaces"
+  ],
+  [
+    "sensory-oral",
+    "Oral Care"
+  ],
+  [
+    "sensory-books",
+    "Books & Learning"
+  ]
+];
 const productsFor=(category)=>PRODUCT_CATALOG.filter(([categories])=>categories.split(" ").includes(category));
 const productLink=([,name,url,source,description])=>`<a class="education-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><strong>${esc(name)}</strong><span>${esc(description)}</span><small>Open on ${esc(source)} ↗</small></a>`;
+
+function sensoryProductGroups(products,searching=false){
+  return `<div class="tips-list sensory-product-groups">${SENSORY_PRODUCT_GROUPS.map(([category,title])=>{
+    const items=products.filter(([categories])=>categories.split(" ").includes(category));
+    if(!items.length)return "";
+    return `<details class="education-card" ${searching?"open":""}><summary>${esc(title)} (${items.length})</summary><div class="education-body"><div class="education-links">${items.map(productLink).join("")}</div></div></details>`;
+  }).join("")}</div>`;
+}
 
 function openAmazonProductCatalog(category,title,safetyNote="",existingGuidance=""){
   const products=productsFor(category);
   const draw=(query="")=>{
     const q=wordKey(query),matches=products.filter(([,name])=>!q||wordKey(name).includes(q));
     $("#amazonProductCount").textContent=`Showing ${matches.length} of ${products.length} products.`;
-    $("#amazonProductList").innerHTML=matches.length?matches.map(productLink).join(""):`<div class="empty"><p>No products match that search.</p></div>`;
+    $("#amazonProductList").innerHTML=matches.length?(category==="sensory"?sensoryProductGroups(matches,!!q):matches.map(productLink).join("")):`<div class="empty"><p>No products match that search.</p></div>`;
   };
   modalBody.innerHTML=`<h2>🛍️ ${esc(title)}</h2><p>These caregiver-supplied links are shopping options, not endorsements. Choose around the child’s actual goal, age, size, motor skills, sensory preferences, cleaning needs, supervision, and product hazards.</p>${existingGuidance?`<section class="product-guidance">${existingGuidance}</section>`:""}${safetyNote?`<div class="banner">${safetyNote}</div>`:""}<h3>Product links</h3><div class="banner"><strong>Shopping link notice:</strong> More than Measured does not currently earn a commission. Products, prices, sellers, and availability can change.</div><div class="field"><label>Search these products</label><input id="amazonProductSearch" type="search" placeholder="Headphones, books, swing…"></div><p id="amazonProductCount" class="hint"></p><div id="amazonProductList" class="education-links"></div>`;
   if(!modal.open)modal.showModal();draw();
@@ -3582,7 +3655,7 @@ function renderProductDirectory(){
     $("#productDirectorySections").innerHTML=PRODUCT_DIRECTORY_SECTIONS.map(([category,icon,title])=>{
       const products=matches.filter(([categories])=>categories.split(" ").includes(category));
       if(!products.length)return "";
-      return `<details class="education-card" ${q?"open":""}><summary>${icon} ${esc(title)} (${products.length})</summary><div class="education-body"><div class="education-links">${products.map(productLink).join("")}</div></div></details>`;
+      return `<details class="education-card" ${q?"open":""}><summary>${icon} ${esc(title)} (${products.length})</summary><div class="education-body">${category==="sensory"?sensoryProductGroups(products,!!q):`<div class="education-links">${products.map(productLink).join("")}</div>`}</div></details>`;
     }).join("")||`<div class="empty card"><p>No products match that search.</p></div>`;
   };
   draw();
