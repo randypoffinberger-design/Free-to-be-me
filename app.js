@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-sensory-1";
+const ASSET_BUILD = "0.10.1-verification-1";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 window.MTM_APP_VERSION = APP.version;
 const ANALYTICS_FEATURES = Object.freeze({
@@ -405,6 +405,7 @@ async function performNavigation(r, options = {}) {
     route = routes[r] ? r : "home";
     if (route !== currentRoute) routeStack.push(route);
   }
+  if (new URL(location.href).searchParams.get('verify')) route = 'sync';
   route = await window.MTMAccess.route(route);
   if (profileAgeTimer) {
     clearInterval(profileAgeTimer);
@@ -4924,6 +4925,11 @@ function setupPWA() {
     $("#installBtn").classList.add("hidden");
   };
 }
+function initialAppRoute(url, hasBirthdayToday) {
+  const link = new URL(url);
+  if (link.searchParams.get('verify') || link.searchParams.get('reset') || link.searchParams.get('invite')) return 'sync';
+  return hasBirthdayToday ? 'home' : link.hash.slice(1) || 'home';
+}
 async function init() {
   const syncBuild = window.MTMSync?.build;
   if (syncBuild !== ASSET_BUILD || typeof window.MTMSync?.initializeAccountIsolation !== "function") {
@@ -4976,7 +4982,10 @@ async function init() {
     e.target.value = "";
   };
   const hasBirthdayToday = (await getAll("profiles")).some((profile) => birthdayToday(profile));
-  await navigate(hasBirthdayToday ? "home" : location.hash.slice(1) || "home");
+  window.addEventListener('hashchange', () => {
+    navigate(location.hash.slice(1) || 'home').catch(() => {});
+  });
+  await navigate(initialAppRoute(location.href, hasBirthdayToday));
 }
 init().catch((err) => {
   view.innerHTML = `<div class="banner"><strong>Startup error:</strong> ${esc(err.message)}</div>`;

@@ -3,7 +3,7 @@
 /* The UI always reads application data from IndexedDB. This module only moves
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
-  const BUILD = "0.10.1-sensory-1";
+  const BUILD = "0.10.1-verification-1";
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
@@ -417,23 +417,71 @@ function watchEmailVerification(sync, initial) {
   timer = setTimeout(check, 5000);
 }
 
+let emailVerificationNotice = null;
+async function handleEmailVerification(sync) {
+  const token = new URL(location.href).searchParams.get('verify');
+  if (!token) return false;
+  try {
+    await sync.api('/v1/auth/email/verify', {method:'POST', body:JSON.stringify({token})});
+  } catch (error) {
+    if (error.status === 400) {
+      const clean = new URL(location.href);
+      clean.searchParams.delete('verify');
+      history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
+    }
+    emailVerificationNotice = {error:true, retry:error.status !== 400, message:error.status === 400
+      ? 'This verification link is invalid or expired. Sign in and request a new verification email.'
+      : 'We could not confirm email verification. Check your connection and try again.'};
+    return false;
+  }
+  const clean = new URL(location.href);
+  clean.searchParams.delete('verify');
+  history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
+  emailVerificationNotice = {message:'Email verified. Sign in to finish setup if this device is not already signed in.'};
+  const initial = await sync.state();
+  if (initial.token && !initial.reauthRequired) {
+    try {
+      const account = await sync.api('/v1/account');
+      const latest = await sync.state();
+      if (latest.token === initial.token && latest.serverUrl === initial.serverUrl && account.user?.id === latest.user?.id) {
+        await sync.saveState({...latest, user:account.user});
+        emailVerificationNotice = {message:account.user.emailVerified
+          ? 'Email verified. Continue with your account setup below.'
+          : 'Email verified for the linked account. This signed-in account still needs its own verification.'};
+      }
+    } catch {
+      emailVerificationNotice = {message:'Email verified. We could not refresh this device’s account yet. Reconnect and refresh account status; you do not need to verify again.', refresh:true};
+    }
+  }
+  return true;
+}
+function showEmailVerificationNotice() {
+  if (!emailVerificationNotice) return;
+  const notice = document.createElement('section');
+  notice.className = 'banner';
+  notice.setAttribute('role', 'status');
+  const message = document.createElement('p');
+  message.textContent = emailVerificationNotice.message;
+  notice.append(message);
+  if (emailVerificationNotice.retry || emailVerificationNotice.refresh) {
+    const retry = document.createElement('button');
+    retry.className = 'btn secondary';
+    retry.textContent = emailVerificationNotice.error ? 'Try verification again' : 'Refresh account status';
+    retry.onclick = () => navigate('sync');
+    notice.append(retry);
+  }
+  view.prepend(notice);
+}
+
 async function renderSyncCenter(){
   stopEmailVerificationWatch();
   const sync=window.MTMSync;
   try{await sync.ensureMode();}catch{/* Keep account recovery available offline. */}
   const outbox=await sync.rawAll("syncOutbox"),conflicts=await sync.rawAll("syncConflicts");
+  const verifiedEmail = await handleEmailVerification(sync);
   let s=await sync.state();
-  const emailToken=new URL(location.href).searchParams.get("verify");
-  if(emailToken){
-    try{
-      await sync.api("/v1/auth/email/verify",{method:"POST",body:JSON.stringify({token:emailToken})});
-      const clean=new URL(location.href);clean.searchParams.delete("verify");history.replaceState(null,"",`${clean.pathname}${clean.search}${clean.hash}`);
-      if(s.token){const account=await sync.api("/v1/account");s={...s,user:account.user};await sync.saveState(s);}
-      alert("Email verified. You can now use your account.");
-    }catch(e){alert(e.message);}
-  }
-  if(s.token&&!s.reauthRequired&&(!s.user||s.user.emailVerified===false)){try{const account=await sync.api("/v1/account");s={...s,user:account.user};await sync.saveState(s);}catch{s=await sync.state();}}
-  if(emailToken&&s.token&&s.user?.emailVerified===true&&invitationCodeFromLink())await acceptPendingInvitation(sync);
+  if(s.token&&!s.reauthRequired&&(!s.user||s.user.emailVerified===false||emailVerificationNotice?.refresh)){try{const account=await sync.api("/v1/account"),latest=await sync.state();if(latest.token===s.token&&latest.serverUrl===s.serverUrl&&account.user?.id===latest.user?.id){s={...latest,user:account.user};await sync.saveState(s);if(emailVerificationNotice?.refresh&&account.user.emailVerified)emailVerificationNotice={message:'Email verified. Continue with your account setup below.'};}else s=latest;}catch{s=await sync.state();}}
+  if(verifiedEmail&&s.token&&!s.reauthRequired&&s.user?.emailVerified===true&&invitationCodeFromLink()){await acceptPendingInvitation(sync);s=await sync.state();}
   const signedIn=Boolean(s.token&&!s.reauthRequired),resetToken=passwordResetTokenFromLink(), status=!navigator.onLine?"Offline — saved information is still available":s.lastError?`Sync paused: ${esc(s.lastError)}`:outbox.length?`${outbox.length} local change${outbox.length===1?"":"s"} waiting to sync`:s.lastSyncAt?`Up to date`:"Not synchronized yet";
   if(signedIn&&s.user?.deletion?.pending){
     const date=new Date(s.user.deletion.purgeAt).toLocaleString();
@@ -454,6 +502,7 @@ async function renderSyncCenter(){
     $("#resendVerification").onclick=async()=>{const button=$("#resendVerification");button.disabled=true;try{await sync.api("/v1/account/email-verification/resend",{method:"POST",body:"{}"});alert("Verification email sent.");}catch(e){alert(e.message);}finally{button.disabled=false;}};
     $("#verificationSignout").onclick=async()=>{await sync.signOutAccount();renderSyncCenter();};
     if (!s.reauthRequired) watchEmailVerification(sync, s);
+    showEmailVerificationNotice();
     return;
   }
   if(signedIn){
@@ -504,8 +553,14 @@ async function renderSyncCenter(){
       const area = $("#householdArea");
       const explanation = document.createElement('p');
       explanation.className = 'hint';
-      explanation.textContent = 'A household keeps your family profiles, routines, and care information together. Create one for your family, or accept an invitation to an existing household.';
+      explanation.textContent = accountState.householdId ? 'A household keeps your family profiles, routines, and care information together.' : 'Next: create your household to keep your family profiles, routines, and care information together, or join a household using an invitation.';
       area?.prepend(explanation);
+      if (!accountState.householdId && area) {
+        const create = area.querySelector('#createHousehold');
+        if (create) { create.textContent = 'Create your household'; create.className = 'btn'; }
+        $('#syncNow').hidden = true;
+        $('#syncStatus').hidden = true;
+      }
       const access = await MTMAccess.status(true);
       if (area && access.access) {
         const continueButton = document.createElement('button');
@@ -522,7 +577,7 @@ async function renderSyncCenter(){
         area.prepend(nextStep);
       }
     }
-    if(sync.mode(await sync.state())==="family"){const area=$("#householdArea");if(area&&!area.querySelector("[data-subscription-link]")){const accessLink=document.createElement("button");accessLink.className="btn";accessLink.dataset.subscriptionLink="true";accessLink.textContent="Trial and subscription";accessLink.onclick=()=>navigate("subscription");area.append(accessLink);}}
+    if(sync.mode(await sync.state())==="family"&&(await sync.state()).householdId){const area=$("#householdArea");if(area&&!area.querySelector("[data-subscription-link]")){const accessLink=document.createElement("button");accessLink.className="btn";accessLink.dataset.subscriptionLink="true";accessLink.textContent="Trial and subscription";accessLink.onclick=()=>navigate("subscription");area.append(accessLink);}}
     $("#prepareData").hidden=true;
     $("#syncNow").onclick=async()=>{await sync.syncNow();};$("#prepareData").onclick=async()=>{if(!confirm("Create a safety checkpoint and add copies of all existing local family data to this household? Nothing local will be removed."))return;try{const count=await sync.queueExisting();alert(`${count} existing records are ready to synchronize.`);await sync.syncNow();}catch(e){alert(e.message);}};$("#logoutSync").onclick=async()=>{if(s.householdRole==="babysitter")await sync.clearTemporaryShareData();try{await sync.api("/v1/auth/logout",{method:"POST",body:"{}"});}catch{}await sync.signOutAccount();renderSyncCenter();};}
   bindSyncConflictActions(conflicts);
@@ -545,6 +600,7 @@ async function renderSyncCenter(){
       view.append(settings);
     }
   }
+  showEmailVerificationNotice();
 }
 
 function invitationCodeFromLink(){
