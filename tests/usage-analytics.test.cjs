@@ -133,7 +133,7 @@ test('resolved navigation counts visits, not sync rerenders or access-denied des
   const navigation = source.slice(source.indexOf('async function performNavigation('), source.indexOf('\nfunction navigate('));
   const window = { MTMLayouts: { mountExisting: async () => {}, isSaving: () => false, dispose() {} }, MTMSync: { trackActivity: feature => { calls.push(feature); } },
     MTMAccess: { route: async route => route === 'health' ? 'subscription' : route, readonlyChrome: async () => {} } };
-  const context = vm.createContext({ window, routes: Object.fromEntries(['home', 'child', 'myDay', 'health', 'subscription'].map(r => [r, async () => {}])),
+  const context = vm.createContext({ URL, location:{href:'https://app.test/'}, window, routes: Object.fromEntries(['home', 'child', 'myDay', 'health', 'subscription'].map(r => [r, async () => {}])),
     currentRoute: '', routeStack: [], profileAgeTimer: null, communityRefreshTimer: null, screenTimerInterval: null,
     navigate() {}, applyRouteChrome() {}, closeDrawer() {}, view: { focus() {} }, history: { replaceState() {} }, console });
   vm.runInContext(mapping + navigation, context);
