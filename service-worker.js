@@ -1,7 +1,7 @@
-const CACHE='mtm-production-v0.10.1-sensory-1';
+const CACHE='mtm-production-v0.10.1-onboarding-measurement-20261015';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
-  "./onboarding.js?v=0.10.1-onboarding-1",
+  "./onboarding.js?v=onboarding-measurement-20261015",
   "./onboarding.css?v=0.10.1-onboarding-1",
   "./interaction-usage.js?v=analytics-2",
   OFFLINE_PAGE,
@@ -16,10 +16,10 @@ const CRITICAL_ASSETS=[
   "./offline-key.js?v=0.10.1-production-11",
   "./offline-access.js?v=0.10.1-production-11",
   './styles.css?v=0.10.1-production-11',
-  './sync.js?v=0.10.1-sensory-1',
+  './sync.js?v=onboarding-measurement-20261015',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
-  './app.js?v=0.10.1-sensory-1',
+  './app.js?v=onboarding-measurement-20261015',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',

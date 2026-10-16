@@ -146,12 +146,12 @@ window.MTMSync = (() => {
   }
   const syncable = (store, valueOrId) => SYNCED_STORES.has(store) && !(store === "settings" && DEVICE_SETTINGS.has(typeof valueOrId === "object" ? valueOrId.id : valueOrId));
   const metaId = (store,id) => `${store}:${id}`;
-  async function queue(store, id, operation, payload, analyticsVersion = 0) {
+  async function queue(store, id, operation, payload, analyticsVersion = 0, onboarding = null) {
     const s=await state(); if(!s.householdId) return;
     const meta=await rawGet("syncMeta",metaId(store,id));
     const existing=(await rawAll("syncOutbox")).find(x=>x.entityType===store&&x.entityId===id);
     const item={id:existing?.id||uuid(),mutationId:uuid(),entityType:store,entityId:id,
-      analyticsVersion,operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
+      analyticsVersion,...(onboarding?{onboarding}:{}),operation,payload:operation==="delete"?null:structuredClone(payload),baseRevision:meta?.revision||0,queuedAt:iso()};
     await rawPut("syncOutbox",item);
   }
   // Layout, outbox entry and account check share a transaction. A household
@@ -190,13 +190,13 @@ window.MTMSync = (() => {
     schedule();
   }
 
-  async function onLocalPut(store,value){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value,1); schedule(); }
+  async function onLocalPut(store,value,onboarding=null){ if(applyingRemote||!syncable(store,value)||!value?.id)return; await queue(store,value.id,"upsert",value,1,onboarding); schedule(); }
   async function onLocalDelete(store,id,record=null){ if(applyingRemote||!syncable(store,id))return; await rawPut("deletedRecords",{id:metaId(store,id),entityType:store,entityId:id,record:record?structuredClone(record):null,deletedAt:iso()}); await queue(store,id,"delete",null); schedule(); }
   async function api(path, options={}) {
     const s=await state(), serverUrl=normalizeServerUrl(s.serverUrl || defaultProductionServer());
-    const usageRequest = path === "/v1/analytics/activity";
-    if (usageRequest && (!s.token || switching || document.visibilityState !== "visible" || !navigator.onLine || (options.usageToken && options.usageToken !== s.token))) return;
-    const {usageToken, ...fetchOptions}=options;
+    const usageRequest = path === "/v1/analytics/activity" || path === "/v1/analytics/onboarding";
+    if (usageRequest && (!s.token || switching || document.visibilityState !== "visible" || !navigator.onLine || (options.usageToken && options.usageToken !== s.token) || (options.usageHouseholdId && options.usageHouseholdId !== s.householdId))) return;
+    const {usageToken, usageHouseholdId, ...fetchOptions}=options;
     const response=await fetch(`${serverUrl}${path}`,{...fetchOptions,headers:{"Content-Type":"application/json",...(s.token?{Authorization:`Bearer ${s.token}`}:{ }),...(options.headers||{})}});
     const data=await response.json().catch(()=>({error:`HTTP ${response.status}`}));
     if(response.status===401&&s.token&&!usageRequest&&!path.startsWith('/v1/auth/'))await new Promise((resolve,reject)=>{
@@ -232,6 +232,7 @@ window.MTMSync = (() => {
     const s=await state(), mutations=await rawAll("syncOutbox"); if(!s.token||!s.householdId||!mutations.length)return;
     for(let i=0;i<mutations.length;i+=100){const batch=mutations.slice(i,i+100),data=await api("/v1/sync/push",{method:"POST",body:JSON.stringify({householdId:s.householdId,mutations:batch})});
       for(const result of data.results){const item=batch.find(x=>x.mutationId===result.mutationId);if(!item)continue;
+        if(item.onboarding&&['conflict','denied'].includes(result.status))window.MTMOnboarding?.syncResult?.(item.onboarding,result.status,s);
         if(result.status==="accepted"){await rawPut("syncMeta",{id:metaId(item.entityType,item.entityId),revision:result.revision,updatedAt:result.updatedAt,deletedAt:result.deletedAt||null});const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);else if(latest)await rawPut("syncOutbox",{...latest,baseRevision:result.revision});}
         else if(result.status==="conflict"){await recordConflict(item.entityType,await rawGet(item.entityType,item.entityId),result.current);const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);}
         else if(result.status==="denied"){const latest=await rawGet("syncOutbox",item.id);if(latest?.mutationId===item.mutationId)await rawDelete("syncOutbox",item.id);throw new Error(result.error||"This account cannot make that household change.");}

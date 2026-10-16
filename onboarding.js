@@ -1,6 +1,7 @@
 /* Device-only progress is scoped to the account, server and household. */
 window.MTMOnboarding = (() => {
   let homeObserver = null;
+  const progressMemory=new Map();
   const tasks = {
     bedtime: { title: 'Build a bedtime routine', description: 'Save a familiar sequence that helps your child know what comes next.', reason: 'A child profile keeps this routine connected to the right child.', route: 'sleepRoutine' },
     win: { title: 'Record a small win', description: 'Keep one moment of progress you want to remember.', reason: 'A child profile keeps this win in the right child\'s growth journey.', route: 'child' },
@@ -13,11 +14,50 @@ window.MTMOnboarding = (() => {
   }
   const key = id => `mtm-onboarding-v1:${id}`;
   function read(id) {
-    try { return JSON.parse(localStorage.getItem(key(id)) || '{}'); } catch { return {}; }
+    if(progressMemory.has(id))return progressMemory.get(id);
+    try { const value=localStorage.getItem(key(id)); return value?JSON.parse(value):(progressMemory.get(id)||{}); } catch { return progressMemory.get(id)||{}; }
   }
   async function update(id, value) {
     if (!id || await scope() !== id) return;
-    try { localStorage.setItem(key(id), JSON.stringify({ ...read(id), ...value })); } catch { /* Storage may be unavailable; the task remains usable. */ }
+    const next={...read(id),...value};progressMemory.set(id,next);
+    try { localStorage.setItem(key(id), JSON.stringify(next));progressMemory.delete(id); } catch { /* Storage may be unavailable; the task remains usable. */ }
+  }
+  function track(event,task='',stage='choice',id=null,attemptId){
+    void (async()=>{
+      if(!id||await scope()!==id)return;
+      const account=await MTMSync.state();
+      if(await scope()!==id)return;
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+      try{await MTMSync.api('/v1/analytics/onboarding',{method:'POST',signal:controller.signal,usageToken:account.token,usageHouseholdId:account.householdId,
+        body:JSON.stringify({eventId:crypto.randomUUID(),householdId:account.householdId,event,task,stage,...(attemptId?{attemptId}:{})})});}
+      finally{clearTimeout(timer);}
+    })().catch(()=>{});
+  }
+  async function saveAttempt(store,value,id){
+    if(!id||await scope()!==id)return null;
+    const state=read(id);
+    if(!state.started||state.completed||state.dismissed||!tasks[state.task])return null;
+    const stage=store==='profiles'?'profile':
+      state.task==='win'&&store==='achievements'||state.task==='bedtime'&&store==='settings'&&/^sleep:routine:/.test(value.id)||state.task==='care'&&store==='settings'&&/^dailyCare:/.test(value.id)?'task':null;
+    if(!stage)return null;
+    const attempt={attemptId:crypto.randomUUID(),task:state.task,stage};
+    track('save_attempted',attempt.task,stage,id,attempt.attemptId);
+    return attempt;
+  }
+  function validationBlocked(stage){
+    void (async()=>{const id=await scope();if(!id)return;const state=read(id);if(state.started&&!state.completed&&!state.dismissed&&tasks[state.task])track('validation_blocked',state.task,stage,id);})().catch(()=>{});
+  }
+  function saveResult(attempt,event,id){
+    if(!attempt)return;
+    track(event,attempt.task,attempt.stage,id,attempt.attemptId);
+    if(attempt.stage==='task'&&['local_failed','sync_queue_failed'].includes(event))void (async()=>{
+      if(await scope()!==id)return;
+      alert(event==='local_failed'?'This entry could not be saved. Please try again.':'Saved on this device, but sync could not be prepared. Please contact support if this continues.');
+    })().catch(()=>{});
+  }
+  function syncResult(attempt,status,account){
+    const id=JSON.stringify([account.serverUrl,account.user?.id,account.householdId]);
+    saveResult(attempt,status==='conflict'?'sync_conflict':'sync_denied',id);
   }
   async function activated() {
     const id = await scope();
@@ -34,7 +74,9 @@ window.MTMOnboarding = (() => {
     const task = tasks[taskId];
     if (!task) return;
     await navigate(task.route);
-    if (await scope() !== id || currentRoute !== task.route) return;
+    if (await scope() !== id) return;
+    if(currentRoute!==task.route)throw new Error('Task navigation did not reach its destination.');
+    if(view.dataset.renderedRoute!==task.route)throw new Error('Task route did not render.');
     if (taskId === 'win') {
       const profiles = await getAll('profiles');
       openAchievementForm(profiles);
@@ -46,29 +88,36 @@ window.MTMOnboarding = (() => {
       select.value = profileId;
       await select.onchange({ target: select });
     }
+    track('task_opened',taskId,'task',id);
   }
   async function begin(taskId) {
     const task = tasks[taskId], id = await scope();
     if (!task || !id) return;
+    track('task_selected',taskId,'choice',id);
     const access = await MTMAccess.status(true);
-    if (!access.canWrite || !['owner', 'caregiver'].includes(access.role)) return navigate('subscription');
+    if (!access.canWrite || !['owner', 'caregiver'].includes(access.role)){track('access_blocked',taskId,'task',id);return navigate('subscription');}
     await update(id, { started: true, task: taskId, dismissed: false });
     const profiles = await getAll('profiles');
-    if (profiles.length) return launch(taskId, id);
-    return requestProfile(task.title, task.reason, profile => launch(taskId, id, profile.id));
+    if (profiles.length) return safeLaunch(taskId,id);
+    track('profile_prompt_shown',taskId,'profile',id);
+    return requestProfile(task.title,task.reason,profile=>safeLaunch(taskId,id,profile.id),{id,taskId});
   }
-  function requestProfile(title, reason, resume) {
+  async function safeLaunch(taskId,id,profileId){
+    try{await launch(taskId,id,profileId);}catch{track('launch_failed',taskId,'task',id);alert('Could not open your first task. Please try again from Home.');}
+  }
+  function requestProfile(title, reason, resume, context=null) {
     modalBody.innerHTML = `<h2>${esc(title)}</h2><p>${esc(reason)} Start with your child's name; other details can be added later.</p><div class="btn-row"><button id="onboardingCreateProfile" class="btn" type="button">Create child profile</button><button id="onboardingCancelProfile" class="btn secondary" type="button">Not now</button></div>`;
     if (!modal.open) modal.showModal();
-    document.querySelector('#onboardingCreateProfile').onclick = () => openProfileForm(null, { onSaved: resume });
-    document.querySelector('#onboardingCancelProfile').onclick = () => modal.close();
+    document.querySelector('#onboardingCreateProfile').onclick = () => {if(context)track('profile_form_opened',context.taskId,'profile',context.id);openProfileForm(null, { onSaved: resume,onCancelled:()=>{if(context)track('profile_cancelled',context.taskId,'profile',context.id);} });};
+    document.querySelector('#onboardingCancelProfile').onclick = () => {if(context)track('profile_cancelled',context.taskId,'profile',context.id);modal.close();};
   }
   async function render() {
     const id = await scope(), state = id ? read(id) : {};
     view.innerHTML = `<section class="hero"><h1>What would help today?</h1><p>Choose one thing that would make today a little easier.</p></section>${tasks[state.task] && !state.completed ? `<section class="onboarding-next"><h2>Continue your first task</h2><button class="btn" id="resumeFirstTask" type="button">${esc(tasks[state.task].title)}</button></section>` : ''}<div class="grid onboarding-choices">${Object.entries(tasks).map(([taskId, task]) => `<button class="card-button" type="button" data-first-task="${taskId}"><strong>${esc(task.title)}</strong><small>${esc(task.description)}</small></button>`).join('')}</div><div class="btn-row"><button class="btn secondary" id="exploreWithoutOnboarding" type="button">Explore on my own</button></div>`;
+    track('choices_shown','','choice',id);
     view.querySelectorAll('[data-first-task]').forEach(button => button.onclick = () => begin(button.dataset.firstTask));
     document.querySelector('#resumeFirstTask')?.addEventListener('click', () => begin(state.task));
-    document.querySelector('#exploreWithoutOnboarding').onclick = async () => { await update(id, { dismissed: true, task: null }); await navigate('home'); };
+    document.querySelector('#exploreWithoutOnboarding').onclick = async () => { track('explore_selected','','choice',id); await update(id, { dismissed: true, task: null }); await navigate('home'); };
   }
   async function decorate(route) {
     homeObserver?.disconnect();
@@ -124,7 +173,7 @@ window.MTMOnboarding = (() => {
       resize();
     }
     section.querySelector('#continueFirstTask').onclick = () => tasks[state.task] ? begin(state.task) : navigate('gettingStarted');
-    section.querySelector('#dismissFirstTask').onclick = async () => { await update(id, { dismissed: true, task: null }); await navigate('home'); };
+    section.querySelector('#dismissFirstTask').onclick = async () => { track('explore_selected','','choice',id); await update(id, { dismissed: true, task: null }); await navigate('home'); };
   }
   async function saved(store, value, id) {
     if (!id || await scope() !== id) return;
@@ -140,5 +189,5 @@ window.MTMOnboarding = (() => {
       button.onclick = () => openProfileForm(null, { returnRoute: route });
     });
   }
-  return { activated, progress, begin, render, decorate, requestProfile, bindProfiles, saved, scope };
+  return { validationBlocked,saveAttempt,saveResult,syncResult,activated, progress, begin, render, decorate, requestProfile, bindProfiles, saved, scope };
 })();

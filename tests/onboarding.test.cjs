@@ -30,6 +30,6 @@ test('completion requires useful saved content and cannot leak across a delayed 
 });
 test('onboarding script and styles participate in the same offline release as application integration',()=>{
  const root=path.join(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.html'),'utf8'),worker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
- for(const file of ['onboarding.js','onboarding.css']){assert.ok(html.includes(file+'?v=0.10.1-onboarding-1'));assert.ok(worker.includes(file+'?v=0.10.1-onboarding-1'));}
+ for(const file of ['onboarding.js','onboarding.css']){const version=file==='onboarding.js'?'onboarding-measurement-20261015':'0.10.1-onboarding-1';assert.ok(html.includes(file+'?v='+version));assert.ok(worker.includes(file+'?v='+version));}
  assert.ok(html.indexOf('onboarding.js?')<html.indexOf('app.js?'));
 });

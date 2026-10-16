@@ -182,13 +182,18 @@ const getAll = (s) =>
 const put = async (s, v) => {
   await window.MTMAccess.requireWrite(s,v?.id,v);
   const onboardingScope = await window.MTMOnboarding?.scope().catch(() => null);
+  let attempt=null;
+  try{attempt=await window.MTMOnboarding?.saveAttempt?.(s,v,onboardingScope);}catch{}
   return new Promise((res, rej) => {
-    const transaction = db.transaction(s, "readwrite");
-    const r = transaction.objectStore(s).put(v);
+    let transaction;
+    try{transaction=db.transaction(s,"readwrite");}catch(error){window.MTMOnboarding?.saveResult?.(attempt,'local_failed',onboardingScope);rej(error);return;}
+    let r;
+    try{r=transaction.objectStore(s).put(v);}catch(error){window.MTMOnboarding?.saveResult?.(attempt,'local_failed',onboardingScope);rej(error);return;}
     transaction.oncomplete = async () => {
-      try { await window.MTMSync?.onLocalPut(s, v); await window.MTMOnboarding?.saved(s, v, onboardingScope).catch(() => {}); res(v); } catch (e) { rej(e); }
+      window.MTMOnboarding?.saveResult?.(attempt,'local_saved',onboardingScope);
+      try { await window.MTMSync?.onLocalPut(s, v, attempt); await window.MTMOnboarding?.saved(s, v, onboardingScope).catch(() => {}); res(v); } catch (e) { window.MTMOnboarding?.saveResult?.(attempt,'sync_queue_failed',onboardingScope); rej(e); }
     };
-    transaction.onabort = () => rej(transaction.error || new Error('The entry could not be saved.'));
+    transaction.onabort = () => {window.MTMOnboarding?.saveResult?.(attempt,'local_failed',onboardingScope);rej(transaction.error || new Error('The entry could not be saved.'));};
     r.onerror = () => rej(r.error);
   });
 };
@@ -412,6 +417,7 @@ async function performNavigation(r, options = {}) {
   }
   if(communityRefreshTimer){clearInterval(communityRefreshTimer);communityRefreshTimer=null;}
   if(screenTimerInterval){clearInterval(screenTimerInterval);screenTimerInterval=null;}
+  delete view.dataset.renderedRoute;
   const previousRoute = currentRoute;
   currentRoute = route;
   applyRouteChrome(route);
@@ -427,6 +433,7 @@ async function performNavigation(r, options = {}) {
     await window.MTMOnboarding?.decorate(route);
     await window.MTMLayouts.mountExisting({route, view, navigate});
     await window.MTMAccess.readonlyChrome();
+    view.dataset.renderedRoute=route;
   } catch (error) {
     console.error(`Route "${route}" failed`, error);
     view.innerHTML = `<div class="banner"><strong>Could not open this section:</strong> ${esc(error?.message || String(error))}</div><div class="btn-row"><button class="btn secondary" data-go="home" type="button">Return home</button><button class="btn secondary" data-go="${route}" type="button">Try again</button></div>`;
@@ -2155,6 +2162,9 @@ function openAchievements(items, profiles) {
 
 function openProfileForm(item = null, options = {}) {
   if (item instanceof Event) item = null;
+  const profileValidation=message=>{window.MTMOnboarding?.validationBlocked?.('profile');return alert(message);};
+  let onboardingProfileSaved=false;
+  if(options.onCancelled)modal.addEventListener('close',()=>{if(!onboardingProfileSaved)options.onCancelled();},{once:true});
   const returnRoute = options.returnRoute || currentRoute;
   const selected = item?.emoji || "🌟",
     storedTime = hasExactBirthTime(item || {}) ? item.birthTime.split(":") : [],
@@ -2182,7 +2192,7 @@ function openProfileForm(item = null, options = {}) {
   };
   $("#saveProfile").onclick = async () => {
     const name = $("#pName").value.trim();
-    if (!name) return alert("Please enter a name.");
+    if (!name) return profileValidation("Please enter a name.");
     const values = [
         $("#pHour").value,
         $("#pMinute").value,
@@ -2191,11 +2201,11 @@ function openProfileForm(item = null, options = {}) {
       anyTime = values.some((v) => v !== ""),
       completeTime = values.every((v) => v !== "");
     if (anyTime && !completeTime)
-      return alert(
+      return profileValidation(
         "Enter the birth hour, minute, and second, or leave all three blank.",
       );
     if (anyTime && !$("#pBirth").value)
-      return alert("Please enter a birth date before adding a birth time.");
+      return profileValidation("Please enter a birth date before adding a birth time.");
     let birthTime = null;
     if (completeTime) {
       let [hour, minute, second] = values.map(Number);
@@ -2207,7 +2217,7 @@ function openProfileForm(item = null, options = {}) {
         second < 0 ||
         second > 59
       )
-        return alert("Please enter a valid birth time.");
+        return profileValidation("Please enter a valid birth time.");
       if ($("#pMeridiem").value === "PM" && hour !== 12) hour += 12;
       if ($("#pMeridiem").value === "AM" && hour === 12) hour = 0;
       birthTime = [hour, minute, second]
@@ -2240,6 +2250,7 @@ function openProfileForm(item = null, options = {}) {
         syncStatus: "local",
       };
       await put("profiles", profile);
+      onboardingProfileSaved=true;
       modal.close();
       if (options.onSaved) await options.onSaved(profile);
       else await navigate(returnRoute);
@@ -2264,7 +2275,7 @@ function openAchievementForm(p, item = null) {
   modal.showModal();
   $("#saveAchievement").onclick = async () => {
     const t = $("#aTitle").value.trim();
-    if (!t) return alert("Please describe the Win.");
+    if (!t){window.MTMOnboarding?.validationBlocked?.('task');return alert("Please describe the Win.");}
     await put("achievements", {
       ...item,
       id: item?.id || uid(),
@@ -2683,7 +2694,7 @@ async function renderSleepSanctuary(selectedModule = null) {
   };
   $("#sleepProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
   $("#sleepPrefProfile").onchange = async (e) => { profileId = e.target.value; await loadChildSleep(); };
-  $("#addSleepStep").onclick = async () => { const text = $("#sleepStepText").value.trim(); if (!text) return alert("Please enter a routine step."); routine.push({ id: uid(), time: $("#sleepStepTime").value.trim(), text }); $("#sleepStepTime").value = ""; $("#sleepStepText").value = ""; await saveRoutine(); drawRoutine(); };
+  $("#addSleepStep").onclick = async () => { const text = $("#sleepStepText").value.trim(); if (!text){window.MTMOnboarding?.validationBlocked?.('task');return alert("Please enter a routine step.");} routine.push({ id: uid(), time: $("#sleepStepTime").value.trim(), text }); $("#sleepStepTime").value = ""; $("#sleepStepText").value = ""; await saveRoutine(); drawRoutine(); };
   $("#useSleepExample").onclick = async () => { if (routine.length && !confirm("Replace this child’s current routine with the example?")) return; routine = EXAMPLE_SLEEP_ROUTINE.map(([time, text]) => ({ id: uid(), time, text })); await saveRoutine(); drawRoutine(); };
   $("#saveSleepPreferences").onclick = async () => { preferences = Object.fromEntries(Object.entries(prefFields).map(([key, selector]) => [key, $(selector).value.trim()])); await setSetting(sleepSetting("preferences"), preferences); showSaved($("#sleepPrefStatus"), "Preferences saved on this device."); };
   await loadChildSleep();
