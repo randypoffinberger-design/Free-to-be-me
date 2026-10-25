@@ -14,6 +14,8 @@ test('combined tracker offers medication and supplement types', () => {
   assert.match(app, /id="supplementItemType"/);
   assert.match(app, /value="supplement"/);
   assert.match(app, /value="medication"/);
+  assert.match(app, /Babysitter care sheet/);
+  assert.match(app, /includeBabysitterTrackedItems/);
 });
 
 test('30-day supply defaults to a five-day refill reminder', () => {
@@ -96,6 +98,19 @@ test('doctor appointment summary can be refreshed without duplicating old snapsh
   assert.match(second, /2026-10-21/);
   const legacy = `Keep this note.\n\n--- MTM supplement summary ---\nOld snapshot\n--- End MTM supplement summary ---`;
   assert.equal(supplements.stripAppointmentSnapshot(legacy), 'Keep this note.');
+});
+
+test('babysitter summary includes only current names, doses, and schedules', () => {
+  const items = [
+    { id: 'med-1', itemType: 'medication', name: 'Example medicine', brand: 'Exact brand', doseAmount: '5', doseUnit: 'mL', schedule: 'At 7 PM', startDate: '2026-10-01', reactionNotes: 'Private detail' },
+    { id: 'supp-1', itemType: 'supplement', name: 'Vitamin D', startDate: '2026-10-01' },
+    { id: 'old-1', itemType: 'medication', name: 'Old medicine', startDate: '2026-09-01', endDate: '2026-09-30' },
+  ];
+  const summary = supplements.babysitterSummary({ items, asOfDate: '2026-10-25' });
+  assert.match(summary, /Medications:\n- Example medicine \(Exact brand\): 5 mL; At 7 PM/);
+  assert.match(summary, /Supplements:\n- Vitamin D: dose not recorded; timing not recorded/);
+  assert.doesNotMatch(summary, /Old medicine|Private detail|refill|correlation/i);
+  assert.match(summary, /not permission to give a dose/i);
 });
 
 test('quick observations become synchronized My Day outcomes', () => {

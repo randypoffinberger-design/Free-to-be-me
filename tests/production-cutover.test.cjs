@@ -103,13 +103,13 @@ test('isolated shell and worker use matching test build identifiers', () => {
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const worker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
   for (const asset of ['sensory-play.js', 'library-books.js', 'styles.css', 'supplements.css', 'sync.js', 'offline-key.js', 'offline-access.js', 'access.js', 'app.js', 'food-patterns.js', 'supplements.js']) {
-    const version=['app.js','sync.js','supplements.js','styles.css','supplements.css'].includes(asset)?'medications-supplements-test-1':asset==='access.js'?'0.10.1-onboarding-1':asset==='food-patterns.js'?'0.10.1-food-2':'0.10.1-production-11';
+    const version=['app.js','sync.js','supplements.js','styles.css','supplements.css'].includes(asset)?'babysitter-share-test-1':asset==='access.js'?'0.10.1-onboarding-1':asset==='food-patterns.js'?'0.10.1-food-2':'0.10.1-production-11';
     assert.ok(html.includes(asset + '?v=' + version));
     assert.ok(worker.includes(asset + '?v=' + version));
   }
-  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-medications-supplements-test-1"'));
-  assert.ok(source.includes('const BUILD = "0.10.1-medications-supplements-test-1"'));
-  assert.ok(worker.includes("mtm-test-v0.10.1-medications-supplements-test-1"));
+  assert.ok(app.includes('const ASSET_BUILD = "0.10.1-babysitter-share-test-1"'));
+  assert.ok(source.includes('const BUILD = "0.10.1-babysitter-share-test-1"'));
+  assert.ok(worker.includes("mtm-test-v0.10.1-babysitter-share-test-1"));
   assert.ok(source.includes(cloud));
   assert.ok(!source.includes('const PRODUCTION_SERVER = "https://api.serenityvalleyworks.com/mtm"'));
   assert.ok(html.indexOf('interaction-usage.js') < html.indexOf('sync.js'));

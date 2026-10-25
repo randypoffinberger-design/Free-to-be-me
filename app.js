@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-medications-supplements-test-1";
+const ASSET_BUILD = "0.10.1-babysitter-share-test-1";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 window.MTM_APP_VERSION = APP.version;
 const ANALYTICS_FEATURES = Object.freeze({
@@ -2689,6 +2689,12 @@ async function renderSupplementTracker() {
   trackerHero.querySelector("p").textContent = "Keep prescriptions, over-the-counter medicines, supplements, dates, doses, observations, possible patterns, and refill timing together.";
   view.querySelector(".supplement-safety").innerHTML = `<strong>Tracking is not prescribing.</strong> Do not start, stop, repeat, or change a medication or supplement because of an MTM pattern. Follow the prescriber's directions and bring exact labels and this record to the child's clinician or pharmacist.`;
   $("#addSupplement").textContent = "Add medication or supplement";
+  const babysitterShareButton = document.createElement("button");
+  babysitterShareButton.id = "openBabysitterCareSheetFromTracker";
+  babysitterShareButton.className = "btn secondary";
+  babysitterShareButton.type = "button";
+  babysitterShareButton.textContent = "Babysitter care sheet";
+  $("#enableSupplementAlerts").before(babysitterShareButton);
   if (itemHeading) itemHeading.textContent = "Medications & supplements";
   const emptyItemMessage = view.querySelector(".supplement-list .empty p");
   if (emptyItemMessage) emptyItemMessage.textContent = `No medications or supplements recorded for ${profile.name}.`;
@@ -2698,6 +2704,7 @@ async function renderSupplementTracker() {
   disclaimer.innerHTML = `<strong>Correlation is not causation.</strong> MTM compares only what was recorded. Sleep, illness, foods, other medicines or supplements, timing, and environment can change the result.`;
   $("#supplementProfileFilter").onchange = (event) => { supplementFilterProfile = event.target.value; renderSupplementTracker(); };
   $("#addSupplement").onclick = () => openSupplementForm(profiles, profile.id);
+  $("#openBabysitterCareSheetFromTracker").onclick = () => openBabysitterCareSheet(profile.id);
   $("#enableSupplementAlerts").onclick = async () => {
     if (!("Notification" in window)) return alert("Device alerts are not available in this browser. Refill tasks will still appear in Caregiver to-do.");
     const permission = await Notification.requestPermission();
@@ -4400,20 +4407,21 @@ async function openEmergencyContacts() {
 
 function careSheetLine(label, value) { return value ? `${label}: ${value}` : ""; }
 
-async function buildBabysitterCareSheet(profile) {
+async function buildBabysitterCareSheet(profile, includeTrackedItems = true) {
   const id = profile.id;
-  const [contacts, notes, food, routine, sleep, materials, learning, words] = await Promise.all([getSetting(`emergencyContacts:${id}`, []), getDailyCare(id), getSetting(`foodDiary:${id}`, []), getSetting(`sleep:routine:${id}`, []), getSetting(`sleep:preferences:${id}`, {}), getSetting(`materialPreferences:${id}`, {}), getSetting(`learningSnapshot:${id}`, {}), getAll("words")]);
+  const [contacts, notes, food, routine, sleep, materials, learning, words, trackedItems] = await Promise.all([getSetting(`emergencyContacts:${id}`, []), getDailyCare(id), getSetting(`foodDiary:${id}`, []), getSetting(`sleep:routine:${id}`, []), getSetting(`sleep:preferences:${id}`, {}), getSetting(`materialPreferences:${id}`, {}), getSetting(`learningSnapshot:${id}`, {}), getAll("words"), getSupplements(id)]);
   const list = (items) => items.filter(Boolean).join(", ") || "None entered";
   const foodNames = (category) => list(food.filter((x) => x.category === category).map((x) => x.name));
   const reactions = food.filter((x) => x.response && x.response !== "none").map((x) => `${x.name} — ${x.response === "allergy" ? "KNOWN ALLERGY" : x.response === "reaction" ? "possible reaction" : "sensitivity/intolerance"}${x.reactionDetails ? `: ${x.reactionDetails}` : ""}`);
   const aslWords = words.filter((x) => x.profileId === id && (x.entryType || "word") === "word" && x.asl).map((x) => x.word || x.text || x.title).filter(Boolean);
   const contactText = contacts.length ? contacts.map((x, i) => `${i + 1}. ${x.name}${x.relationship ? ` (${x.relationship})` : ""}: ${x.phone}${x.alternatePhone ? `; alternate ${x.alternatePhone}` : ""}${x.notes ? ` — ${x.notes}` : ""}`).join("\n") : "No emergency contacts entered.";
   const routineText = routine.length ? routine.map((x, i) => `${i + 1}. ${x.time ? `${x.time} — ` : ""}${x.text}`).join("\n") : "No bedtime routine entered.";
+  const trackedCare = includeTrackedItems ? window.MTMSupplements.babysitterSummary({ items: trackedItems, asOfDate: isoToday() }) : "";
   return [
     `BABYSITTER CARE SHEET — ${String(profile.name || "CHILD").toUpperCase()}`,
     `Prepared ${new Date().toLocaleString()}\nPlease review this sheet with the caregiver before they leave. In an immediate emergency, call 911 or the appropriate local emergency number first.`,
     `EMERGENCY CONTACTS\n${contactText}${notes.homeAddress ? `\nChild/home address: ${notes.homeAddress}` : ""}${notes.preferredHospital ? `\nPreferred hospital: ${notes.preferredHospital}` : ""}${notes.pediatrician ? `\nPediatrician: ${notes.pediatrician}${notes.pediatricianPhone ? ` — ${notes.pediatricianPhone}` : ""}` : ""}`,
-    `MEDICAL & EMERGENCY\n${[careSheetLine("Medications and timing", notes.medications), careSheetLine("Medical/allergy notes", notes.medicalNotes), careSheetLine("Emergency plan", notes.emergencyPlan)].filter(Boolean).join("\n") || "No caregiver instructions entered. Confirm allergies, medicines, and emergency plans directly with the caregiver."}`,
+    `MEDICAL & EMERGENCY\n${[trackedCare, careSheetLine("Caregiver medication instructions", notes.medications), careSheetLine("Medical/allergy notes", notes.medicalNotes), careSheetLine("Emergency plan", notes.emergencyPlan)].filter(Boolean).join("\n") || "No caregiver instructions entered. Confirm allergies, medicines, and emergency plans directly with the caregiver."}`,
     `COMMUNICATION\n${[careSheetLine("How to communicate", notes.communication), aslWords.length ? `Saved ASL words: ${list(aslWords)}` : "", careSheetLine("What helps learning/understanding", learning.helps)].filter(Boolean).join("\n") || "No communication instructions entered."}`,
     `FOOD & DRINK\nSafe: ${foodNames("safe")}\nOccasionally eats: ${foodNames("sometimes")}\nDo not offer / not accepted: ${foodNames("not")}\nAllergies, reactions, sensitivities: ${reactions.length ? reactions.join("; ") : "None entered"}${notes.foodInstructions ? `\nServing and meal instructions: ${notes.foodInstructions}` : ""}`,
     `SLEEP\n${routineText}\n${[careSheetLine("Temperature", sleep.temperature), careSheetLine("Pressure/compression", sleep.pressure), careSheetLine("Texture", sleep.texture), careSheetLine("Light", sleep.light), careSheetLine("Sound", sleep.sound), careSheetLine("Movement", sleep.movement), careSheetLine("What we noticed", sleep.notes), careSheetLine("Extra sleep instructions", notes.sleepInstructions)].filter(Boolean).join("\n") || "No additional sleep preferences entered."}`,
@@ -4432,15 +4440,19 @@ async function openBabysitterCareSheet(selectedProfileId = null) {
   const draw = async () => {
     const profile = profiles.find((p) => p.id === profileId), notes = await getDailyCare(profileId), contacts = await getSetting(`emergencyContacts:${profileId}`, []);
     modalBody.innerHTML = `<h2>🧑‍🍼 Babysitter care sheet</h2><p class="hint">Build plain text that can be shared through Messages, Messenger, email, or copy and paste. The recipient needs no app or account.</p><div class="field"><label>Child</label><select id="babysitterProfile">${profiles.map((p) => `<option value="${p.id}" ${p.id === profileId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></div><div class="banner"><strong>${contacts.length} emergency ${contacts.length === 1 ? "contact" : "contacts"} saved.</strong> ${contacts.length < 2 ? "Add at least two when possible so the babysitter has a backup." : "Redundant contacts are ready."}<br><button id="manageContactsFromSheet" class="small-action" type="button">Manage emergency contacts</button></div><details class="education-card"><summary>✏️ Care instructions to include</summary><div class="education-body"><p>Saved food, sleep, sensory, profile, and communication information is pulled in automatically. Use these fields for instructions a tracker cannot safely infer.</p><div class="form-grid">${fields.map(([key, label, placeholder]) => `<div class="field"><label>${label}</label><textarea id="babysitter-${key}" placeholder="${esc(placeholder)}">${esc(notes[key] || "")}</textarea></div>`).join("")}<button id="saveBabysitterNotes" class="btn full" type="button">Save care instructions</button></div></div></details><button id="generateBabysitterSheet" class="btn full" type="button">Generate or refresh care sheet</button><div class="field"><label>Review and edit before sharing</label><textarea id="babysitterSheetText" class="template-letter" placeholder="Generate the care sheet, then make any one-time edits here."></textarea></div><div class="btn-row"><button id="shareBabysitterSheet" class="btn" type="button">Share</button><button id="copyBabysitterSheet" class="btn secondary" type="button">Copy</button><button id="downloadBabysitterSheet" class="btn secondary" type="button">Download .txt</button></div><p class="hint">This sheet can contain sensitive health and contact information. Share it only with someone you trust.</p>`;
+    const trackedShareOption = document.createElement("label");
+    trackedShareOption.className = "check-option";
+    trackedShareOption.innerHTML = `<input id="includeBabysitterTrackedItems" type="checkbox" checked> <span><strong>Include active medications and supplements</strong><br><span class="hint">Adds current names, doses, and schedules—never correlations, reaction analysis, or refill history.</span></span>`;
+    $("#generateBabysitterSheet").before(trackedShareOption);
     $("#babysitterProfile").onchange = async (e) => { profileId = e.target.value; await draw(); };
     $("#manageContactsFromSheet").onclick = () => { modal.close(); openEmergencyContacts(); };
     const saveNotes = async () => { const value = Object.fromEntries(fields.map(([key]) => [key, $(`#babysitter-${key}`).value.trim()])); value.updatedAt = nowISO(); await setSetting(`dailyCare:${profileId}`, value); };
     $("#saveBabysitterNotes").onclick = async () => { await saveNotes(); alert("Care instructions saved."); };
-    $("#generateBabysitterSheet").onclick = async () => { await saveNotes(); $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile); };
+    $("#generateBabysitterSheet").onclick = async () => { await saveNotes(); $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile, $("#includeBabysitterTrackedItems").checked); };
     $("#copyBabysitterSheet").onclick = async () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); await navigator.clipboard.writeText(text); alert("Care sheet copied."); };
     $("#shareBabysitterSheet").onclick = async () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); if (navigator.share) { try { await navigator.share({ title: `${profile.name} — Babysitter Care Sheet`, text }); } catch (error) { if (error.name !== "AbortError") alert("Sharing was not available. Use Copy instead."); } } else { await navigator.clipboard.writeText(text); alert("Sharing is not available here, so the care sheet was copied."); } };
     $("#downloadBabysitterSheet").onclick = () => { const text = $("#babysitterSheetText").value.trim(); if (!text) return alert("Generate the care sheet first."); downloadBlob(new Blob([text], { type: "text/plain" }), `${profile.name.replace(/[^a-z0-9]+/gi, "-")}-Babysitter-Care-Sheet.txt`); };
-    $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile);
+    $("#babysitterSheetText").value = await buildBabysitterCareSheet(profile, $("#includeBabysitterTrackedItems").checked);
   };
   await draw(); modal.showModal();
 }
