@@ -8,6 +8,14 @@ const context = vm.createContext({ window: {} });
 vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'supplements.js'), 'utf8'), context);
 const supplements = context.window.MTMSupplements;
 
+test('combined tracker offers medication and supplement types', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.match(app, /Medication & supplement tracker/);
+  assert.match(app, /id="supplementItemType"/);
+  assert.match(app, /value="supplement"/);
+  assert.match(app, /value="medication"/);
+});
+
 test('30-day supply defaults to a five-day refill reminder', () => {
   const item = { startDate: '2026-10-01', lastFilledDate: '2026-10-01', supplyDays: 30 };
   assert.deepEqual({ ...supplements.refillDates(item) }, {
@@ -29,13 +37,13 @@ test('custom reminder and end date stop unnecessary refill notices', () => {
   assert.equal(supplements.refillState(course, '2026-10-21').state, 'ended');
 });
 
-test('possible patterns require seven recorded days and keep missed-dose comparison', () => {
-  const item = { id: 'supp-1', profileId: 'child-1', name: 'Example supplement' };
+test('possible patterns work for medications and require seven recorded days', () => {
+  const item = { id: 'med-1', profileId: 'child-1', itemType: 'medication', name: 'Example medication' };
   const logs = Array.from({ length: 10 }, (_, index) => ({
     id: `dose-${index}`,
     kind: 'supplementDose',
-    supplementId: item.id,
-    supplementName: item.name,
+    itemId: item.id,
+    itemName: item.name,
     profileId: item.profileId,
     status: index < 7 ? 'taken' : 'missed',
     occurredAt: `2026-10-${String(index + 1).padStart(2, '0')}T08:00:00.000Z`,
@@ -56,14 +64,14 @@ test('possible patterns require seven recorded days and keep missed-dose compari
   assert.equal(tooSoon.patterns.length, 0);
 });
 
-test('overlapping supplements are surfaced as a confounder', () => {
-  const first = { id: 'a', profileId: 'child-1', name: 'A' }, second = { id: 'b', profileId: 'child-1', name: 'B' };
+test('overlapping medications and supplements are surfaced as a confounder', () => {
+  const first = { id: 'a', profileId: 'child-1', itemType: 'medication', name: 'A' }, second = { id: 'b', profileId: 'child-1', itemType: 'supplement', name: 'B' };
   const logs = [];
   const events = [];
   for (let day = 1; day <= 7; day++) {
     const date = String(day).padStart(2, '0');
-    logs.push({ id: `a-${day}`, kind: 'supplementDose', supplementId: 'a', profileId: 'child-1', status: 'taken', occurredAt: `2026-10-${date}T08:00:00Z` });
-    logs.push({ id: `b-${day}`, kind: 'supplementDose', supplementId: 'b', profileId: 'child-1', status: 'taken', occurredAt: `2026-10-${date}T08:30:00Z` });
+    logs.push({ id: `a-${day}`, kind: 'supplementDose', itemId: 'a', profileId: 'child-1', status: 'taken', occurredAt: `2026-10-${date}T08:00:00Z` });
+    logs.push({ id: `b-${day}`, kind: 'supplementDose', itemId: 'b', profileId: 'child-1', status: 'taken', occurredAt: `2026-10-${date}T08:30:00Z` });
     if (day <= 3) events.push({ id: `r-${day}`, profileId: 'child-1', supplementOutcome: 'reaction', occurredAt: `2026-10-${date}T09:00:00Z` });
   }
   const pattern = supplements.analyze([first, second], logs, events).supplements[0].patterns[0];
@@ -72,24 +80,30 @@ test('overlapping supplements are surfaced as a confounder', () => {
 
 test('doctor appointment summary can be refreshed without duplicating old snapshots', () => {
   const item = { id: 'supp-1', profileId: 'child-1', name: 'Vitamin D', brand: 'Example', doseAmount: '1', doseUnit: 'drop', schedule: 'Each morning', startDate: '2026-10-01', supplyDays: 30, reminderDays: 5 };
-  const doseLogs = [{ kind: 'supplementDose', profileId: 'child-1', supplementName: 'Vitamin D', occurredAt: '2026-10-10T08:00:00Z', reactionNotes: 'Brief rash', reactionSeverity: 2 }];
-  const summary = supplements.appointmentSummary({ profileName: 'Sam', supplements: [item], doseLogs, analysis: { supplements: [] }, appointmentDate: '2026-10-20' });
+  const medication = { id: 'med-1', profileId: 'child-1', itemType: 'medication', name: 'Example medicine', doseAmount: '5', doseUnit: 'mL', schedule: 'Twice daily', startDate: '2026-10-10', supplyDays: 10 };
+  const doseLogs = [{ kind: 'supplementDose', profileId: 'child-1', itemName: 'Example medicine', occurredAt: '2026-10-10T08:00:00Z', reactionNotes: 'Brief rash', reactionSeverity: 2 }];
+  const summary = supplements.appointmentSummary({ profileName: 'Sam', supplements: [item, medication], doseLogs, analysis: { supplements: [] }, appointmentDate: '2026-10-20' });
+  assert.match(summary, /Active medications:\n- Example medicine; 5 mL; Twice daily/);
+  assert.match(summary, /Active supplements:\n- Vitamin D/);
   assert.match(summary, /Vitamin D \(Example\); 1 drop; Each morning/);
   assert.match(summary, /refill due 2026-10-31/);
   assert.match(summary, /Brief rash \(severity 2\/5\)/);
   assert.match(summary, /recorded associations, not proof/);
   const first = supplements.mergeAppointmentNotes('Bring lab report.', summary);
   const second = supplements.mergeAppointmentNotes(first, summary.replace('2026-10-20', '2026-10-21'));
-  assert.equal((second.match(/--- MTM supplement summary ---/g) || []).length, 1);
+  assert.equal((second.match(/--- MTM medication and supplement summary ---/g) || []).length, 1);
   assert.match(second, /^Bring lab report\./);
   assert.match(second, /2026-10-21/);
+  const legacy = `Keep this note.\n\n--- MTM supplement summary ---\nOld snapshot\n--- End MTM supplement summary ---`;
+  assert.equal(supplements.stripAppointmentSnapshot(legacy), 'Keep this note.');
 });
 
 test('quick observations become synchronized My Day outcomes', () => {
-  const event = supplements.observation({ id: 'event-1', profileId: 'child-1', type: 'eating', occurredAt: '2026-10-20T12:00:00Z', intensity: 3, notes: 'Ate much less than usual', supplementId: 'supp-1', createdAt: '2026-10-20T12:05:00Z' });
+  const event = supplements.observation({ id: 'event-1', profileId: 'child-1', type: 'eating', occurredAt: '2026-10-20T12:00:00Z', intensity: 3, notes: 'Ate much less than usual', itemId: 'med-1', createdAt: '2026-10-20T12:05:00Z' });
   assert.equal(event.kind, 'dayEvent');
   assert.equal(event.category, 'response');
   assert.equal(event.supplementOutcome, 'eating');
   assert.equal(event.outcome, true);
-  assert.equal(event.supplementId, 'supp-1');
+  assert.equal(event.itemId, 'med-1');
+  assert.equal(event.supplementId, 'med-1');
 });
