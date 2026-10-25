@@ -1,6 +1,6 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-sensory-1";
+const ASSET_BUILD = "0.10.1-production-baseline-test-1";
 const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
 window.MTM_APP_VERSION = APP.version;
 const ANALYTICS_FEATURES = Object.freeze({
