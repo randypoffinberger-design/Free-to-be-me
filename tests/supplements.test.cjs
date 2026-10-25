@@ -16,6 +16,8 @@ test('combined tracker offers medication and supplement types', () => {
   assert.match(app, /value="medication"/);
   assert.match(app, /Babysitter care sheet/);
   assert.match(app, /includeBabysitterTrackedItems/);
+  assert.match(app, /class="supplement-item-notes"/);
+  assert.match(app, /<strong>Notes<\/strong><p>\$\{esc\(item\.notes\)\}<\/p>/);
 });
 
 test('30-day supply defaults to a five-day refill reminder', () => {
