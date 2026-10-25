@@ -20,6 +20,14 @@ test('combined tracker offers medication and supplement types', () => {
   assert.match(app, /<strong>Notes<\/strong><p>\$\{esc\(item\.notes\)\}<\/p>/);
 });
 
+test('My Day displays the same medication and supplement analysis', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.match(app, /id = "my-day-medication-patterns"/);
+  assert.match(app, /MTMSupplements\.analyze\(trackedItems, doseLogs, insightEvents\)/);
+  assert.match(app, /Medication & supplement patterns/);
+  assert.match(app, /Open medication & supplement tracker/);
+});
+
 test('30-day supply defaults to a five-day refill reminder', () => {
   const item = { startDate: '2026-10-01', lastFilledDate: '2026-10-01', supplyDays: 30 };
   assert.deepEqual({ ...supplements.refillDates(item) }, {

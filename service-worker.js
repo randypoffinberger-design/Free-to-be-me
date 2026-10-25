@@ -1,4 +1,4 @@
-const CACHE='mtm-test-v0.10.1-item-notes-test-1';
+const CACHE='mtm-test-v0.10.1-my-day-med-patterns-test-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   "./onboarding.js?v=onboarding-measurement-20261015",
@@ -15,13 +15,13 @@ const CRITICAL_ASSETS=[
   "./access.js?v=0.10.1-onboarding-1",
   "./offline-key.js?v=0.10.1-production-11",
   "./offline-access.js?v=0.10.1-production-11",
-  './styles.css?v=item-notes-test-1',
-  './supplements.css?v=item-notes-test-1',
-  './sync.js?v=item-notes-test-1',
+  './styles.css?v=my-day-med-patterns-test-1',
+  './supplements.css?v=my-day-med-patterns-test-1',
+  './sync.js?v=my-day-med-patterns-test-1',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
-  './supplements.js?v=item-notes-test-1',
-  './app.js?v=item-notes-test-1',
+  './supplements.js?v=my-day-med-patterns-test-1',
+  './app.js?v=my-day-med-patterns-test-1',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
