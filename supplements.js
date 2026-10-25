@@ -157,6 +157,26 @@ window.MTMSupplements = (() => {
     return `${base}${base ? "\n\n" : ""}${SNAPSHOT_START}\n${String(summary || "").trim()}\n${SNAPSHOT_END}`;
   }
 
+  function babysitterSummary({ items, asOfDate }) {
+    const date = dateOnly(asOfDate) || new Date().toISOString().slice(0, 10);
+    const active = (items || []).filter((item) => item.active !== false && (!item.startDate || date >= item.startDate) && (!item.endDate || date <= item.endDate));
+    const lines = [`TRACKED MEDICATIONS & SUPPLEMENTS — current ${date}`];
+    const addGroup = (label, group) => {
+      lines.push(label);
+      if (!group.length) lines.push("- None recorded.");
+      for (const item of group) {
+        const name = `${cleanLine(item.name) || "Unnamed item"}${item.brand ? ` (${cleanLine(item.brand)})` : ""}`;
+        const dose = [cleanLine(item.doseAmount), cleanLine(item.doseUnit)].filter(Boolean).join(" ") || "dose not recorded";
+        const schedule = cleanLine(item.schedule) || "timing not recorded";
+        lines.push(`- ${name}: ${dose}; ${schedule}`);
+      }
+    };
+    addGroup("Medications:", active.filter((item) => itemType(item) === "medication"));
+    addGroup("Supplements:", active.filter((item) => itemType(item) === "supplement"));
+    lines.push("Administration safety: This list is not permission to give a dose. Follow the caregiver's written instructions and the original labeled container exactly. Do not give an extra, late, replacement, or new dose unless the caregiver's plan specifically says to. Contact the caregiver with questions and follow the emergency plan for urgent symptoms.");
+    return lines.join("\n");
+  }
+
   function observation({ id, profileId, type, occurredAt, intensity, notes, itemId, supplementId, createdAt }) {
     if (!OUTCOMES[type]) throw new Error("Choose an observation type.");
     const category = type === "sleep" ? "sleepOutcome" : ["meltdown", "behavior"].includes(type) ? "behavior" : "response";
@@ -182,5 +202,5 @@ window.MTMSupplements = (() => {
     };
   }
 
-  return { OUTCOMES, REQUIRED_DAYS, SNAPSHOT_START, SNAPSHOT_END, addDays, refillDates, refillState, analyze, appointmentSummary, stripAppointmentSnapshot, mergeAppointmentNotes, observation };
+  return { OUTCOMES, REQUIRED_DAYS, SNAPSHOT_START, SNAPSHOT_END, addDays, refillDates, refillState, analyze, appointmentSummary, stripAppointmentSnapshot, mergeAppointmentNotes, babysitterSummary, observation };
 })();

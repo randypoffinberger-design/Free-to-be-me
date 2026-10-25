@@ -9,8 +9,8 @@ are limited to:
 
 - default API: `https://svw-production-01.tail96598f.ts.net/mtm-test-api`
 - legacy test API migration from `https://randys.tail96598f.ts.net/mtm-test-api`
-- build label: `0.10.1-medications-supplements-test-1`
-- service-worker cache: `mtm-test-v0.10.1-medications-supplements-test-1`
+- build label: `0.10.1-babysitter-share-test-1`
+- service-worker cache: `mtm-test-v0.10.1-babysitter-share-test-1`
 - test-specific asset query values for the tracker JavaScript and styles
 
 Do not merge this branch into production. Promote a tested feature by applying
