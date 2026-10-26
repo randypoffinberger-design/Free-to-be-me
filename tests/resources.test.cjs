@@ -37,3 +37,25 @@ test('new products appear once in their requested catalog categories', () => {
     assert.ok(entries[0][0].split(' ').includes(category));
   }
 });
+
+test('ASD Friendly Fun includes verified resort stays and planning resources', () => {
+  const source = read('app.js');
+  const resortSource = source.slice(source.indexOf('const AUTISM_FRIENDLY_STAYS='), source.indexOf('const FRIENDLY_PLACES='));
+  const stays = vm.runInNewContext(resortSource + ';AUTISM_FRIENDLY_STAYS');
+  const names = Array.from(stays, stay => stay[0]);
+  assert.equal(stays.length, 20);
+  assert.equal(new Set(names).size, stays.length);
+  for (const name of [
+    'Rocking Horse Ranch Resort',
+    'Beaches Turks & Caicos',
+    'Nickelodeon Hotels & Resorts Punta Cana',
+    'Ramon’s Village Resort',
+    'JW Marriott Desert Springs Resort & Spa',
+    'Margaritaville Resort Orlando'
+  ]) assert.ok(names.includes(name));
+  assert.doesNotMatch(resortSource, /Grand Beach Resort|Sugar Beach Resort|TradeWinds Island Resorts/);
+  assert.match(source, /Autism Double-Checked hotel guides/);
+  assert.match(source, /IBCCES Certified Autism Center registry/);
+  assert.match(source, /Great Wolf Lodge sensory guides/);
+  assert.match(source, /Before booking, ask about:/);
+});
