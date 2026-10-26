@@ -24,8 +24,73 @@ test('My Day displays the same medication and supplement analysis', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert.match(app, /id = "my-day-medication-patterns"/);
   assert.match(app, /MTMSupplements\.analyze\(trackedItems, doseLogs, insightEvents\)/);
-  assert.match(app, /Medication & supplement patterns/);
+  assert.match(app, /Medication & supplement correlations/);
+  assert.match(app, /supplementCorrelationTable\(medicationReports, profiles/);
   assert.match(app, /Open medication & supplement tracker/);
+});
+
+test('daily scheduled doses are marked automatic and remain editable', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.match(app, /id="supplementAutoRecord"/);
+  assert.match(app, /ensureScheduledDoseLogs/);
+  assert.match(app, /autoRecordStartDate/);
+  assert.match(app, /autoRecorded: true/);
+  assert.match(app, /scheduledWindowStart/);
+  assert.match(app, /autoReviewed: existing\?\.autoRecorded \? true/);
+  assert.match(app, /class="small-action edit-supplement-log"/);
+});
+
+test('daily schedule waits for the window, avoids duplicates, and respects dates', () => {
+  const item = { id: 'med-1', active: true, autoRecordDose: true, autoRecordStartDate: '2026-10-24', startDate: '2026-10-01', endDate: '2026-10-26', autoRecordWindowStart: '08:00', autoRecordWindowEnd: '09:00' };
+  const existing = [{ itemId: 'med-1', status: 'skipped', localDate: '2026-10-25', localMinutes: 8 * 60 + 30 }];
+  const afterWindow = supplements.scheduledDosePlan([item], existing, { today: '2026-10-26', currentMinutes: 9 * 60 + 5 });
+  assert.deepEqual([...afterWindow].map((entry) => ({ date: entry.date, timeMinutes: entry.timeMinutes })), [
+    { date: '2026-10-24', timeMinutes: 8 * 60 + 30 },
+    { date: '2026-10-26', timeMinutes: 8 * 60 + 30 },
+  ]);
+  const beforeWindowEnds = supplements.scheduledDosePlan([item], existing, { today: '2026-10-26', currentMinutes: 8 * 60 + 30 });
+  assert.deepEqual([...beforeWindowEnds].map((entry) => entry.date), ['2026-10-24']);
+  assert.equal(supplements.scheduledDosePlan([{ ...item, autoRecordWindowEnd: '07:00' }], [], { today: '2026-10-26', currentMinutes: 600 }).length, 0);
+});
+
+test('multiple daily windows create independent morning and evening doses', () => {
+  const item = { id: 'med-1', active: true, autoRecordDose: true, autoRecordStartDate: '2026-10-26', startDate: '2026-10-01', autoRecordWindows: [
+    { id: 'morning', label: 'Morning', start: '08:00', end: '09:00' },
+    { id: 'night', label: 'Night', start: '20:00', end: '21:00' },
+  ] };
+  const morningOnly = supplements.scheduledDosePlan([item], [], { today: '2026-10-26', currentMinutes: 10 * 60 });
+  assert.deepEqual([...morningOnly].map((entry) => entry.scheduleSlotId), ['morning']);
+  const manualMorning = [{ itemId: 'med-1', localDate: '2026-10-26', localMinutes: 8 * 60 + 15, status: 'taken' }];
+  const afterNight = supplements.scheduledDosePlan([item], manualMorning, { today: '2026-10-26', currentMinutes: 21 * 60 + 5 });
+  assert.deepEqual([...afterNight].map((entry) => ({ slot: entry.scheduleSlotId, label: entry.scheduleLabel, time: entry.timeMinutes })), [{ slot: 'night', label: 'Night', time: 20 * 60 + 30 }]);
+  const editedScheduledMorning = [{ itemId: 'med-1', localDate: '2026-10-26', localMinutes: 15 * 60, scheduleSlotId: 'morning', status: 'missed' }];
+  assert.deepEqual([...supplements.scheduledDosePlan([item], editedScheduledMorning, { today: '2026-10-26', currentMinutes: 21 * 60 + 5 })].map((entry) => entry.scheduleSlotId), ['night']);
+});
+
+test('quick observations are shared child-level My Day events', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.match(app, /data-quick-observation/);
+  assert.match(app, /itemId: null/);
+  assert.match(app, /It is now in My Day and observation history/);
+  assert.match(app, /id="supplementDoseHistory"/);
+  assert.match(app, /id="supplementObservationHistory"/);
+  assert.match(app, /id="supplementLogSearch"/);
+  assert.match(app, /id="supplementObservationSearch"/);
+});
+
+test('correlation table summarizes doses and expandable pattern counts', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.match(app, /supplement-correlation-table/);
+  assert.match(app, /Doses given/);
+  assert.match(app, /Possible correlations/);
+  assert.match(app, /report\.takenTotal/);
+  assert.match(app, /report\.patterns\.length/);
+});
+
+test('tracker rendering never shadows the browser window object', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.doesNotMatch(app, /\b(?:const|let|var)\s+window\s*=/);
+  assert.match(app, /doseWindows = autoDoseWindows\(item\)/);
 });
 
 test('30-day supply defaults to a five-day refill reminder', () => {

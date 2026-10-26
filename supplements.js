@@ -30,6 +30,46 @@ window.MTMSupplements = (() => {
   const time = (entry) => Date.parse(entry?.occurredAt || entry?.createdAt || "");
   const itemType = (item) => item?.itemType === "medication" ? "medication" : "supplement";
   const logItemId = (log) => log?.itemId || log?.supplementId;
+  const timeMinutes = (value) => {
+    const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    const hours = Number(match[1]), minutes = Number(match[2]);
+    return hours < 24 && minutes < 60 ? hours * 60 + minutes : null;
+  };
+
+  function dailyWindows(item) {
+    const configured = Array.isArray(item?.autoRecordWindows) && item.autoRecordWindows.length ? item.autoRecordWindows : [{ id: "dose-1", label: "Daily dose", start: item?.autoRecordWindowStart || "08:00", end: item?.autoRecordWindowEnd || "09:00" }];
+    return configured.map((entry, index) => {
+      const startText = entry?.start || entry?.windowStart || "", endText = entry?.end || entry?.windowEnd || "", start = timeMinutes(startText), end = timeMinutes(endText);
+      if (start === null || end === null || end <= start) return null;
+      return { id: cleanLine(entry.id) || `dose-${index + 1}`, label: cleanLine(entry.label) || `Dose ${index + 1}`, startText, endText, start, end, midpoint: Math.floor((start + end) / 2) };
+    }).filter(Boolean);
+  }
+
+  function dailyWindow(item) { return dailyWindows(item)[0] || null; }
+
+  function scheduledDosePlan(items, doseLogs, { today, currentMinutes }) {
+    const currentDate = dateOnly(today), minutesNow = Number(currentMinutes), earliest = addDays(currentDate, -365);
+    if (!currentDate || !Number.isFinite(minutesNow)) return [];
+    const logs = (doseLogs || []).map((log) => ({ ...log, itemId: logItemId(log), date: dateOnly(log.localDate || log.occurredAt || log.createdAt), minutes: Number(log.localMinutes) }));
+    const plan = [];
+    for (const item of items || []) {
+      const windows = dailyWindows(item);
+      if (!item?.id || !item.autoRecordDose || item.active === false || !windows.length) continue;
+      const starts = [dateOnly(item.autoRecordStartDate) || currentDate, dateOnly(item.startDate) || currentDate, earliest].sort(), first = starts[starts.length - 1], last = item.endDate && dateOnly(item.endDate) < currentDate ? dateOnly(item.endDate) : currentDate;
+      if (!first || !last || first > last) continue;
+      for (let date = first; date <= last; date = addDays(date, 1)) {
+        for (const window of windows) {
+          if (date === currentDate && minutesNow < window.end) continue;
+          const occupied = logs.some((log) => log.itemId === item.id && log.date === date && (log.scheduleSlotId ? log.scheduleSlotId === window.id : Number.isFinite(log.minutes) && log.minutes >= window.start && log.minutes < window.end));
+          if (occupied) continue;
+          plan.push({ itemId: item.id, date, timeMinutes: window.midpoint, scheduleSlotId: window.id, scheduleLabel: window.label, windowStart: window.startText, windowEnd: window.endText });
+          logs.push({ itemId: item.id, date, minutes: window.midpoint, scheduleSlotId: window.id });
+        }
+      }
+    }
+    return plan;
+  }
 
   function refillDates(supplement) {
     const filled = dateOnly(supplement.lastFilledDate || supplement.startDate);
@@ -202,5 +242,5 @@ window.MTMSupplements = (() => {
     };
   }
 
-  return { OUTCOMES, REQUIRED_DAYS, SNAPSHOT_START, SNAPSHOT_END, addDays, refillDates, refillState, analyze, appointmentSummary, stripAppointmentSnapshot, mergeAppointmentNotes, babysitterSummary, observation };
+  return { OUTCOMES, REQUIRED_DAYS, SNAPSHOT_START, SNAPSHOT_END, addDays, dailyWindow, dailyWindows, scheduledDosePlan, refillDates, refillState, analyze, appointmentSummary, stripAppointmentSnapshot, mergeAppointmentNotes, babysitterSummary, observation };
 })();

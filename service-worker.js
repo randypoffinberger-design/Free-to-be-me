@@ -1,4 +1,4 @@
-const CACHE='mtm-test-v0.10.1-my-day-med-patterns-test-1';
+const CACHE='mtm-test-v0.10.1-medication-workflow-test-3';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   "./onboarding.js?v=onboarding-measurement-20261015",
@@ -15,13 +15,13 @@ const CRITICAL_ASSETS=[
   "./access.js?v=0.10.1-onboarding-1",
   "./offline-key.js?v=0.10.1-production-11",
   "./offline-access.js?v=0.10.1-production-11",
-  './styles.css?v=my-day-med-patterns-test-1',
-  './supplements.css?v=my-day-med-patterns-test-1',
-  './sync.js?v=my-day-med-patterns-test-1',
+  './styles.css?v=medication-workflow-test-3',
+  './supplements.css?v=medication-workflow-test-3',
+  './sync.js?v=medication-workflow-test-3',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
-  './supplements.js?v=my-day-med-patterns-test-1',
-  './app.js?v=my-day-med-patterns-test-1',
+  './supplements.js?v=medication-workflow-test-3',
+  './app.js?v=medication-workflow-test-3',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -66,7 +66,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-production-v')||key.startsWith('mtm-paywall-v')||key.startsWith('mtm-test-paywall-v'))&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-test-v')||key.startsWith('mtm-production-v')||key.startsWith('mtm-paywall-v')||key.startsWith('mtm-test-paywall-v'))&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
 });

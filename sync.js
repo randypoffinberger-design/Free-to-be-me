@@ -3,7 +3,7 @@
 /* The UI always reads application data from IndexedDB. This module only moves
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
-  const BUILD = "0.10.1-my-day-med-patterns-test-1";
+  const BUILD = "0.10.1-medication-workflow-test-3";
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
