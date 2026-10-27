@@ -1,4 +1,4 @@
-const CACHE='mtm-production-v0.10.1-onboarding-measurement-20261015';
+const CACHE='mtm-test-v0.10.1-asd-friendly-resorts-test-1';
 const OFFLINE_PAGE='./index.html';
 const CRITICAL_ASSETS=[
   "./onboarding.js?v=onboarding-measurement-20261015",
@@ -6,20 +6,22 @@ const CRITICAL_ASSETS=[
   "./interaction-usage.js?v=analytics-2",
   OFFLINE_PAGE,
   "./food-patterns.js?v=0.10.1-food-2",
-  "./modules.js?v=0.10.1-modules-2",
-  "./module-layouts.js?v=0.10.1-modules-2",
-  "./modules.css?v=0.10.1-modules-2",
+  "./modules.js?v=0.10.1-modules-3",
+  "./module-layouts.js?v=0.10.1-modules-3",
+  "./modules.css?v=0.10.1-modules-3",
   './analytics.js?v=0.10.1-production-11',
   './analytics-frame.html',
   './analytics-frame.js',
   "./access.js?v=0.10.1-onboarding-1",
   "./offline-key.js?v=0.10.1-production-11",
   "./offline-access.js?v=0.10.1-production-11",
-  './styles.css?v=0.10.1-production-11',
-  './sync.js?v=onboarding-measurement-20261015',
+  './styles.css?v=asd-friendly-resorts-test-1',
+  './supplements.css?v=asd-friendly-resorts-test-1',
+  './sync.js?v=asd-friendly-resorts-test-1',
   './sensory-play.js?v=0.10.1-production-11',
   './library-books.js?v=0.10.1-production-11',
-  './app.js?v=onboarding-measurement-20261015',
+  './supplements.js?v=asd-friendly-resorts-test-1',
+  './app.js?v=asd-friendly-resorts-test-1',
   './assets/home/homepage.jpeg',
   './assets/home/homepage-desktop.webp',
   './assets/guides/oral-ties-guide.png',
@@ -64,7 +66,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-production-v')||key.startsWith('mtm-paywall-v')||key.startsWith('mtm-test-paywall-v'))&&key!==CACHE).map(key=>caches.delete(key))))
+      .then(keys=>Promise.all(keys.filter(key=>(key.startsWith('ftbm-test-v')||key.startsWith('mtm-test-v')||key.startsWith('mtm-production-v')||key.startsWith('mtm-paywall-v')||key.startsWith('mtm-test-paywall-v'))&&key!==CACHE).map(key=>caches.delete(key))))
       .then(()=>self.clients.claim())
   );
 });

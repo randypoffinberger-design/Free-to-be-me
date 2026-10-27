@@ -381,6 +381,7 @@ window.MTMModules = (() => {
     "children": [
       "funAccessPass",
       "funPlaces",
+      "funResorts",
       "funSocial",
       "funExplore",
       "funCruising",
@@ -502,6 +503,15 @@ window.MTMModules = (() => {
     "description": "Explore directories and search local events.",
     "destination": {
       "route": "funPlaces"
+    }
+  },
+  {
+    "id": "funResorts",
+    "title": "Autism-friendly resorts & stays",
+    "icon": "🏨",
+    "description": "Compare verified stays and use the family booking checklist.",
+    "destination": {
+      "route": "funResorts"
     }
   },
   {
@@ -1164,7 +1174,7 @@ window.MTMModules = (() => {
   }
   const registry = new Map(definitions.map(item => [item.id, item]));
   // Defaults are immutable. Layouts choose up to eight home shortcuts separately.
-  const sections = Object.freeze({home: Object.freeze(["growth", "communication", "sleep", "sensory", "learning", "medical", "caregiver", "community"]), caregiver: Object.freeze(["caregiverMeetups", "caregiverToys", "caregiverRecommended", "caregiverRecommendedBabysitters", "caregiverBabysitter", "caregiverEmergencyContacts", "caregiverEncouragement", "caregiverTerms", "caregiverSigns", "caregiverMyths", "caregiverAggression", "caregiverRegulationGuides", "caregiverEducation", "caregiverAssessment", "caregiverBenefits", "caregiverSafety", "caregiverTherapy", "caregiverCalendar", "caregiverTodos", "caregiverReflections"]), sleep: Object.freeze(["sleepWhy", "sleepExample", "sleepRoutine", "sleepEnvironment", "sleepFamilyRoutine", "sleepCompare", "sleepMagnesium", "sleepBeds", "sleepPreferences", "sleepProducts"]), fun: Object.freeze(["funAccessPass", "funPlaces", "funSocial", "funExplore", "funCruising", "funFilms"]), growth: Object.freeze(["dailyCareProfile", "viewAchievements", "viewWords", "providerSummary", "myDay", "screenTime", "food"]), speech: Object.freeze(["vocabulary", "speechGuide_asl", "speechGuide_signs", "speechGuide_useAsl", "speechGuide_aac", "speechGuide_flash", "speechGuide_apps", "speechGuide_oralTies", "speechGuide_communicationVisual", "speechGuide_products"]), health: Object.freeze(["medicalLetter", "apptPrep", "providerReport", "apptNotes", "chiropracticArticles", "labGuide", "mthfrGuide", "gutGuide", "probioticGuide", "vitaminGuide", "placardGuide", "methylProductsGuide"]), sensory: Object.freeze(["sensoryNeeds", "sensoryVisualGuides", "sensoryCheck", "spdGuide", "triggerGuide", "materialPreferences", "fabricGuide", "sensoryProducts", "sensoryPlay"]), skills: Object.freeze(["lifeSkills", "potty", "pottyTips", "waitingTurnsGuide", "learningGuide", "strengthsStruggles", "diaperHelp", "imaginationLibrary", "skillProducts", "bookLibrary"]), resources: Object.freeze(["communication", "sensory", "sleep", "medical", "caregiverEducation", "learning", "community", "caregiver"]), food: Object.freeze(["foodClaimsGuide"]), safety: Object.freeze(["amazonSafetyProducts"])});
+  const sections = Object.freeze({home: Object.freeze(["growth", "communication", "sleep", "sensory", "learning", "medical", "caregiver", "community"]), caregiver: Object.freeze(["caregiverMeetups", "caregiverToys", "caregiverRecommended", "caregiverRecommendedBabysitters", "caregiverBabysitter", "caregiverEmergencyContacts", "caregiverEncouragement", "caregiverTerms", "caregiverSigns", "caregiverMyths", "caregiverAggression", "caregiverRegulationGuides", "caregiverEducation", "caregiverAssessment", "caregiverBenefits", "caregiverSafety", "caregiverTherapy", "caregiverCalendar", "caregiverTodos", "caregiverReflections"]), sleep: Object.freeze(["sleepWhy", "sleepExample", "sleepRoutine", "sleepEnvironment", "sleepFamilyRoutine", "sleepCompare", "sleepMagnesium", "sleepBeds", "sleepPreferences", "sleepProducts"]), fun: Object.freeze(["funAccessPass", "funPlaces", "funResorts", "funSocial", "funExplore", "funCruising", "funFilms"]), growth: Object.freeze(["dailyCareProfile", "viewAchievements", "viewWords", "providerSummary", "myDay", "screenTime", "food"]), speech: Object.freeze(["vocabulary", "speechGuide_asl", "speechGuide_signs", "speechGuide_useAsl", "speechGuide_aac", "speechGuide_flash", "speechGuide_apps", "speechGuide_oralTies", "speechGuide_communicationVisual", "speechGuide_products"]), health: Object.freeze(["medicalLetter", "apptPrep", "providerReport", "apptNotes", "chiropracticArticles", "labGuide", "mthfrGuide", "gutGuide", "probioticGuide", "vitaminGuide", "placardGuide", "methylProductsGuide"]), sensory: Object.freeze(["sensoryNeeds", "sensoryVisualGuides", "sensoryCheck", "spdGuide", "triggerGuide", "materialPreferences", "fabricGuide", "sensoryProducts", "sensoryPlay"]), skills: Object.freeze(["lifeSkills", "potty", "pottyTips", "waitingTurnsGuide", "learningGuide", "strengthsStruggles", "diaperHelp", "imaginationLibrary", "skillProducts", "bookLibrary"]), resources: Object.freeze(["communication", "sensory", "sleep", "medical", "caregiverEducation", "learning", "community", "caregiver"]), food: Object.freeze(["foodClaimsGuide"]), safety: Object.freeze(["amazonSafetyProducts"])});
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function get(id) {
     const item = registry.get(id);
