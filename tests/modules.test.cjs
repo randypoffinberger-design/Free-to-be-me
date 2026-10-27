@@ -96,7 +96,7 @@ test('new assets are in the offline cache and load before the application',()=>{
     assert.ok(sw.includes(`${file}?v=0.10.1-modules-3`));
   }
   assert.ok(index.indexOf('modules.js?')<index.indexOf('app.js?'));
-  assert.ok(sw.includes("const CACHE='mtm-test-v0.10.1-asd-friendly-resorts-test-1'"));
+  assert.ok(sw.includes("const CACHE='mtm-production-v0.10.2-mobile-store-1'"));
 });
 
 

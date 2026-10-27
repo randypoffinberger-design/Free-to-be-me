@@ -1,7 +1,7 @@
 "use strict";
 
-const ASSET_BUILD = "0.10.1-asd-friendly-resorts-test-1";
-const APP = { name: "More than Measured", version: "0.10.1", schemaVersion: 5 };
+const ASSET_BUILD = "0.10.2-mobile-store-1";
+const APP = { name: "More than Measured", version: "0.10.2", schemaVersion: 5 };
 window.MTM_APP_VERSION = APP.version;
 const ANALYTICS_FEATURES = Object.freeze({
   home: "home",

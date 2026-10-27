@@ -3,7 +3,7 @@
 /* The UI always reads application data from IndexedDB. This module only moves
    copies between IndexedDB and the optional server. */
 window.MTMSync = (() => {
-  const BUILD = "0.10.1-asd-friendly-resorts-test-1";
+  const BUILD = "0.10.2-mobile-store-1";
   const SYNCED_STORES = new Set(["profiles","achievements","words","notes","appointments","todos","pottyLogs","settings"]);
   const ACCOUNT_CONTENT_STORES = [...SYNCED_STORES,"snapshots","syncOutbox","syncMeta","syncConflicts","deletedRecords"];
   const DEVICE_SETTINGS = new Set(["lastBackupAt","profileDisplay","vocabFilterDefaults"]);
@@ -17,8 +17,12 @@ window.MTMSync = (() => {
   const rawPut = (store, value) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").put(value); r.onsuccess=()=>resolve(value); r.onerror=()=>reject(r.error); });
   const rawDelete = (store, id) => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").delete(id); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
   const rawClear = store => new Promise((resolve, reject) => { const r=rawStore(store,"readwrite").clear(); r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error); });
-  const PRODUCTION_SERVER = "https://svw-production-01.tail96598f.ts.net/mtm-test-api";
-  const LEGACY_PRODUCTION_SERVER = "https://randys.tail96598f.ts.net/mtm-test-api";
+  const PRODUCTION_SERVER = "https://api.serenityvalleyworks.com/mtm";
+  const RETIRED_SERVERS = new Set([
+    "https://randys.tail96598f.ts.net/mtm",
+    "https://svw-production-01.tail96598f.ts.net/mtm-test-api",
+    "https://randys.tail96598f.ts.net/mtm-test-api"
+  ]);
   const defaultProductionServer = () => PRODUCTION_SERVER;
   const normalizeServerUrl = value => String(value || "").trim().replace(/\/+$/, "");
   // Migrate only the exact former production endpoint, preserving account data
@@ -30,7 +34,7 @@ window.MTMSync = (() => {
     let current;
     request.onsuccess = () => {
       current = request.result || { id:"current", serverUrl:defaultProductionServer(), cursor:0 };
-      if (current.serverUrl === LEGACY_PRODUCTION_SERVER) {
+      if (RETIRED_SERVERS.has(normalizeServerUrl(current.serverUrl))) {
         current = { ...current, serverUrl:PRODUCTION_SERVER };
         store.put(current);
       }
